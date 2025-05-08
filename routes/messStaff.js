@@ -26,7 +26,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get all meals for today
+// Get all meals for today with counts
 router.get('/meals/today', messStaffAuth, async (req, res) => {
   try {
     const today = new Date();
@@ -48,13 +48,24 @@ router.get('/meals/today', messStaffAuth, async (req, res) => {
       dinner: meals.filter(meal => meal.dinner)
     };
 
-    res.json(groupedMeals);
+    // Add counts
+    const counts = {
+      breakfast: groupedMeals.breakfast.length,
+      lunch: groupedMeals.lunch.length,
+      dinner: groupedMeals.dinner.length,
+      total: meals.length
+    };
+
+    res.json({
+      counts,
+      meals: groupedMeals
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Get meals by date range
+// Get meals by date range with counts
 router.get('/meals', messStaffAuth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -87,7 +98,32 @@ router.get('/meals', messStaffAuth, async (req, res) => {
       return acc;
     }, {});
 
-    res.json(groupedMeals);
+    // Add counts for each date
+    const mealCounts = {};
+    Object.keys(groupedMeals).forEach(date => {
+      mealCounts[date] = {
+        breakfast: groupedMeals[date].breakfast.length,
+        lunch: groupedMeals[date].lunch.length,
+        dinner: groupedMeals[date].dinner.length,
+        total: groupedMeals[date].breakfast.length + 
+               groupedMeals[date].lunch.length + 
+               groupedMeals[date].dinner.length
+      };
+    });
+
+    // Calculate total counts across all dates
+    const totalCounts = {
+      breakfast: meals.filter(meal => meal.breakfast).length,
+      lunch: meals.filter(meal => meal.lunch).length,
+      dinner: meals.filter(meal => meal.dinner).length,
+      total: meals.length
+    };
+
+    res.json({
+      totalCounts,
+      dailyCounts: mealCounts,
+      meals: groupedMeals
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

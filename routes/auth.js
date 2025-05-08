@@ -12,6 +12,71 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Dummy user authentication for testing
+const authenticateDummyUser = async (phoneNumber, otp) => {
+  try {
+    // Check if dummy credentials match environment variables
+    if (phoneNumber !== process.env.TEST_PHONE_NUMBER || 
+        otp !== process.env.TEST_OTP) {
+      throw new Error('Invalid test credentials');
+    }
+
+    // Find or create dummy user
+    let user = await User.findOne({ phoneNumber });
+    if (!user) {
+      user = new User({ 
+        phoneNumber,
+        isVerified: true 
+      });
+      await user.save();
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    return { 
+      success: true,
+      token,
+      message: 'Test login successful'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Test login route
+router.post('/test-login', async (req, res) => {
+  try {
+    const { phoneNumber, otp } = req.body;
+    
+    // Only allow test login in development environment
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ 
+        message: 'Test login not available in production' 
+      });
+    }
+
+    const result = await authenticateDummyUser(phoneNumber, otp);
+    if (!result.success) {
+      return res.status(401).json({ message: result.message });
+    }
+
+    res.json({
+      message: result.message,
+      token: result.token
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Send OTP using Fast2SMS
 const sendOTP = async (phoneNumber, otp) => {
   try {
