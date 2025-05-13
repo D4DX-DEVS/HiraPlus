@@ -541,21 +541,31 @@ router.get('/meals/:mealType', adminAuth, async (req, res) => {
     const meals = await Meal.find({
       date: { $gte: startDate, $lte: endDate },
       [mealType.toLowerCase()]: true
-    }).populate('userId', 'name phoneNumber department designation');
+    }).populate({
+      path: 'userId',
+      select: 'name phoneNumber department designation',
+      match: { _id: { $exists: true } }  // Only populate if user exists
+    });
 
-    // Format the response
-    const usersWithMeals = meals.map(meal => ({
-      userId: meal.userId._id,
-      name: meal.userId.name,
-      phoneNumber: meal.userId.phoneNumber,
-      department: meal.userId.department,
-      designation: meal.userId.designation,
-      date: meal.date
-    }));
+    // Filter out meals with null userId and format the response
+    const usersWithMeals = meals
+      .filter(meal => meal.userId !== null)  // Filter out meals with no valid user
+      .map(meal => ({
+        userId: meal.userId._id,
+        name: meal.userId.name || '',
+        phoneNumber: meal.userId.phoneNumber || '',
+        department: meal.userId.department || '',
+        designation: meal.userId.designation || '',
+        date: meal.date
+      }));
 
     res.json(usersWithMeals);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error fetching meals by type:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch meals',
+      error: error.message 
+    });
   }
 });
 
