@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
   phoneNumber: {
     type: String,
     required: true,
@@ -12,6 +17,16 @@ const userSchema = new mongoose.Schema({
       },
       message: props => `${props.value} is not a valid 10-digit phone number!`
     }
+  },
+  department: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  designation: {
+    type: String,
+    required: true,
+    trim: true
   },
   isVerified: {
     type: Boolean,

@@ -77,35 +77,35 @@ router.post('/test-login', async (req, res) => {
   }
 });
 
-// Send OTP using Fast2SMS
+// Send OTP using DXing WhatsApp API
 const sendOTP = async (phoneNumber, otp) => {
   try {
-    if (!process.env.FAST2SMS_API_KEY) {
-      throw new Error('Fast2SMS API key not configured');
+    if (!process.env.DXING_API_KEY) {
+      throw new Error('DXing API key not configured');
     }
 
-    const response = await axios.post('https://www.fast2sms.com/dev/bulkV2', {
-      route: "v3",
-      sender_id: "TXTIND",
-      message: `Your OTP for mess management system is: ${otp}`,
-      language: "english",
-      flash: 0,
-      numbers: phoneNumber,
+    // Format phone number to include country code if not present
+    const formattedPhone = phoneNumber.startsWith('91') ? phoneNumber : `91${phoneNumber}`;
+
+    const response = await axios.post('https://app.dxing.in/api/send/otp', {
+      token: process.env.DXING_API_KEY,
+      number: formattedPhone,
+      type: "text",
+      message: `Your OTP for Hira Plus Login is: ${otp}`,
+      instance_id: process.env.DXING_INSTANCE_ID
     }, {
       headers: {
-        'Authorization': process.env.FAST2SMS_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json'
       }
     });
 
-    if (response.data.return === false) {
-      throw new Error(response.data.message || 'Failed to send SMS');
+    if (!response.data.status) {
+      throw new Error(response.data.message || 'Failed to send WhatsApp message');
     }
 
     return response.data;
   } catch (error) {
-    console.error('Fast2SMS Error:', error.response?.data || error.message);
+    console.error('DXing WhatsApp Error:', error.response?.data || error.message);
     throw new Error(error.response?.data?.message || error.message);
   }
 };
@@ -132,25 +132,39 @@ router.post('/request-otp', async (req, res) => {
     const otp = generateOTP();
     otpStore.set(phoneNumber, {
       code: otp,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes expiry
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes expiry
     });
 
     try {
-      // Send OTP via SMS
+      // Send OTP via DXing SMS
       await sendOTP(phoneNumber, otp);
-      res.json({ message: 'OTP sent successfully to your phone' });
+      res.json({ 
+        success: true,
+        message: 'OTP sent successfully to your phone'
+      });
     } catch (smsError) {
       console.error('SMS sending failed:', smsError);
-      // For development/testing, return OTP in response
-      res.json({ 
-        message: 'Failed to send OTP via SMS. For testing, here is your OTP',
-        otp: otp,
-        error: smsError.message
-      });
+      // For development environment only
+      if (process.env.NODE_ENV === 'development') {
+        res.json({ 
+          success: false,
+          message: 'Failed to send OTP via SMS. For testing, here is your OTP',
+          otp: otp,
+          error: smsError.message
+        });
+      } else {
+        res.status(500).json({ 
+          success: false,
+          message: 'Failed to send OTP. Please try again.'
+        });
+      }
     }
   } catch (error) {
     console.error('Request OTP error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 });
 
@@ -165,7 +179,10 @@ router.post('/verify-otp', async (req, res) => {
     // Check if user exists
     const user = await User.findOne({ phoneNumber });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
     }
 
     // Verify OTP
@@ -173,7 +190,10 @@ router.post('/verify-otp', async (req, res) => {
     if (!storedOTP || 
         storedOTP.code !== otp || 
         storedOTP.expiresAt < new Date()) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid or expired OTP' 
+      });
     }
 
     // Clear OTP after successful verification
@@ -191,12 +211,24 @@ router.post('/verify-otp', async (req, res) => {
     );
 
     res.json({ 
+      success: true,
       message: 'Login successful',
-      token 
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        department: user.department,
+        designation: user.designation,
+        isVerified: user.isVerified
+      }
     });
   } catch (error) {
     console.error('Verify OTP error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 });
 

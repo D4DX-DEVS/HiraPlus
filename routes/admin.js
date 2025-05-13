@@ -31,13 +31,32 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber } = req.body;
+    let { phoneNumber, name, department, designation } = req.body;
 
-    // Clean and validate phone number
+    // Validate all required fields are present and not empty
+    if (!phoneNumber || !name || !department || !designation) {
+      return res.status(400).json({ 
+        message: 'All fields (name, phone number, department, and designation) are required' 
+      });
+    }
+
+    // Clean and trim all fields
+    name = name.trim();
+    department = department.trim();
+    designation = designation.trim();
     phoneNumber = String(phoneNumber).trim().replace('+91', '').replace(/\D/g, '');
+
+    // Validate all fields have content after trimming
+    if (!name || !department || !designation) {
+      return res.status(400).json({ 
+        message: 'Name, department, and designation cannot be empty' 
+      });
+    }
     
     if (phoneNumber.length !== 10) {
-      return res.status(400).json({ message: 'Please provide a valid 10-digit phone number' });
+      return res.status(400).json({ 
+        message: 'Please provide a valid 10-digit phone number' 
+      });
     }
 
     const existingUser = await User.findOne({ phoneNumber });
@@ -45,17 +64,26 @@ router.post('/users', adminAuth, async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = new User({ phoneNumber });
+    const user = new User({ 
+      phoneNumber,
+      name,
+      department,
+      designation
+    });
     await user.save();
 
     res.status(201).json({ 
       message: 'User added successfully',
       user: {
         id: user._id,
-        phoneNumber: user.phoneNumber
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        department: user.department,
+        designation: user.designation
       }
     });
   } catch (error) {
+    console.error('User creation error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -63,9 +91,24 @@ router.post('/users', adminAuth, async (req, res) => {
 // Admin: Get all users
 router.get('/users', adminAuth, async (req, res) => {
   try {
-    const users = await User.find({}, { phoneNumber: 1, isVerified: 1 });
-    res.json(users);
+    const users = await User.find()
+      .select('name phoneNumber department designation isVerified createdAt')
+      .sort({ createdAt: -1 });
+
+    // Map the users to ensure all fields are present
+    const mappedUsers = users.map(user => ({
+      _id: user._id,
+      name: user.name || '',
+      phoneNumber: user.phoneNumber,
+      department: user.department || '',
+      designation: user.designation || '',
+      isVerified: user.isVerified,
+      createdAt: user.createdAt
+    }));
+
+    res.json(mappedUsers);
   } catch (error) {
+    console.error('Fetch users error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -79,6 +122,79 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
     }
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin: Edit user details
+router.put('/users/:userId', adminAuth, async (req, res) => {
+  try {
+    let { name, department, designation, phoneNumber } = req.body;
+
+    // Find the user first
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // If phone number is being updated, validate and check for duplicates
+    if (phoneNumber) {
+      // Clean and format phone number
+      phoneNumber = String(phoneNumber).trim().replace('+91', '').replace(/\D/g, '');
+      
+      // Validate phone number format
+      if (phoneNumber.length !== 10) {
+        return res.status(400).json({ 
+          message: 'Please provide a valid 10-digit phone number' 
+        });
+      }
+
+      // Check if phone number is already taken by another user
+      const existingUser = await User.findOne({ 
+        phoneNumber,
+        _id: { $ne: req.params.userId } // Exclude current user from check
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: 'Phone number is already registered with another user' 
+        });
+      }
+
+      user.phoneNumber = phoneNumber;
+    }
+
+    // Update other fields if provided
+    if (name) user.name = name.trim();
+    if (department) user.department = department.trim();
+    if (designation) user.designation = designation.trim();
+
+    // Validate that required fields are not empty after trimming
+    if (user.name && !user.name.trim()) {
+      return res.status(400).json({ message: 'Name cannot be empty' });
+    }
+    if (user.department && !user.department.trim()) {
+      return res.status(400).json({ message: 'Department cannot be empty' });
+    }
+    if (user.designation && !user.designation.trim()) {
+      return res.status(400).json({ message: 'Designation cannot be empty' });
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        department: user.department,
+        designation: user.designation,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('User update error:', error);
     res.status(500).json({ message: error.message });
   }
 });
