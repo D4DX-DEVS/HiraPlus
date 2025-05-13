@@ -206,8 +206,14 @@ router.get('/users/meals', adminAuth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    // Get all users
-    const users = await User.find({}, { phoneNumber: 1, isVerified: 1 });
+    // Get all users with their details
+    const users = await User.find({}, { 
+      phoneNumber: 1, 
+      isVerified: 1, 
+      name: 1, 
+      department: 1, 
+      designation: 1 
+    });
     
     // Prepare date filter for meals
     const mealQuery = {};
@@ -228,6 +234,9 @@ router.get('/users/meals', adminAuth, async (req, res) => {
       return {
         _id: user._id,
         phoneNumber: user.phoneNumber,
+        name: user.name || '',
+        department: user.department || '',
+        designation: user.designation || '',
         isVerified: user.isVerified,
         meals: meals
       };
@@ -503,6 +512,86 @@ router.post('/messages/:messageId/send', adminAuth, async (req, res) => {
       message: 'Failed to send bulk message',
       error: error.message 
     });
+  }
+});
+
+// Admin: Get users by meal type for a specific date
+router.get('/meals/:mealType', adminAuth, async (req, res) => {
+  try {
+    const { mealType } = req.params;
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: 'Date parameter is required' });
+    }
+
+    // Validate meal type
+    const validMealTypes = ['breakfast', 'lunch', 'dinner'];
+    if (!validMealTypes.includes(mealType.toLowerCase())) {
+      return res.status(400).json({ message: 'Invalid meal type. Must be breakfast, lunch, or dinner' });
+    }
+
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Find meals for the specified type and date
+    const meals = await Meal.find({
+      date: { $gte: startDate, $lte: endDate },
+      [mealType.toLowerCase()]: true
+    }).populate('userId', 'name phoneNumber department designation');
+
+    // Format the response
+    const usersWithMeals = meals.map(meal => ({
+      userId: meal.userId._id,
+      name: meal.userId.name,
+      phoneNumber: meal.userId.phoneNumber,
+      department: meal.userId.department,
+      designation: meal.userId.designation,
+      date: meal.date
+    }));
+
+    res.json(usersWithMeals);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin: Get meal counts by type for a date range
+router.get('/meals/counts/summary', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const meals = await Meal.find({
+      date: { $gte: start, $lte: end }
+    });
+
+    // Calculate counts
+    const summary = {
+      breakfast: meals.filter(meal => meal.breakfast).length,
+      lunch: meals.filter(meal => meal.lunch).length,
+      dinner: meals.filter(meal => meal.dinner).length,
+      totalMeals: meals.length,
+      dateRange: {
+        from: start,
+        to: end
+      }
+    };
+
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
