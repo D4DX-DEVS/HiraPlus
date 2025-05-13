@@ -26,6 +26,9 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
     if (!user) {
       user = new User({ 
         phoneNumber,
+        name: "Test User",
+        department: "Testing",
+        designation: "Tester",
         isVerified: true 
       });
       await user.save();
@@ -41,7 +44,15 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
     return { 
       success: true,
       token,
-      message: 'Test login successful'
+      message: 'Test login successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        department: user.department,
+        designation: user.designation,
+        isVerified: user.isVerified
+      }
     };
   } catch (error) {
     return {
@@ -69,43 +80,63 @@ router.post('/test-login', async (req, res) => {
     }
 
     res.json({
+      success: true,
       message: result.message,
-      token: result.token
+      token: result.token,
+      user: result.user
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 });
 
-// Send OTP using DXing WhatsApp API
+// Send OTP using DXing API
 const sendOTP = async (phoneNumber, otp) => {
   try {
     if (!process.env.DXING_API_KEY) {
       throw new Error('DXing API key not configured');
     }
 
-    // Format phone number to include country code if not present
-    const formattedPhone = phoneNumber.startsWith('91') ? phoneNumber : `91${phoneNumber}`;
+    // Clean the phone number (remove spaces, +, and other characters)
+    const cleanedPhone = phoneNumber.replace(/[\s+\-()]/g, '');
+    // Make sure phone number starts with country code
+    const formattedPhone = cleanedPhone.startsWith('91') ? cleanedPhone : `91${cleanedPhone}`;
 
-    const response = await axios.post('https://app.dxing.in/api/send/otp', {
-      token: process.env.DXING_API_KEY,
-      number: formattedPhone,
-      type: "text",
-      message: `Your OTP for Hira Plus Login is: ${otp}`,
-      instance_id: process.env.DXING_INSTANCE_ID
-    }, {
+    console.log('Sending OTP to phone number:', formattedPhone);
+
+    const payload = {
+      secret: process.env.DXING_API_KEY,
+      type: "whatsapp",
+      phone: formattedPhone,
+      message: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+      account: process.env.DXING_INSTANCE_ID,
+      priority: 1
+    };
+
+    console.log('Request payload:', JSON.stringify(payload));
+
+    const response = await axios.post('https://app.dxing.in/api/send/otp', payload, {
       headers: {
         'Content-Type': 'application/json'
       }
     });
 
+    console.log('DXing API Response:', JSON.stringify(response.data));
+
     if (!response.data.status) {
-      throw new Error(response.data.message || 'Failed to send WhatsApp message');
+      throw new Error(response.data.message || 'Failed to send OTP');
     }
 
     return response.data;
   } catch (error) {
-    console.error('DXing WhatsApp Error:', error.response?.data || error.message);
+    console.error('DXing OTP Error Details:', {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     throw new Error(error.response?.data?.message || error.message);
   }
 };
