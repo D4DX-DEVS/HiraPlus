@@ -3,8 +3,10 @@ const router = express.Router();
 const User = require('../models/User');
 const Meal = require('../models/Meal');
 const Notification = require('../models/Notification');
+const Message = require('../models/Message');
 const jwt = require('jsonwebtoken');
 const adminAuth = require('../middleware/adminAuth');
+const axios = require('axios');
 
 // Admin Login
 router.post('/login', async (req, res) => {
@@ -403,6 +405,104 @@ router.delete('/notifications/:notificationId', adminAuth, async (req, res) => {
     res.json({ message: 'Notification deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin: Create a new message
+router.post('/messages', adminAuth, async (req, res) => {
+  try {
+    const { title, description } = req.body;
+
+    if (!title || !description) {
+      return res.status(400).json({ 
+        message: 'Title and description are required' 
+      });
+    }
+
+    const message = new Message({
+      title: title.trim(),
+      description: description.trim()
+    });
+
+    await message.save();
+
+    res.status(201).json({
+      message: 'Message created successfully',
+      data: message
+    });
+  } catch (error) {
+    console.error('Message creation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin: Get all messages
+router.get('/messages', adminAuth, async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ createdAt: -1 });
+    res.json(messages);
+  } catch (error) {
+    console.error('Fetch messages error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin: Send message to all users via WhatsApp
+router.post('/messages/:messageId/send', adminAuth, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    // Get all verified users' phone numbers
+    const users = await User.find({ isVerified: true }, 'phoneNumber');
+    if (users.length === 0) {
+      return res.status(400).json({ message: 'No verified users found' });
+    }
+
+    // Format phone numbers for bulk message
+    const recipients = users.map(user => {
+      const phone = user.phoneNumber.replace(/[\s+\-()]/g, '');
+      return phone.startsWith('91') ? phone : `91${phone}`;
+    }).join(',');
+
+    // Prepare the bulk message payload
+    const payload = {
+      secret: process.env.DXING_API_KEY,
+      account: process.env.DXING_INSTANCE_ID,
+      campaign: message.title,
+      recipients: recipients,
+      type: "text",
+      message: `*${message.title}*\n\n${message.description}`
+    };
+
+    // Send bulk message using DXing API
+    const response = await axios.post('https://app.dxing.in/api/send/whatsapp.bulk', payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.data.status) {
+      throw new Error(response.data.message || 'Failed to send bulk message');
+    }
+
+    // Update message status
+    message.sentToUsers = true;
+    await message.save();
+
+    res.json({
+      message: 'Bulk message sent successfully',
+      recipients: users.length,
+      response: response.data
+    });
+  } catch (error) {
+    console.error('Bulk message error:', error);
+    res.status(500).json({ 
+      message: 'Failed to send bulk message',
+      error: error.message 
+    });
   }
 });
 
