@@ -605,4 +605,31 @@ router.get('/meals/counts/summary', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Get single user by ID
+router.get('/users/:userId', adminAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      phoneNumber: user.phoneNumber,
+      department: user.department,
+      designation: user.designation,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+    console.error('Fetch single user error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
