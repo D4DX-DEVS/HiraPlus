@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
@@ -304,6 +305,61 @@ router.get('/me', async (req, res) => {
     });
   } catch (error) {
     console.error('Get user details error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication token'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get all notifications
+router.get('/notifications', async (req, res) => {
+  try {
+    // Get token from header
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authentication token provided'
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Verify user exists
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Get all notifications, sorted by creation date (newest first)
+    const notifications = await Notification.find()
+      .sort({ createdAt: -1 })
+      .select('-__v');
+
+    res.json({
+      success: true,
+      notifications: notifications.map(notification => ({
+        id: notification._id,
+        title: notification.title,
+        description: notification.description,
+        createdAt: notification.createdAt,
+        updatedAt: notification.updatedAt
+      }))
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,
