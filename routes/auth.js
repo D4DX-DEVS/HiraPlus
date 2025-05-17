@@ -263,4 +263,58 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// Get user details
+router.get('/me', async (req, res) => {
+  try {
+    // Get token from header
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authentication token provided'
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user details
+    const user = await User.findById(decoded.id).select('-__v');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        department: user.department,
+        designation: user.designation,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Get user details error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication token'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 module.exports = router; 
