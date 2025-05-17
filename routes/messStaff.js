@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Meal = require('../models/Meal');
+const User = require('../models/User');
 const messStaffAuth = require('../middleware/messStaffAuth');
 
 // Mess Staff Login
@@ -34,18 +35,37 @@ router.get('/meals/today', messStaffAuth, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const meals = await Meal.find({
+    let meals = await Meal.find({
       date: {
         $gte: today,
         $lt: tomorrow
       }
-    }).populate('userId', 'phoneNumber');
+    }).populate({
+      path: 'userId',
+      model: 'User'
+    });
 
-    // Group meals by type (breakfast, lunch, dinner)
+    // Convert meals to plain objects and restructure
+    meals = meals.map(meal => {
+      const mealObj = meal.toObject();
+      return {
+        ...mealObj,
+        userId: mealObj.userId ? {
+          _id: mealObj.userId._id,
+          name: mealObj.userId.name,
+          phoneNumber: mealObj.userId.phoneNumber,
+          department: mealObj.userId.department,
+          designation: mealObj.userId.designation,
+          isVerified: mealObj.userId.isVerified
+        } : null
+      };
+    });
+
+    // Group meals by type
     const groupedMeals = {
-      breakfast: meals.filter(meal => meal.breakfast),
-      lunch: meals.filter(meal => meal.lunch),
-      dinner: meals.filter(meal => meal.dinner)
+      breakfast: meals.filter(meal => meal.breakfast && meal.userId),
+      lunch: meals.filter(meal => meal.lunch && meal.userId),
+      dinner: meals.filter(meal => meal.dinner && meal.userId)
     };
 
     // Add counts
@@ -53,7 +73,7 @@ router.get('/meals/today', messStaffAuth, async (req, res) => {
       breakfast: groupedMeals.breakfast.length,
       lunch: groupedMeals.lunch.length,
       dinner: groupedMeals.dinner.length,
-      total: meals.length
+      total: meals.filter(meal => meal.userId).length
     };
 
     res.json({
@@ -78,12 +98,33 @@ router.get('/meals', messStaffAuth, async (req, res) => {
       };
     }
 
-    const meals = await Meal.find(query)
-      .populate('userId', 'phoneNumber')
+    let meals = await Meal.find(query)
+      .populate({
+        path: 'userId',
+        model: 'User'
+      })
       .sort({ date: 1 });
+
+    // Convert meals to plain objects and restructure
+    meals = meals.map(meal => {
+      const mealObj = meal.toObject();
+      return {
+        ...mealObj,
+        userId: mealObj.userId ? {
+          _id: mealObj.userId._id,
+          name: mealObj.userId.name,
+          phoneNumber: mealObj.userId.phoneNumber,
+          department: mealObj.userId.department,
+          designation: mealObj.userId.designation,
+          isVerified: mealObj.userId.isVerified
+        } : null
+      };
+    });
 
     // Group meals by date
     const groupedMeals = meals.reduce((acc, meal) => {
+      if (!meal.userId) return acc; // Skip meals without user
+
       const dateStr = meal.date.toISOString().split('T')[0];
       if (!acc[dateStr]) {
         acc[dateStr] = {
@@ -92,6 +133,7 @@ router.get('/meals', messStaffAuth, async (req, res) => {
           dinner: []
         };
       }
+      
       if (meal.breakfast) acc[dateStr].breakfast.push(meal);
       if (meal.lunch) acc[dateStr].lunch.push(meal);
       if (meal.dinner) acc[dateStr].dinner.push(meal);
@@ -112,11 +154,12 @@ router.get('/meals', messStaffAuth, async (req, res) => {
     });
 
     // Calculate total counts across all dates
+    const validMeals = meals.filter(meal => meal.userId);
     const totalCounts = {
-      breakfast: meals.filter(meal => meal.breakfast).length,
-      lunch: meals.filter(meal => meal.lunch).length,
-      dinner: meals.filter(meal => meal.dinner).length,
-      total: meals.length
+      breakfast: validMeals.filter(meal => meal.breakfast).length,
+      lunch: validMeals.filter(meal => meal.lunch).length,
+      dinner: validMeals.filter(meal => meal.dinner).length,
+      total: validMeals.length
     };
 
     res.json({
