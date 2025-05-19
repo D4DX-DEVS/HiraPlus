@@ -318,31 +318,9 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Get all notifications
+// Get all notifications (public endpoint)
 router.get('/notifications', async (req, res) => {
   try {
-    // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No authentication token provided'
-      });
-    }
-
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Verify user exists
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
     // Get all notifications, sorted by creation date (newest first)
     const notifications = await Notification.find()
       .sort({ createdAt: -1 })
@@ -360,12 +338,6 @@ router.get('/notifications', async (req, res) => {
     });
   } catch (error) {
     console.error('Get notifications error:', error);
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid authentication token'
-      });
-    }
     res.status(500).json({
       success: false,
       message: error.message
