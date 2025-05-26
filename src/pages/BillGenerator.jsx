@@ -194,10 +194,10 @@ const BillGenerator = () => {
   });
   const [mealRates, setMealRates] = useState({
     breakfast: 30,
-    lunch: 120,
-    dinner: 80
+    lunch: 60,
+    dinner: 20
   });
-  const [departmentShare, setDepartmentShare] = useState(30);
+  const [departmentShare, setDepartmentShare] = useState(80);
   const [billData, setBillData] = useState(null);
   const [totalAmount, setTotalAmount] = useState(0);
   const [employeePayable, setEmployeePayable] = useState(0);
