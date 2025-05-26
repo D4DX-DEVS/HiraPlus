@@ -5,6 +5,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminMeals from './pages/AdminMeals';
 import AdminNotifications from './pages/AdminNotifications';
 import AdminMessages from './pages/AdminMessages';
+import AdminBanners from './pages/AdminBanners';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -53,6 +54,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminMessages />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/banner"
+          element={
+            <ProtectedRoute>
+              <AdminBanners />
             </ProtectedRoute>
           }
         />
