@@ -3,14 +3,16 @@ import { NavLink } from 'react-router-dom';
 import { 
   UsersIcon,
   CalendarIcon,
-  BellIcon
+  BellIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ isOpen }) => {
   const navigation = [
     { name: 'Users', href: '/admin/dashboard', icon: UsersIcon },
     { name: 'Meals', href: '/admin/meals', icon: CalendarIcon },
-    { name: 'Notifications', href: '/admin/notifications', icon: BellIcon }
+    { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
+    { name: 'Messages', href: '/admin/messages', icon: ChatBubbleLeftRightIcon }
   ];
 
   return (

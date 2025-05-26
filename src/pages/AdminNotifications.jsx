@@ -17,7 +17,7 @@ const AdminNotifications = () => {
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/admin/notifications', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotifications(response.data);
@@ -33,7 +33,7 @@ const AdminNotifications = () => {
   const handleDelete = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/admin/notifications/${deleteConfirm.notificationId}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/admin/notifications/${deleteConfirm.notificationId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteConfirm({ show: false, notificationId: null });
@@ -47,7 +47,7 @@ const AdminNotifications = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.post('http://localhost:5000/api/admin/notifications', newNotification, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/admin/notifications`, newNotification, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNewNotification({ title: '', description: '' });

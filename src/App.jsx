@@ -4,6 +4,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminMeals from './pages/AdminMeals';
 import AdminNotifications from './pages/AdminNotifications';
+import AdminMessages from './pages/AdminMessages';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -44,6 +45,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminNotifications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/messages"
+          element={
+            <ProtectedRoute>
+              <AdminMessages />
             </ProtectedRoute>
           }
         />

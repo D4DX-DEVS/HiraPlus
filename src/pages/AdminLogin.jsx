@@ -14,7 +14,7 @@ const AdminLogin = () => {
     setError('');
     
     try {
-      const response = await axios.post('http://localhost:5000/api/admin/login', {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/admin/login`, {
         phoneNumber,
         password
       });

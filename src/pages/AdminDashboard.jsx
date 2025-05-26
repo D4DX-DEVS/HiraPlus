@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import UserForm from '../components/UserForm';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -16,11 +16,12 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/admin/users', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(response.data);
     } catch (err) {
+      console.error('Fetch error:', err.response?.data);
       setError('Failed to fetch users');
     }
   };
@@ -32,7 +33,7 @@ const AdminDashboard = () => {
   const handleDelete = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/admin/users/${deleteConfirm.userId}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/admin/users/${deleteConfirm.userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteConfirm({ show: false, userId: null });
@@ -40,6 +41,17 @@ const AdminDashboard = () => {
     } catch (err) {
       setError('Failed to delete user');
     }
+  };
+
+  // Format date helper function
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -88,47 +100,83 @@ const AdminDashboard = () => {
             )}
 
             <div className="bg-white shadow-sm rounded-md overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phone Number
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {user.phoneNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs font-medium rounded-full ${
-                          user.isVerified
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {user.isVerified ? 'Verified' : 'Pending'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <button
-                          onClick={() => setDeleteConfirm({ show: true, userId: user._id })}
-                          className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone Number
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Department
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Designation
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created At
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {users.map((user) => (
+                      <tr key={user._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.name || <span className="text-red-500 italic">Required</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.phoneNumber}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.department || <span className="text-red-500 italic">Required</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.designation || <span className="text-red-500 italic">Required</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 inline-flex text-xs font-medium rounded-full ${
+                            user.isVerified
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {user.isVerified ? 'Verified' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => setDeleteConfirm({ show: true, userId: user._id })}
+                              className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
+                              title="Delete User"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {users.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500 italic">
+                          No users found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </main>

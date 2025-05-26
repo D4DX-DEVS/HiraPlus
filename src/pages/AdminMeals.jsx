@@ -20,7 +20,7 @@ const AdminMeals = () => {
   const fetchAllMeals = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/admin/users/meals', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/meals`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMeals(response.data);
@@ -34,7 +34,7 @@ const AdminMeals = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const response = await axios.get(
-        `http://localhost:5000/api/admin/users/meals?startDate=${startDate}&endDate=${endDate}`,
+        `${import.meta.env.VITE_API_URL}/admin/users/meals?startDate=${startDate}&endDate=${endDate}`,
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setFilteredMeals(response.data);
@@ -50,7 +50,7 @@ const AdminMeals = () => {
   const handleDelete = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/admin/meals/${deleteConfirm.mealId}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/admin/meals/${deleteConfirm.mealId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteConfirm({ show: false, userId: null, mealId: null });
@@ -68,7 +68,7 @@ const AdminMeals = () => {
     try {
       const token = localStorage.getItem('adminToken');
       await axios.put(
-        `http://localhost:5000/api/admin/meals/${editingMeal._id}`,
+        `${import.meta.env.VITE_API_URL}/admin/meals/${editingMeal._id}`,
         {
           breakfast: editingMeal.breakfast,
           lunch: editingMeal.lunch,
