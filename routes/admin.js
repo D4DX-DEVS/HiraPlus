@@ -7,6 +7,7 @@ const Message = require('../models/Message');
 const jwt = require('jsonwebtoken');
 const adminAuth = require('../middleware/adminAuth');
 const axios = require('axios');
+const mongoose = require('mongoose');
 
 // Admin Login
 router.post('/login', async (req, res) => {
@@ -629,6 +630,141 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
     }
     console.error('Fetch single user error:', error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin: Get user-wise meal counts for a date range
+router.get('/meal-counts', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // First get all users and create a lookup map
+    const users = await User.find({}).lean();
+    
+    if (!users || users.length === 0) {
+      return res.json({
+        dateRange: { from: start, to: end },
+        overallTotals: { breakfast: 0, lunch: 0, dinner: 0, total: 0 },
+        users: []
+      });
+    }
+
+    // Get meal counts using aggregation
+    const mealCounts = await Meal.aggregate([
+      {
+        $match: {
+          date: { $gte: start, $lte: end },
+          userId: { $in: users.map(user => user._id) }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      {
+        $group: {
+          _id: '$userId',
+          user: { $first: '$user' },
+          breakfastCount: {
+            $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
+          },
+          lunchCount: {
+            $sum: { $cond: [{ $eq: ['$lunch', true] }, 1, 0] }
+          },
+          dinnerCount: {
+            $sum: { $cond: [{ $eq: ['$dinner', true] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: '$user.name',
+          phoneNumber: '$user.phoneNumber',
+          department: '$user.department',
+          designation: '$user.designation',
+          breakfastCount: 1,
+          lunchCount: 1,
+          dinnerCount: 1
+        }
+      }
+    ]);
+
+    // Transform the data
+    const userMealCounts = mealCounts.map(count => ({
+      userId: count._id,
+      name: count.name || '',
+      phoneNumber: count.phoneNumber || '',
+      department: count.department || '',
+      designation: count.designation || '',
+      mealCounts: {
+        breakfast: count.breakfastCount,
+        lunch: count.lunchCount,
+        dinner: count.dinnerCount,
+        total: count.breakfastCount + count.lunchCount + count.dinnerCount
+      }
+    }));
+
+    // Add users with no meals
+    const usersWithNoMeals = users
+      .filter(user => !mealCounts.find(count => count._id.toString() === user._id.toString()))
+      .map(user => ({
+        userId: user._id,
+        name: user.name || '',
+        phoneNumber: user.phoneNumber || '',
+        department: user.department || '',
+        designation: user.designation || '',
+        mealCounts: {
+          breakfast: 0,
+          lunch: 0,
+          dinner: 0,
+          total: 0
+        }
+      }));
+
+    const allUsers = [...userMealCounts, ...usersWithNoMeals];
+
+    // Calculate overall totals
+    const overallTotals = allUsers.reduce((acc, user) => {
+      acc.breakfast += user.mealCounts.breakfast;
+      acc.lunch += user.mealCounts.lunch;
+      acc.dinner += user.mealCounts.dinner;
+      acc.total += user.mealCounts.total;
+      return acc;
+    }, { breakfast: 0, lunch: 0, dinner: 0, total: 0 });
+
+    res.json({
+      dateRange: {
+        from: start,
+        to: end
+      },
+      overallTotals,
+      users: allUsers.sort((a, b) => b.mealCounts.total - a.mealCounts.total)
+    });
+
+  } catch (error) {
+    console.error('Error fetching user meal counts:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch meal counts',
+      error: error.message 
+    });
   }
 });
 
