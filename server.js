@@ -6,6 +6,9 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const mealRoutes = require('./routes/meals');
 const messStaffRoutes = require('./routes/messStaff');
+const bannerRoutes = require('./routes/banner');
+
+
 const app = express();
 
 // Middleware
@@ -29,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/meals', mealRoutes);
 app.use('/api/mess-staff', messStaffRoutes);
+app.use('/api/banner', bannerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
