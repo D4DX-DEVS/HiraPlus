@@ -345,4 +345,25 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
+// Get all users (public endpoint)
+router.get('/users', async (req, res) => {
+  try {
+    // Get all users, excluding sensitive information
+    const users = await User.find()
+      .select('name phoneNumber department designation -_id')
+      .sort({ name: 1 });
+
+    res.json({
+      success: true,
+      users: users
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 module.exports = router; 
