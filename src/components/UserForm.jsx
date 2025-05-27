@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PhoneIcon, UserIcon, BriefcaseIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { 
+  PhoneIcon, 
+  UserIcon, 
+  BriefcaseIcon, 
+  AcademicCapIcon,
+  UserGroupIcon 
+} from '@heroicons/react/24/outline';
 
 const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
     department: '',
-    designation: ''
+    designation: '',
+    isDeptHead: false
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,16 +25,17 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         name: initialData.name || '',
         phoneNumber: initialData.phoneNumber || '',
         department: initialData.department || '',
-        designation: initialData.designation || ''
+        designation: initialData.designation || '',
+        isDeptHead: initialData.isDeptHead || false
       });
     }
   }, [initialData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -150,6 +158,21 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               placeholder="Enter designation"
             />
           </div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <input
+            type="checkbox"
+            id="isDeptHead"
+            name="isDeptHead"
+            checked={formData.isDeptHead}
+            onChange={handleChange}
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          />
+          <label htmlFor="isDeptHead" className="text-sm font-medium text-gray-700 flex items-center">
+            <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
+            Department Head
+          </label>
         </div>
       </div>
 

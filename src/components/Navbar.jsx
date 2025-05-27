@@ -19,9 +19,9 @@ const Navbar = ({ onToggleSidebar }) => {
 
   return (
     <>
-      <nav className="bg-white border-b border-gray-200">
-        <div className="w-full px-6">
-          <div className="flex items-center justify-between h-[60px]">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-[60px]">
+        <div className="h-full px-6">
+          <div className="flex items-center justify-between h-full">
             {/* Left section with menu button */}
             <div className="flex items-center">
               <button
