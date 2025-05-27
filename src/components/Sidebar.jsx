@@ -20,9 +20,13 @@ const Sidebar = ({ isOpen }) => {
   ];
 
   return (
-    <div className={`${isOpen ? 'block' : 'hidden'} md:block bg-gray-800 h-[calc(100vh-60px)] top-[60px] fixed left-0`}>
+    <div 
+      className={`fixed left-0 top-[60px] h-[calc(100vh-60px)] bg-gray-800 transition-all duration-300 ease-in-out ${
+        isOpen ? 'w-64' : 'w-0'
+      } overflow-hidden`}
+    >
       <div className="h-full overflow-y-auto">
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-4 space-y-1 min-w-[256px]">
           {navigation.map((item) => (
             <NavLink
               key={item.name}

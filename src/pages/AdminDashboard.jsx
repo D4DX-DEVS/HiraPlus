@@ -9,6 +9,7 @@ import { TrashIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [error, setError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null });
@@ -43,6 +44,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleEdit = async (userData) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/admin/users/${editingUser._id}`,
+        userData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err) {
+      setError('Failed to update user');
+      console.error('Update error:', err.response?.data);
+    }
+  };
+
   // Format date helper function
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -59,11 +78,11 @@ const AdminDashboard = () => {
       <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       
       <div className="flex-1 flex">
-        <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out`}>
-          <Sidebar isOpen={isSidebarOpen} />
-        </div>
+        <Sidebar isOpen={isSidebarOpen} />
         
-        <main className={`flex-1 overflow-y-auto bg-gray-100 p-6 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-0' : 'ml-0'}`}>
+        <main className={`flex-1 overflow-y-auto bg-gray-100 p-6 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-64' : 'ml-0'
+        }`}>
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
@@ -84,17 +103,22 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {showAddForm && (
+            {(showAddForm || editingUser) && (
               <div className="mb-6 bg-white shadow-sm rounded-md p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
-                  Add New User
+                  {editingUser ? 'Edit User' : 'Add New User'}
                 </h2>
                 <UserForm
+                  initialData={editingUser}
                   onSuccess={() => {
                     setShowAddForm(false);
+                    setEditingUser(null);
                     fetchUsers();
                   }}
-                  onCancel={() => setShowAddForm(false)}
+                  onCancel={() => {
+                    setShowAddForm(false);
+                    setEditingUser(null);
+                  }}
                 />
               </div>
             )}
@@ -156,6 +180,13 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => setEditingUser(user)}
+                              className="text-indigo-600 hover:text-indigo-900 transition-colors p-1.5 hover:bg-indigo-50 rounded-full"
+                              title="Edit User"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
                             <button
                               onClick={() => setDeleteConfirm({ show: true, userId: user._id })}
                               className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"

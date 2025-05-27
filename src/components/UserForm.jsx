@@ -1,82 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PhoneIcon, UserIcon, BriefcaseIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 
-const UserForm = ({ onSuccess, onCancel }) => {
+const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
     department: '',
     designation: ''
   });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        phoneNumber: initialData.phoneNumber || '',
+        department: initialData.department || '',
+        designation: initialData.designation || ''
+      });
+    }
+  }, [initialData]);
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
-
-    // Validate all required fields
-    if (!formData.name?.trim()) {
-      setError('Name is required');
-      return;
-    }
-    if (!formData.phoneNumber?.trim()) {
-      setError('Phone number is required');
-      return;
-    }
-    if (!formData.department?.trim()) {
-      setError('Department is required');
-      return;
-    }
-    if (!formData.designation?.trim()) {
-      setError('Designation is required');
-      return;
-    }
-
-    // Validate phone number format
-    const phoneNumber = formData.phoneNumber.trim().replace('+91', '').replace(/\D/g, '');
-    if (phoneNumber.length !== 10) {
-      setError('Please provide a valid 10-digit phone number');
-      return;
-    }
 
     try {
       const token = localStorage.getItem('adminToken');
-      const headers = { Authorization: `Bearer ${token}` };
+      const endpoint = initialData 
+        ? `${import.meta.env.VITE_API_URL}/admin/users/${initialData._id}`
+        : `${import.meta.env.VITE_API_URL}/admin/users`;
       
-      // Clean the data before sending
-      const cleanedFormData = {
-        name: formData.name.trim(),
-        phoneNumber: phoneNumber,
-        department: formData.department.trim(),
-        designation: formData.designation.trim()
-      };
-      
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/admin/users`,
-        cleanedFormData,
-        { headers }
-      );
+      const method = initialData ? 'put' : 'post';
 
-      if (response.data && response.data.user) {
-        onSuccess();
-        // Reset form
-        setFormData({
-          name: '',
-          phoneNumber: '',
-          department: '',
-          designation: ''
-        });
-      }
+      await axios({
+        method,
+        url: endpoint,
+        data: formData,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      onSuccess();
     } catch (err) {
-      console.error('Form submission error:', err.response?.data);
-      setError(err.response?.data?.message || 'Failed to create user. Please try again.');
+      setError(err.response?.data?.message || 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -186,9 +165,10 @@ const UserForm = ({ onSuccess, onCancel }) => {
         )}
         <button
           type="submit"
+          disabled={loading}
           className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
-          Add User
+          {loading ? 'Saving...' : (initialData ? 'Update' : 'Create')}
         </button>
       </div>
     </form>
