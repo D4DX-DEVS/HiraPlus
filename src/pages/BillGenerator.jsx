@@ -310,7 +310,7 @@ const BillGenerator = () => {
                         name="startDate"
                         value={dateRange.startDate}
                         onChange={handleDateChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
                     <div>
@@ -320,7 +320,7 @@ const BillGenerator = () => {
                         name="endDate"
                         value={dateRange.endDate}
                         onChange={handleDateChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
                   </div>
@@ -337,7 +337,7 @@ const BillGenerator = () => {
                         name="breakfast"
                         value={mealRates.breakfast}
                         onChange={handleMealRateChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
                     <div>
@@ -347,7 +347,7 @@ const BillGenerator = () => {
                         name="lunch"
                         value={mealRates.lunch}
                         onChange={handleMealRateChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
                     <div>
@@ -357,7 +357,7 @@ const BillGenerator = () => {
                         name="dinner"
                         value={mealRates.dinner}
                         onChange={handleMealRateChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
                   </div>
@@ -372,7 +372,7 @@ const BillGenerator = () => {
                         type="number"
                         value={departmentShare}
                         onChange={(e) => setDepartmentShare(parseFloat(e.target.value) || 0)}
-                        className="block w-full rounded-md border-gray-300 pl-3 pr-12 focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         placeholder="Enter percentage"
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3">
