@@ -7,7 +7,7 @@ import AdminNotifications from './pages/AdminNotifications';
 import AdminMessages from './pages/AdminMessages';
 import AdminBanners from './pages/AdminBanners';
 import BillGenerator from './pages/BillGenerator';
-
+import GuestMeals from './pages/GuestMeals';
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
@@ -71,6 +71,14 @@ function App() {
           element={
             <ProtectedRoute>
               <BillGenerator />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/admin/guest-meals'
+          element={
+            <ProtectedRoute>
+              <GuestMeals />
             </ProtectedRoute>
           }
         />
