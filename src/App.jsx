@@ -6,6 +6,7 @@ import AdminMeals from './pages/AdminMeals';
 import AdminNotifications from './pages/AdminNotifications';
 import AdminMessages from './pages/AdminMessages';
 import AdminBanners from './pages/AdminBanners';
+import BillGenerator from './pages/BillGenerator';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -65,6 +66,15 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/bill-generator"
+          element={
+            <ProtectedRoute>
+              <BillGenerator />
+            </ProtectedRoute>
+          }
+        />
+        
       </Routes>
     </Router>
   );

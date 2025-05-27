@@ -101,11 +101,11 @@ const AdminMeals = () => {
       <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       
       <div className="flex-1 flex">
-        <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out`}>
-          <Sidebar isOpen={isSidebarOpen} />
-        </div>
+        <Sidebar isOpen={isSidebarOpen} />
         
-        <main className={`flex-1 overflow-y-auto bg-gray-100 p-8 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-0' : 'ml-0'}`}>
+        <main className={`flex-1 overflow-y-auto bg-gray-100 p-8 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-64' : 'ml-0'
+        }`}>
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
               <h1 className="text-3xl font-bold text-gray-900">Meal Records</h1>
@@ -168,7 +168,7 @@ const AdminMeals = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
+                      User Details
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
@@ -191,8 +191,15 @@ const AdminMeals = () => {
                   {displayMeals.map((user) => (
                     user.meals.map((meal) => (
                       <tr key={meal._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.phoneNumber}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.name || 'No Name'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {user.phoneNumber}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {format(new Date(meal.date), 'dd/MM/yyyy')}
