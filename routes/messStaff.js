@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Meal = require('../models/Meal');
 const User = require('../models/User');
+const GuestMeal = require('../models/GuestMeal');
 const messStaffAuth = require('../middleware/messStaffAuth');
 
 // Mess Staff Login
@@ -168,6 +169,98 @@ router.get('/meals', messStaffAuth, async (req, res) => {
       meals: groupedMeals
     });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get today's guest meals count
+router.get('/guest-meals/today', messStaffAuth, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const guestMeals = await GuestMeal.find({
+      date: {
+        $gte: today,
+        $lt: tomorrow
+      }
+    }).populate('addedBy', 'name department');
+
+    // Calculate total counts
+    const totalCounts = {
+      breakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
+      lunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
+      dinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
+    };
+
+    // Add total count
+    totalCounts.total = totalCounts.breakfast + totalCounts.lunch + totalCounts.dinner;
+
+    res.json({
+      success: true,
+      totalCounts,
+      guestMeals
+    });
+  } catch (error) {
+    console.error('Get today guest meals error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all guest meals with department-wise counts
+router.get('/guest-meals', messStaffAuth, async (req, res) => {
+  try {
+    const guestMeals = await GuestMeal.find()
+      .populate('addedBy', 'name department')
+      .sort({ date: -1 });
+
+    // Group by date and calculate department-wise counts
+    const mealsByDate = guestMeals.reduce((acc, meal) => {
+      const dateStr = meal.date.toISOString().split('T')[0];
+      
+      if (!acc[dateStr]) {
+        acc[dateStr] = {
+          date: meal.date,
+          departments: {},
+          totalCounts: {
+            breakfast: 0,
+            lunch: 0,
+            dinner: 0
+          }
+        };
+      }
+
+      // Add department counts
+      if (!acc[dateStr].departments[meal.department]) {
+        acc[dateStr].departments[meal.department] = {
+          breakfast: meal.breakfastCount || 0,
+          lunch: meal.lunchCount || 0,
+          dinner: meal.dinnerCount || 0,
+          addedBy: meal.addedBy
+        };
+      }
+
+      // Update total counts for the day
+      acc[dateStr].totalCounts.breakfast += meal.breakfastCount || 0;
+      acc[dateStr].totalCounts.lunch += meal.lunchCount || 0;
+      acc[dateStr].totalCounts.dinner += meal.dinnerCount || 0;
+
+      return acc;
+    }, {});
+
+    // Convert to array and sort by date
+    const formattedMeals = Object.values(mealsByDate).sort((a, b) => 
+      new Date(b.date) - new Date(a.date)
+    );
+
+    res.json({
+      success: true,
+      guestMeals: formattedMeals
+    });
+  } catch (error) {
+    console.error('Get all guest meals error:', error);
     res.status(500).json({ message: error.message });
   }
 });
