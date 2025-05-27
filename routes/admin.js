@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Meal = require('../models/Meal');
 const Notification = require('../models/Notification');
 const Message = require('../models/Message');
+const GuestMeal = require('../models/GuestMeal');
 const jwt = require('jsonwebtoken');
 const adminAuth = require('../middleware/adminAuth');
 const axios = require('axios');
@@ -34,7 +35,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -71,7 +72,8 @@ router.post('/users', adminAuth, async (req, res) => {
       phoneNumber,
       name,
       department,
-      designation
+      designation,
+      isDeptHead: isDeptHead || false
     });
     await user.save();
 
@@ -82,7 +84,8 @@ router.post('/users', adminAuth, async (req, res) => {
         name: user.name,
         phoneNumber: user.phoneNumber,
         department: user.department,
-        designation: user.designation
+        designation: user.designation,
+        isDeptHead: user.isDeptHead
       }
     });
   } catch (error) {
@@ -95,7 +98,7 @@ router.post('/users', adminAuth, async (req, res) => {
 router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
-      .select('name phoneNumber department designation isVerified createdAt')
+      .select('name phoneNumber department designation isVerified isDeptHead createdAt')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -106,6 +109,7 @@ router.get('/users', adminAuth, async (req, res) => {
       department: user.department || '',
       designation: user.designation || '',
       isVerified: user.isVerified,
+      isDeptHead: user.isDeptHead,
       createdAt: user.createdAt
     }));
 
@@ -132,7 +136,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -171,6 +175,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (name) user.name = name.trim();
     if (department) user.department = department.trim();
     if (designation) user.designation = designation.trim();
+    if (typeof isDeptHead !== 'undefined') user.isDeptHead = isDeptHead;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -193,7 +198,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        isDeptHead: user.isDeptHead
       }
     });
   } catch (error) {
@@ -764,6 +770,156 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to fetch meal counts',
       error: error.message 
+    });
+  }
+});
+
+// Admin: Get all guest meals with department summary
+router.get('/guest-meals', adminAuth, async (req, res) => {
+  try {
+    const guestMeals = await GuestMeal.find()
+      .populate('addedBy', 'name department')
+      .sort({ date: -1 });
+
+    // Group meals by department and calculate totals
+    const departmentSummary = guestMeals.reduce((acc, meal) => {
+      if (!acc[meal.department]) {
+        acc[meal.department] = {
+          department: meal.department,
+          totalBreakfast: 0,
+          totalLunch: 0,
+          totalDinner: 0,
+          totalMeals: 0
+        };
+      }
+      
+      acc[meal.department].totalBreakfast += meal.breakfastCount || 0;
+      acc[meal.department].totalLunch += meal.lunchCount || 0;
+      acc[meal.department].totalDinner += meal.dinnerCount || 0;
+      acc[meal.department].totalMeals += 
+        (meal.breakfastCount || 0) + 
+        (meal.lunchCount || 0) + 
+        (meal.dinnerCount || 0);
+      
+      return acc;
+    }, {});
+
+    // Calculate overall totals
+    const overallTotals = {
+      totalBreakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
+      totalLunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
+      totalDinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
+    };
+    overallTotals.totalMeals = overallTotals.totalBreakfast + overallTotals.totalLunch + overallTotals.totalDinner;
+
+    res.json({
+      success: true,
+      overallTotals,
+      departmentSummary: Object.values(departmentSummary),
+      guestMeals
+    });
+  } catch (error) {
+    console.error('Get guest meals error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Admin: Get today's guest meals
+router.get('/guest-meals/today', adminAuth, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const guestMeals = await GuestMeal.find({
+      date: {
+        $gte: today,
+        $lt: tomorrow
+      }
+    }).populate('addedBy', 'name department');
+
+    // Calculate department-wise totals for today
+    const departmentTotals = guestMeals.reduce((acc, meal) => {
+      if (!acc[meal.department]) {
+        acc[meal.department] = {
+          department: meal.department,
+          breakfast: 0,
+          lunch: 0,
+          dinner: 0,
+          total: 0
+        };
+      }
+
+      acc[meal.department].breakfast += meal.breakfastCount || 0;
+      acc[meal.department].lunch += meal.lunchCount || 0;
+      acc[meal.department].dinner += meal.dinnerCount || 0;
+      acc[meal.department].total += 
+        (meal.breakfastCount || 0) + 
+        (meal.lunchCount || 0) + 
+        (meal.dinnerCount || 0);
+
+      return acc;
+    }, {});
+
+    // Calculate overall totals for today
+    const todayTotals = {
+      breakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
+      lunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
+      dinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
+    };
+    todayTotals.total = todayTotals.breakfast + todayTotals.lunch + todayTotals.dinner;
+
+    res.json({
+      success: true,
+      date: today,
+      todayTotals,
+      departmentTotals: Object.values(departmentTotals),
+      guestMeals
+    });
+  } catch (error) {
+    console.error('Get today guest meals error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Admin: Get guest meals by department
+router.get('/guest-meals/department/:department', adminAuth, async (req, res) => {
+  try {
+    const guestMeals = await GuestMeal.find({
+      department: req.params.department
+    })
+    .populate('addedBy', 'name department')
+    .sort({ date: -1 });
+
+    // Calculate department totals
+    const departmentTotals = {
+      department: req.params.department,
+      totalBreakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
+      totalLunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
+      totalDinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
+    };
+    departmentTotals.totalMeals = 
+      departmentTotals.totalBreakfast + 
+      departmentTotals.totalLunch + 
+      departmentTotals.totalDinner;
+
+    res.json({
+      success: true,
+      departmentTotals,
+      guestMeals
+    });
+  } catch (error) {
+    console.error('Get department guest meals error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
     });
   }
 });

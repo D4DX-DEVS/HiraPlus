@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const GuestMeal = require('../models/GuestMeal');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const deptHeadAuth = require('../middleware/deptHeadAuth');
 
 // Store OTPs in memory (in production, use Redis or similar)
 const otpStore = new Map();
@@ -359,6 +361,168 @@ router.get('/users', async (req, res) => {
     });
   } catch (error) {
     console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Add/Update guest meal counts
+router.post('/guest-meals', deptHeadAuth, async (req, res) => {
+  try {
+    const { date, breakfastCount, lunchCount, dinnerCount } = req.body;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required'
+      });
+    }
+
+    // Validate counts are non-negative numbers
+    const counts = { breakfastCount, lunchCount, dinnerCount };
+    for (const [key, value] of Object.entries(counts)) {
+      if (value && value < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `${key} must be a non-negative number`
+        });
+      }
+    }
+
+    // Find or create guest meal record for the department and date
+    let guestMeal = await GuestMeal.findOne({
+      department: req.user.department,
+      date: new Date(date)
+    });
+
+    if (guestMeal) {
+      // Update existing record
+      if (breakfastCount !== undefined) guestMeal.breakfastCount = breakfastCount;
+      if (lunchCount !== undefined) guestMeal.lunchCount = lunchCount;
+      if (dinnerCount !== undefined) guestMeal.dinnerCount = dinnerCount;
+    } else {
+      // Create new record
+      guestMeal = new GuestMeal({
+        date: new Date(date),
+        department: req.user.department,
+        addedBy: req.user._id,
+        breakfastCount: breakfastCount || 0,
+        lunchCount: lunchCount || 0,
+        dinnerCount: dinnerCount || 0
+      });
+    }
+
+    await guestMeal.save();
+
+    res.json({
+      success: true,
+      message: 'Guest meal counts updated successfully',
+      guestMeal
+    });
+  } catch (error) {
+    console.error('Guest meal update error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Get all guest meals for their department
+router.get('/guest-meals', deptHeadAuth, async (req, res) => {
+  try {
+    const guestMeals = await GuestMeal.find({
+      department: req.user.department
+    }).sort({ date: -1 }); // Most recent first
+
+    res.json({
+      success: true,
+      guestMeals
+    });
+  } catch (error) {
+    console.error('Get guest meals error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Edit guest meal by ID
+router.put('/guest-meals/:id', deptHeadAuth, async (req, res) => {
+  try {
+    const { breakfastCount, lunchCount, dinnerCount } = req.body;
+
+    // Find the guest meal record
+    const guestMeal = await GuestMeal.findOne({
+      _id: req.params.id,
+      department: req.user.department // Ensure it belongs to their department
+    });
+
+    if (!guestMeal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Guest meal record not found'
+      });
+    }
+
+    // Validate counts are non-negative numbers
+    const counts = { breakfastCount, lunchCount, dinnerCount };
+    for (const [key, value] of Object.entries(counts)) {
+      if (value !== undefined && value < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `${key} must be a non-negative number`
+        });
+      }
+    }
+
+    // Update only the provided fields
+    if (breakfastCount !== undefined) guestMeal.breakfastCount = breakfastCount;
+    if (lunchCount !== undefined) guestMeal.lunchCount = lunchCount;
+    if (dinnerCount !== undefined) guestMeal.dinnerCount = dinnerCount;
+
+    await guestMeal.save();
+
+    res.json({
+      success: true,
+      message: 'Guest meal counts updated successfully',
+      guestMeal
+    });
+  } catch (error) {
+    console.error('Update guest meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Delete guest meal record
+router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
+  try {
+    const guestMeal = await GuestMeal.findOne({
+      _id: req.params.id,
+      department: req.user.department
+    });
+
+    if (!guestMeal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Guest meal record not found'
+      });
+    }
+
+    await guestMeal.remove();
+
+    res.json({
+      success: true,
+      message: 'Guest meal record deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete guest meal error:', error);
     res.status(500).json({
       success: false,
       message: error.message
