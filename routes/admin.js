@@ -463,6 +463,28 @@ router.get('/messages', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Delete a message
+router.delete('/messages/:messageId', adminAuth, async (req, res) => {
+  try {
+    const message = await Message.findByIdAndDelete(req.params.messageId);
+    
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    res.json({ 
+      message: 'Message deleted successfully',
+      deletedMessage: message
+    });
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({ 
+      message: 'Failed to delete message',
+      error: error.message 
+    });
+  }
+});
+
 // Admin: Send message to all users via WhatsApp
 router.post('/messages/:messageId/send', adminAuth, async (req, res) => {
   try {
