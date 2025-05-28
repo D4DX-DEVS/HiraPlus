@@ -9,6 +9,13 @@ module.exports = (req, res, next) => {
       throw new Error();
     }
 
+    // Attach admin user info to request
+    req.user = {
+      _id: process.env.ADMIN_ID || 'admin',
+      name: 'Admin',
+      role: 'admin'
+    };
+
     next();
   } catch (error) {
     res.status(401).json({ message: 'Admin authentication required' });

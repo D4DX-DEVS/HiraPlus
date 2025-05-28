@@ -6,6 +6,7 @@ const GuestMeal = require('../models/GuestMeal');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const deptHeadAuth = require('../middleware/deptHeadAuth');
+const Meeting = require('../models/Meeting');
 
 // Store OTPs in memory (in production, use Redis or similar)
 const otpStore = new Map();
@@ -526,6 +527,183 @@ router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete guest meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get all meetings (for users)
+router.get('/meetings', async (req, res) => {
+  try {
+    const meetings = await Meeting.find({ status: 'approved' })
+      .populate('department', 'name')
+      .populate('createdBy', 'name')
+      .sort({ startDatetime: -1 });
+
+    res.json({
+      success: true,
+      meetings
+    });
+  } catch (error) {
+    console.error('Fetch meetings error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Create meeting
+router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
+  try {
+    const {
+      title, description, startDatetime, endDatetime,
+      hall, noOfPersons, foodRequired, breakfast,
+      midmorningSnacks, lunch, eveningsnacks, dinner
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
+      });
+    }
+
+    const meeting = new Meeting({
+      title: title.trim(),
+      description: description.trim(),
+      startDatetime: new Date(startDatetime),
+      endDatetime: new Date(endDatetime),
+      hall,
+      noOfPersons,
+      foodRequired: foodRequired || false,
+      breakfast: breakfast || 0,
+      midmorningSnacks: midmorningSnacks || 0,
+      lunch: lunch || 0,
+      eveningsnacks: eveningsnacks || 0,
+      dinner: dinner || 0,
+      department: req.user._id, // Department head's user ID
+      status: 'pending', // Default status for department head
+      createdBy: req.user._id
+    });
+
+    await meeting.save();
+    await meeting.populate('department', 'name');
+
+    res.status(201).json({
+      success: true,
+      message: 'Meeting created successfully and pending admin approval',
+      meeting
+    });
+  } catch (error) {
+    console.error('Create meeting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Get department meetings
+router.get('/dept-meetings', deptHeadAuth, async (req, res) => {
+  try {
+    const meetings = await Meeting.find({ department: req.user._id })
+      .populate('department', 'name')
+      .populate('createdBy', 'name')
+      .sort({ startDatetime: -1 });
+
+    res.json({
+      success: true,
+      meetings
+    });
+  } catch (error) {
+    console.error('Fetch department meetings error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Update meeting
+router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
+  try {
+    const {
+      title, description, startDatetime, endDatetime,
+      hall, noOfPersons, foodRequired, breakfast,
+      midmorningSnacks, lunch, eveningsnacks, dinner
+    } = req.body;
+
+    const meeting = await Meeting.findOne({
+      _id: req.params.meetingId,
+      department: req.user._id,
+      status: 'pending' // Can only edit pending meetings
+    });
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found or cannot be edited'
+      });
+    }
+
+    // Update fields if provided
+    if (title) meeting.title = title.trim();
+    if (description) meeting.description = description.trim();
+    if (startDatetime) meeting.startDatetime = new Date(startDatetime);
+    if (endDatetime) meeting.endDatetime = new Date(endDatetime);
+    if (hall) meeting.hall = hall;
+    if (noOfPersons) meeting.noOfPersons = noOfPersons;
+    if (typeof foodRequired !== 'undefined') meeting.foodRequired = foodRequired;
+    if (typeof breakfast !== 'undefined') meeting.breakfast = breakfast;
+    if (typeof midmorningSnacks !== 'undefined') meeting.midmorningSnacks = midmorningSnacks;
+    if (typeof lunch !== 'undefined') meeting.lunch = lunch;
+    if (typeof eveningsnacks !== 'undefined') meeting.eveningsnacks = eveningsnacks;
+    if (typeof dinner !== 'undefined') meeting.dinner = dinner;
+
+    await meeting.save();
+    await meeting.populate('department', 'name');
+    await meeting.populate('createdBy', 'name');
+
+    res.json({
+      success: true,
+      message: 'Meeting updated successfully',
+      meeting
+    });
+  } catch (error) {
+    console.error('Update meeting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Department Head: Delete meeting
+router.delete('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
+  try {
+    const meeting = await Meeting.findOneAndDelete({
+      _id: req.params.meetingId,
+      department: req.user._id,
+      status: 'pending' // Can only delete pending meetings
+    });
+    
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found or cannot be deleted'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Meeting deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete meeting error:', error);
     res.status(500).json({
       success: false,
       message: error.message

@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const adminAuth = require('../middleware/adminAuth');
 const axios = require('axios');
 const mongoose = require('mongoose');
+const Meeting = require('../models/Meeting');
 
 // Admin Login
 router.post('/login', async (req, res) => {
@@ -1361,6 +1362,221 @@ router.delete('/guest-meals/:id', adminAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete guest meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Create meeting
+router.post('/meetings', adminAuth, async (req, res) => {
+  try {
+    const {
+      title, description, startDatetime, endDatetime,
+      hall, noOfPersons, foodRequired, breakfast,
+      midmorningSnacks, lunch, eveningsnacks, dinner,
+      department
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons || !department) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
+      });
+    }
+
+    // Find department name if an ID is provided
+    let departmentName = department;
+    if (department.length === 24 && /^[0-9a-fA-F]{24}$/.test(department)) {
+      const user = await User.findById(department);
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department'
+        });
+      }
+      departmentName = user.department;
+    } else {
+      // Validate if department exists
+      const departmentExists = await User.findOne({ department: department.trim() });
+      if (!departmentExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department'
+        });
+      }
+      departmentName = departmentExists.department;
+    }
+
+    const meeting = new Meeting({
+      title: title.trim(),
+      description: description.trim(),
+      startDatetime: new Date(startDatetime),
+      endDatetime: new Date(endDatetime),
+      hall,
+      noOfPersons,
+      foodRequired: foodRequired || false,
+      breakfast: breakfast || 0,
+      midmorningSnacks: midmorningSnacks || 0,
+      lunch: lunch || 0,
+      eveningsnacks: eveningsnacks || 0,
+      dinner: dinner || 0,
+      department: departmentName,
+      status: 'approved', // Auto-approve for admin
+      createdBy: 'admin'
+    });
+
+    await meeting.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Meeting created successfully',
+      meeting
+    });
+  } catch (error) {
+    console.error('Create meeting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Get all meetings
+router.get('/meetings', adminAuth, async (req, res) => {
+  try {
+    const meetings = await Meeting.find()
+      .sort({ startDatetime: -1 });
+
+    // Get all users for department lookup
+    const users = await User.find({}, 'department');
+    const departmentMap = users.reduce((acc, user) => {
+      if (user.department) {
+        acc[user._id.toString()] = user.department;
+      }
+      return acc;
+    }, {});
+
+    // Map meetings to include proper department names
+    const mappedMeetings = meetings.map(meeting => {
+      const meetingObj = meeting.toObject();
+      
+      // If department looks like an ObjectId, try to find the department name
+      if (meetingObj.department && meetingObj.department.length === 24 && /^[0-9a-fA-F]{24}$/.test(meetingObj.department)) {
+        meetingObj.department = departmentMap[meetingObj.department] || 'Unknown';
+      }
+      
+      return meetingObj;
+    });
+
+    res.json({
+      success: true,
+      meetings: mappedMeetings
+    });
+  } catch (error) {
+    console.error('Fetch meetings error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Update meeting
+router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
+  try {
+    const {
+      title, description, startDatetime, endDatetime,
+      hall, noOfPersons, foodRequired, breakfast,
+      midmorningSnacks, lunch, eveningsnacks, dinner,
+      department, status
+    } = req.body;
+
+    const meeting = await Meeting.findById(req.params.meetingId);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    // If department is being updated, validate and get the name
+    if (department && department !== meeting.department) {
+      let departmentName = department;
+      if (department.length === 24 && /^[0-9a-fA-F]{24}$/.test(department)) {
+        const user = await User.findById(department);
+        if (!user) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid department'
+          });
+        }
+        departmentName = user.department;
+      } else {
+        // Validate if department exists
+        const departmentExists = await User.findOne({ department: department.trim() });
+        if (!departmentExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid department'
+          });
+        }
+        departmentName = departmentExists.department;
+      }
+      meeting.department = departmentName;
+    }
+
+    // Update fields if provided
+    if (title) meeting.title = title.trim();
+    if (description) meeting.description = description.trim();
+    if (startDatetime) meeting.startDatetime = new Date(startDatetime);
+    if (endDatetime) meeting.endDatetime = new Date(endDatetime);
+    if (hall) meeting.hall = hall;
+    if (noOfPersons) meeting.noOfPersons = noOfPersons;
+    if (typeof foodRequired !== 'undefined') meeting.foodRequired = foodRequired;
+    if (typeof breakfast !== 'undefined') meeting.breakfast = breakfast;
+    if (typeof midmorningSnacks !== 'undefined') meeting.midmorningSnacks = midmorningSnacks;
+    if (typeof lunch !== 'undefined') meeting.lunch = lunch;
+    if (typeof eveningsnacks !== 'undefined') meeting.eveningsnacks = eveningsnacks;
+    if (typeof dinner !== 'undefined') meeting.dinner = dinner;
+    if (status && ['approved', 'pending'].includes(status)) meeting.status = status;
+
+    await meeting.save();
+
+    res.json({
+      success: true,
+      message: 'Meeting updated successfully',
+      meeting
+    });
+  } catch (error) {
+    console.error('Update meeting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Delete meeting
+router.delete('/meetings/:meetingId', adminAuth, async (req, res) => {
+  try {
+    const meeting = await Meeting.findByIdAndDelete(req.params.meetingId);
+    
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Meeting deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete meeting error:', error);
     res.status(500).json({
       success: false,
       message: error.message
