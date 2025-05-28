@@ -7,7 +7,7 @@ const adminRoutes = require('./routes/admin');
 const mealRoutes = require('./routes/meals');
 const messStaffRoutes = require('./routes/messStaff');
 const bannerRoutes = require('./routes/banner');
-
+const receptionRoutes = require('./routes/reception');
 
 const app = express();
 
@@ -33,6 +33,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/meals', mealRoutes);
 app.use('/api/mess-staff', messStaffRoutes);
 app.use('/api/banner', bannerRoutes);
+app.use('/api/reception', receptionRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

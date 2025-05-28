@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -73,7 +73,8 @@ router.post('/users', adminAuth, async (req, res) => {
       name,
       department,
       designation,
-      isDeptHead: isDeptHead || false
+      isDeptHead: isDeptHead || false,
+      status: status || 'active'
     });
     await user.save();
 
@@ -85,7 +86,8 @@ router.post('/users', adminAuth, async (req, res) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        status: user.status
       }
     });
   } catch (error) {
@@ -98,7 +100,7 @@ router.post('/users', adminAuth, async (req, res) => {
 router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
-      .select('name phoneNumber department designation isVerified isDeptHead createdAt')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -110,6 +112,7 @@ router.get('/users', adminAuth, async (req, res) => {
       designation: user.designation || '',
       isVerified: user.isVerified,
       isDeptHead: user.isDeptHead,
+      status: user.status || 'active',
       createdAt: user.createdAt
     }));
 
@@ -136,7 +139,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -176,6 +179,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (department) user.department = department.trim();
     if (designation) user.designation = designation.trim();
     if (typeof isDeptHead !== 'undefined') user.isDeptHead = isDeptHead;
+    if (status && ['active', 'inactive'].includes(status)) user.status = status;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -199,7 +203,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         department: user.department,
         designation: user.designation,
         isVerified: user.isVerified,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        status: user.status
       }
     });
   } catch (error) {
@@ -799,12 +804,38 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
 // Admin: Get all guest meals with department summary
 router.get('/guest-meals', adminAuth, async (req, res) => {
   try {
-    const guestMeals = await GuestMeal.find()
-      .populate('addedBy', 'name department')
-      .sort({ date: -1 });
+    // First, get all guest meals without population
+    const guestMeals = await GuestMeal.find().sort({ date: -1 });
+
+    // Process each meal to handle addedBy field
+    const processedMeals = await Promise.all(guestMeals.map(async (meal) => {
+      const mealObj = meal.toObject();
+      
+      // If addedBy is a string (e.g., "Admin"), return as is
+      if (typeof meal.addedBy === 'string') {
+        return mealObj;
+      }
+      
+      // If addedBy is an ObjectId, try to populate user info
+      try {
+        const user = await User.findById(meal.addedBy).select('name department');
+        if (user) {
+          mealObj.addedBy = {
+            name: user.name,
+            department: user.department
+          };
+        } else {
+          mealObj.addedBy = 'N/A';
+        }
+      } catch (err) {
+        mealObj.addedBy = 'N/A';
+      }
+      
+      return mealObj;
+    }));
 
     // Group meals by department and calculate totals
-    const departmentSummary = guestMeals.reduce((acc, meal) => {
+    const departmentSummary = processedMeals.reduce((acc, meal) => {
       if (!acc[meal.department]) {
         acc[meal.department] = {
           department: meal.department,
@@ -828,9 +859,9 @@ router.get('/guest-meals', adminAuth, async (req, res) => {
 
     // Calculate overall totals
     const overallTotals = {
-      totalBreakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
-      totalLunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
-      totalDinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
+      totalBreakfast: processedMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
+      totalLunch: processedMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
+      totalDinner: processedMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
     };
     overallTotals.totalMeals = overallTotals.totalBreakfast + overallTotals.totalLunch + overallTotals.totalDinner;
 
@@ -838,7 +869,7 @@ router.get('/guest-meals', adminAuth, async (req, res) => {
       success: true,
       overallTotals,
       departmentSummary: Object.values(departmentSummary),
-      guestMeals
+      guestMeals: processedMeals
     });
   } catch (error) {
     console.error('Get guest meals error:', error);
@@ -1210,6 +1241,129 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to fetch department user meal counts',
       error: error.message 
+    });
+  }
+});
+
+// Admin: Create guest meal
+router.post('/guest-meals', adminAuth, async (req, res) => {
+  try {
+    const { date, department, breakfastCount, lunchCount, dinnerCount } = req.body;
+
+    if (!date || !department) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date and department are required'
+      });
+    }
+
+    // Validate counts are non-negative numbers
+    const counts = { breakfastCount, lunchCount, dinnerCount };
+    for (const [key, value] of Object.entries(counts)) {
+      if (value && value < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `${key} must be a non-negative number`
+        });
+      }
+    }
+
+    const guestMeal = new GuestMeal({
+      date: new Date(date),
+      department,
+      addedBy: "Admin",
+      breakfastCount: breakfastCount || 0,
+      lunchCount: lunchCount || 0,
+      dinnerCount: dinnerCount || 0
+    });
+
+    await guestMeal.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Guest meal created successfully',
+      guestMeal
+    });
+  } catch (error) {
+    console.error('Create guest meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Update guest meal
+router.put('/guest-meals/:id', adminAuth, async (req, res) => {
+  try {
+    const { date, department, breakfastCount, lunchCount, dinnerCount } = req.body;
+
+    // Find the guest meal record
+    const guestMeal = await GuestMeal.findById(req.params.id);
+    if (!guestMeal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Guest meal not found'
+      });
+    }
+
+    // Validate department if provided
+    if (department && !department.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department cannot be empty'
+      });
+    }
+
+    // Update fields if provided
+    if (date) guestMeal.date = new Date(date);
+    if (department) guestMeal.department = department.trim();
+    if (typeof breakfastCount !== 'undefined') guestMeal.breakfastCount = breakfastCount;
+    if (typeof lunchCount !== 'undefined') guestMeal.lunchCount = lunchCount;
+    if (typeof dinnerCount !== 'undefined') guestMeal.dinnerCount = dinnerCount;
+
+    await guestMeal.save();
+
+    // Populate addedBy field before sending response if it's a User reference
+    if (typeof guestMeal.addedBy === 'object' && guestMeal.addedBy !== null) {
+      await guestMeal.populate('addedBy', 'name department');
+    }
+
+    res.json({
+      success: true,
+      message: 'Guest meal counts updated successfully',
+      guestMeal
+    });
+  } catch (error) {
+    console.error('Update guest meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Delete guest meal
+router.delete('/guest-meals/:id', adminAuth, async (req, res) => {
+  try {
+    const guestMeal = await GuestMeal.findByIdAndDelete(req.params.id);
+    
+    if (!guestMeal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Guest meal not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Guest meal deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete guest meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 });
