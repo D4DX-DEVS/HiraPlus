@@ -463,6 +463,28 @@ router.get('/messages', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Delete a message
+router.delete('/messages/:messageId', adminAuth, async (req, res) => {
+  try {
+    const message = await Message.findByIdAndDelete(req.params.messageId);
+    
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    res.json({ 
+      message: 'Message deleted successfully',
+      deletedMessage: message
+    });
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({ 
+      message: 'Failed to delete message',
+      error: error.message 
+    });
+  }
+});
+
 // Admin: Send message to all users via WhatsApp
 router.post('/messages/:messageId/send', adminAuth, async (req, res) => {
   try {
@@ -920,6 +942,274 @@ router.get('/guest-meals/department/:department', adminAuth, async (req, res) =>
     res.status(500).json({ 
       success: false,
       message: error.message 
+    });
+  }
+});
+
+// Admin: Get meal counts by department
+router.get('/department-meal-counts', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Get meal counts using aggregation
+    const departmentMealCounts = await Meal.aggregate([
+      {
+        $match: {
+          date: { $gte: start, $lte: end }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      {
+        $group: {
+          _id: '$user.department',
+          breakfastCount: {
+            $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
+          },
+          lunchCount: {
+            $sum: { $cond: [{ $eq: ['$lunch', true] }, 1, 0] }
+          },
+          dinnerCount: {
+            $sum: { $cond: [{ $eq: ['$dinner', true] }, 1, 0] }
+          },
+          userCount: { $addToSet: '$userId' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: '$_id',
+          breakfastCount: 1,
+          lunchCount: 1,
+          dinnerCount: 1,
+          totalMeals: {
+            $add: ['$breakfastCount', '$lunchCount', '$dinnerCount']
+          },
+          uniqueUsers: { $size: '$userCount' }
+        }
+      },
+      {
+        $sort: { totalMeals: -1 }
+      }
+    ]);
+
+    // Calculate overall totals
+    const overallTotals = departmentMealCounts.reduce((acc, dept) => {
+      acc.breakfast += dept.breakfastCount;
+      acc.lunch += dept.lunchCount;
+      acc.dinner += dept.dinnerCount;
+      acc.totalMeals += dept.totalMeals;
+      acc.totalUsers += dept.uniqueUsers;
+      return acc;
+    }, { breakfast: 0, lunch: 0, dinner: 0, totalMeals: 0, totalUsers: 0 });
+
+    res.json({
+      dateRange: {
+        from: start,
+        to: end
+      },
+      overallTotals,
+      departments: departmentMealCounts.map(dept => ({
+        ...dept,
+        percentageOfTotal: ((dept.totalMeals / overallTotals.totalMeals) * 100).toFixed(2)
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error fetching department meal counts:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch department meal counts',
+      error: error.message 
+    });
+  }
+});
+
+// Admin: Get department-wise user meal counts
+router.get('/department-user-meals', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Build match condition
+    const matchCondition = {
+      date: { $gte: start, $lte: end }
+    };
+
+    // Get users by department
+    const userQuery = department ? { department } : {};
+    const users = await User.find(userQuery).lean();
+
+    if (!users || users.length === 0) {
+      return res.json({
+        dateRange: { from: start, to: end },
+        departments: []
+      });
+    }
+
+    // Get meal counts using aggregation
+    const mealCounts = await Meal.aggregate([
+      {
+        $match: {
+          ...matchCondition,
+          userId: { $in: users.map(user => user._id) }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      {
+        $group: {
+          _id: {
+            userId: '$userId',
+            department: '$user.department'
+          },
+          user: { $first: '$user' },
+          breakfastCount: {
+            $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
+          },
+          lunchCount: {
+            $sum: { $cond: [{ $eq: ['$lunch', true] }, 1, 0] }
+          },
+          dinnerCount: {
+            $sum: { $cond: [{ $eq: ['$dinner', true] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.department',
+          users: {
+            $push: {
+              userId: '$_id.userId',
+              name: '$user.name',
+              phoneNumber: '$user.phoneNumber',
+              designation: '$user.designation',
+              breakfastCount: '$breakfastCount',
+              lunchCount: '$lunchCount',
+              dinnerCount: '$dinnerCount',
+              totalMeals: { $add: ['$breakfastCount', '$lunchCount', '$dinnerCount'] }
+            }
+          },
+          departmentTotals: {
+            $push: {
+              breakfast: '$breakfastCount',
+              lunch: '$lunchCount',
+              dinner: '$dinnerCount'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: '$_id',
+          users: 1,
+          totals: {
+            breakfast: { $sum: '$departmentTotals.breakfast' },
+            lunch: { $sum: '$departmentTotals.lunch' },
+            dinner: { $sum: '$departmentTotals.dinner' },
+            total: {
+              $sum: {
+                $map: {
+                  input: '$departmentTotals',
+                  as: 'total',
+                  in: { $add: ['$$total.breakfast', '$$total.lunch', '$$total.dinner'] }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $sort: { 'totals.total': -1 }
+      }
+    ]);
+
+    // Add users with no meals for each department and sort users by total meals
+    const departmentsWithAllUsers = await Promise.all(
+      mealCounts.map(async (dept) => {
+        const deptUsers = await User.find({ 
+          department: dept.department,
+          _id: { $nin: dept.users.map(u => u.userId) }
+        });
+
+        const usersWithNoMeals = deptUsers.map(user => ({
+          userId: user._id,
+          name: user.name || '',
+          phoneNumber: user.phoneNumber || '',
+          designation: user.designation || '',
+          breakfastCount: 0,
+          lunchCount: 0,
+          dinnerCount: 0,
+          totalMeals: 0
+        }));
+
+        // Combine and sort all users by total meals
+        const allUsers = [...dept.users, ...usersWithNoMeals].sort((a, b) => b.totalMeals - a.totalMeals);
+
+        return {
+          ...dept,
+          users: allUsers
+        };
+      })
+    );
+
+    // Calculate overall totals
+    const overallTotals = departmentsWithAllUsers.reduce((acc, dept) => {
+      acc.breakfast += dept.totals.breakfast;
+      acc.lunch += dept.totals.lunch;
+      acc.dinner += dept.totals.dinner;
+      acc.total += dept.totals.total;
+      return acc;
+    }, { breakfast: 0, lunch: 0, dinner: 0, total: 0 });
+
+    res.json({
+      dateRange: { from: start, to: end },
+      overallTotals,
+      departments: departmentsWithAllUsers
+    });
+
+  } catch (error) {
+    console.error('Error fetching department user meal counts:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch department user meal counts',
+      error: error.message 
     });
   }
 });
