@@ -303,7 +303,9 @@ router.get('/me', async (req, res) => {
         designation: user.designation,
         isVerified: user.isVerified,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt,
+        status: user.status,
+        isDeptHead: user.isDeptHead
       }
     });
   } catch (error) {

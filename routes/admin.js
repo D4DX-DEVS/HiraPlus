@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -73,7 +73,8 @@ router.post('/users', adminAuth, async (req, res) => {
       name,
       department,
       designation,
-      isDeptHead: isDeptHead || false
+      isDeptHead: isDeptHead || false,
+      status: status || 'active'
     });
     await user.save();
 
@@ -85,7 +86,8 @@ router.post('/users', adminAuth, async (req, res) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        status: user.status
       }
     });
   } catch (error) {
@@ -98,7 +100,7 @@ router.post('/users', adminAuth, async (req, res) => {
 router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
-      .select('name phoneNumber department designation isVerified isDeptHead createdAt')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -110,6 +112,7 @@ router.get('/users', adminAuth, async (req, res) => {
       designation: user.designation || '',
       isVerified: user.isVerified,
       isDeptHead: user.isDeptHead,
+      status: user.status || 'active',
       createdAt: user.createdAt
     }));
 
@@ -136,7 +139,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -176,6 +179,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (department) user.department = department.trim();
     if (designation) user.designation = designation.trim();
     if (typeof isDeptHead !== 'undefined') user.isDeptHead = isDeptHead;
+    if (status && ['active', 'inactive'].includes(status)) user.status = status;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -199,7 +203,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         department: user.department,
         designation: user.designation,
         isVerified: user.isVerified,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        status: user.status
       }
     });
   } catch (error) {

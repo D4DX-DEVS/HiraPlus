@@ -35,6 +35,11 @@ const userSchema = new mongoose.Schema({
   isDeptHead: {
     type: Boolean,
     default: false
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
   }
 }, {
   timestamps: true
