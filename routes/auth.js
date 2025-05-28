@@ -254,7 +254,8 @@ router.post('/verify-otp', async (req, res) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        isDeptHead: user.isDeptHead
       }
     });
   } catch (error) {
