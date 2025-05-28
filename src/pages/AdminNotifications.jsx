@@ -102,7 +102,7 @@ const AdminNotifications = () => {
                         id="title"
                         value={newNotification.title}
                         onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
-                        className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base py-2"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         placeholder="Enter notification title"
                         required
                       />
@@ -116,7 +116,7 @@ const AdminNotifications = () => {
                         value={newNotification.description}
                         onChange={(e) => setNewNotification({ ...newNotification, description: e.target.value })}
                         rows={6}
-                        className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base py-2"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         placeholder="Enter notification description"
                         required
                       />

@@ -117,7 +117,7 @@ const AdminBanners = () => {
                         id="title"
                         value={newBanner.title}
                         onChange={(e) => setNewBanner({ ...newBanner, title: e.target.value })}
-                        className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base py-2"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         placeholder="Enter banner title"
                         required
                       />
