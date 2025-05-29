@@ -10,11 +10,12 @@ import {
 
 const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    phoneNumber: '',
-    department: '',
-    designation: '',
-    isDeptHead: false
+    name: initialData?.name || '',
+    phoneNumber: initialData?.phoneNumber || '',
+    department: initialData?.department || '',
+    designation: initialData?.designation || '',
+    isDeptHead: initialData?.isDeptHead || false,
+    status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,7 +27,8 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         phoneNumber: initialData.phoneNumber || '',
         department: initialData.department || '',
         designation: initialData.designation || '',
-        isDeptHead: initialData.isDeptHead || false
+        isDeptHead: initialData.isDeptHead || false,
+        status: initialData.status || 'active'
       });
     }
   }, [initialData]);
@@ -173,6 +175,18 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
             Department Head
           </label>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700">Status</label>
+          <select
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
       </div>
 

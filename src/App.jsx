@@ -8,6 +8,8 @@ import AdminMessages from './pages/AdminMessages';
 import AdminBanners from './pages/AdminBanners';
 import BillGenerator from './pages/BillGenerator';
 import GuestMeals from './pages/GuestMeals';
+import Meetings from './pages/Meetings';
+
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
@@ -82,6 +84,15 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path='/admin/meetings'
+          element={
+            <ProtectedRoute>
+              <Meetings />
+            </ProtectedRoute>
+          }
+        />
+
         
       </Routes>
     </Router>

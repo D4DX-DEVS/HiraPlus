@@ -7,12 +7,14 @@ import {
   ChatBubbleLeftRightIcon,
   PhotoIcon,
   CalculatorIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ isOpen }) => {
   const navigation = [
     { name: 'Users', href: '/admin/dashboard', icon: UsersIcon },
+    { name: 'Meetings', href: '/admin/meetings', icon: ClockIcon },
     { name: 'Meals', href: '/admin/meals', icon: CalendarIcon },
     { name: 'Guest Meals', href: '/admin/guest-meals', icon: UserGroupIcon },
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
