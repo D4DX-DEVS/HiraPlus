@@ -304,4 +304,20 @@ router.get('/attendance/by-date', receptionAuth, async (req, res) => {
   }
 });
 
+// Get all users
+router.get('/users/all', async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('_id name department designation email'); // Include only necessary fields
+    
+    res.json({
+      users,
+      total: users.length
+    });
+  } catch (error) {
+    console.error('Fetch all users error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
