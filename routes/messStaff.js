@@ -265,4 +265,30 @@ router.get('/guest-meals', messStaffAuth, async (req, res) => {
   }
 });
 
+
+// Get all departments (Public route)
+router.get('/departments', async (req, res) => {
+  try {
+    // Get unique departments from users collection
+    const departments = await User.distinct('department');
+
+    // Filter out null/empty departments and sort alphabetically
+    const validDepartments = departments
+      .filter(dept => dept && dept.trim())
+      .sort((a, b) => a.localeCompare(b));
+
+    res.json({
+      success: true,
+      departments: validDepartments,
+      total: validDepartments.length
+    });
+  } catch (error) {
+    console.error('Fetch departments error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 module.exports = router; 
