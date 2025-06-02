@@ -537,7 +537,7 @@ router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
 // Get all meetings (for users)
 router.get('/meetings', async (req, res) => {
   try {
-    const meetings = await Meeting.find({ status: 'approved' })
+    const meetings = await Meeting.find()
       .populate('department', 'name')
       .populate('createdBy', 'name')
       .sort({ startDatetime: -1 });
