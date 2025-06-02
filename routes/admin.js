@@ -10,6 +10,7 @@ const adminAuth = require('../middleware/adminAuth');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const Meeting = require('../models/Meeting');
+const { sendPushNotification } = require('../utils/oneSignalService');
 
 // Admin Login
 router.post('/login', async (req, res) => {
@@ -385,10 +386,33 @@ router.post('/notifications', adminAuth, async (req, res) => {
     });
 
     await notification.save();
-    res.status(201).json({
-      message: 'Notification created successfully',
-      notification
-    });
+    
+    // Send push notification
+    try {
+      const pushResult = await sendPushNotification(title, description);
+      
+      // Check if there were any errors in the OneSignal response
+      if (pushResult.errors && pushResult.errors.length > 0) {
+        return res.status(400).json({
+          message: 'Notification saved but push notification failed: ' + pushResult.errors.join(', '),
+          notification,
+          pushError: pushResult.errors
+        });
+      }
+
+      res.status(201).json({
+        message: 'Notification created and push notification sent successfully',
+        notification
+      });
+    } catch (pushError) {
+      // If push notification fails, still return success but with a warning
+      console.error('Push notification error:', pushError);
+      res.status(201).json({
+        message: 'Notification saved but push notification failed to send',
+        notification,
+        pushError: pushError.message
+      });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -408,6 +432,18 @@ router.put('/notifications/:notificationId', adminAuth, async (req, res) => {
     if (description) notification.description = description;
 
     await notification.save();
+
+    // Send push notification for the update
+    try {
+      await sendPushNotification(
+        notification.title,
+        notification.description
+      );
+    } catch (pushError) {
+      console.error('Push notification error:', pushError);
+      // Continue even if push notification fails
+    }
+
     res.json({
       message: 'Notification updated successfully',
       notification
