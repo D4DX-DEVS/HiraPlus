@@ -538,8 +538,7 @@ router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
 router.get('/meetings', async (req, res) => {
   try {
     const meetings = await Meeting.find()
-      .populate('department', 'name')
-      .populate('createdBy', 'name')
+      .populate('createdBy', 'name department')
       .sort({ startDatetime: -1 });
 
     res.json({
@@ -585,13 +584,15 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
       lunch: lunch || 0,
       eveningsnacks: eveningsnacks || 0,
       dinner: dinner || 0,
-      department: req.user._id, // Department head's user ID
+      department: req.user.department, // Use the department name instead of ID
       status: 'pending', // Default status for department head
-      createdBy: req.user._id
+      createdBy: req.user.name // Keep the user ID for reference
     });
 
     await meeting.save();
-    await meeting.populate('department', 'name');
+    await meeting.populate([
+      { path: 'createdBy', select: 'name department' }
+    ]);
 
     res.status(201).json({
       success: true,
@@ -610,9 +611,8 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
 // Department Head: Get department meetings
 router.get('/dept-meetings', deptHeadAuth, async (req, res) => {
   try {
-    const meetings = await Meeting.find({ department: req.user._id })
-      .populate('department', 'name')
-      .populate('createdBy', 'name')
+    const meetings = await Meeting.find({ department: req.user.department })
+      .populate('createdBy', 'name department')
       .sort({ startDatetime: -1 });
 
     res.json({
