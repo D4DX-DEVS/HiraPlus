@@ -19,6 +19,28 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [departments, setDepartments] = useState([]);
+  const [showCustomDepartment, setShowCustomDepartment] = useState(false);
+  const [customDepartment, setCustomDepartment] = useState('');
+
+  // Fetch departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
+        setDepartments(response.data.departments);
+        
+        // If editing and department exists, check if it's in the list
+        if (initialData?.department && !response.data.departments.includes(initialData.department)) {
+          setShowCustomDepartment(true);
+          setCustomDepartment(initialData.department);
+        }
+      } catch (err) {
+        console.error('Failed to fetch departments:', err);
+      }
+    };
+    fetchDepartments();
+  }, [initialData]);
 
   useEffect(() => {
     if (initialData) {
@@ -35,9 +57,32 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'department' && value === 'other') {
+      setShowCustomDepartment(true);
+      setFormData(prev => ({
+        ...prev,
+        department: ''
+      }));
+    } else if (name === 'department') {
+      setShowCustomDepartment(false);
+      setFormData(prev => ({
+        ...prev,
+        department: value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
+  };
+
+  const handleCustomDepartmentChange = (e) => {
+    const value = e.target.value;
+    setCustomDepartment(value);
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      department: value
     }));
   };
 
@@ -128,18 +173,44 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <BriefcaseIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </div>
-            <input
-              type="text"
+            <select
               id="department"
               name="department"
-              value={formData.department}
+              value={showCustomDepartment ? 'other' : formData.department}
               onChange={handleChange}
               required
               className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-              placeholder="Enter department name"
-            />
+            >
+              <option value="">Select Department</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+              <option value="other">Other</option>
+            </select>
           </div>
         </div>
+
+        {showCustomDepartment && (
+          <div>
+            <label htmlFor="custom-department" className="block text-sm font-medium text-gray-700 mb-2">
+              New Department Name
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <BriefcaseIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              </div>
+              <input
+                type="text"
+                id="custom-department"
+                value={customDepartment}
+                onChange={handleCustomDepartmentChange}
+                required
+                className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                placeholder="Enter new department name"
+              />
+            </div>
+          </div>
+        )}
 
         <div>
           <label htmlFor="designation" className="block text-sm font-medium text-gray-700 mb-2">
@@ -180,8 +251,9 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700">Status</label>
           <select
+            name="status"
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            onChange={handleChange}
             className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="active">Active</option>

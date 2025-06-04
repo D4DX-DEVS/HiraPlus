@@ -21,6 +21,9 @@ const GuestMeals = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingMeal, setEditingMeal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, mealId: null });
+  const [departments, setDepartments] = useState([]);
+  const [showCustomDepartment, setShowCustomDepartment] = useState(false);
+  const [customDepartment, setCustomDepartment] = useState('');
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     department: '',
@@ -28,6 +31,25 @@ const GuestMeals = () => {
     lunchCount: 0,
     dinnerCount: 0
   });
+
+  // Fetch departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
+        setDepartments(response.data.departments);
+        
+        // If editing and department exists, check if it's in the list
+        if (editingMeal?.department && !response.data.departments.includes(editingMeal.department)) {
+          setShowCustomDepartment(true);
+          setCustomDepartment(editingMeal.department);
+        }
+      } catch (err) {
+        console.error('Failed to fetch departments:', err);
+      }
+    };
+    fetchDepartments();
+  }, [editingMeal]);
 
   const fetchGuestMeals = async () => {
     try {
@@ -110,6 +132,32 @@ const GuestMeals = () => {
     setShowModal(true);
   };
 
+  const handleDepartmentChange = (e) => {
+    const value = e.target.value;
+    if (value === 'other') {
+      setShowCustomDepartment(true);
+      setFormData(prev => ({
+        ...prev,
+        department: ''
+      }));
+    } else {
+      setShowCustomDepartment(false);
+      setFormData(prev => ({
+        ...prev,
+        department: value
+      }));
+    }
+  };
+
+  const handleCustomDepartmentChange = (e) => {
+    const value = e.target.value;
+    setCustomDepartment(value);
+    setFormData(prev => ({
+      ...prev,
+      department: value
+    }));
+  };
+
   useEffect(() => {
     fetchGuestMeals();
   }, []);
@@ -181,15 +229,43 @@ const GuestMeals = () => {
                                 <path d="M9 15H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                               </svg>
                             </div>
-                            <input
-                              type="text"
-                              value={formData.department}
-                              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                            <select
+                              value={showCustomDepartment ? 'other' : formData.department}
+                              onChange={handleDepartmentChange}
                               className="block w-full rounded-lg border-2 border-indigo-100 pl-10 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               required
-                            />
+                            >
+                              <option value="">Select Department</option>
+                              {departments.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                              ))}
+                              <option value="other">Other</option>
+                            </select>
                           </div>
                         </div>
+                        {showCustomDepartment && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">New Department Name</label>
+                            <div className="relative mt-1">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <svg className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M19 21V5C19 3.89543 18.1046 3 17 3H7C5.89543 3 5 3.89543 5 5V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  <path d="M9 7H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  <path d="M9 11H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  <path d="M9 15H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                </svg>
+                              </div>
+                              <input
+                                type="text"
+                                value={customDepartment}
+                                onChange={handleCustomDepartmentChange}
+                                className="block w-full rounded-lg border-2 border-indigo-100 pl-10 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Enter new department name"
+                                required
+                              />
+                            </div>
+                          </div>
+                        )}
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Breakfast Count</label>
                           <div className="relative mt-1">

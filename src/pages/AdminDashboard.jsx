@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import UserForm from '../components/UserForm';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { TrashIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PlusIcon, PencilIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -13,6 +13,18 @@ const AdminDashboard = () => {
   const [error, setError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [departments, setDepartments] = useState([]);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
+      setDepartments(response.data.departments || []);
+    } catch (err) {
+      console.error('Failed to fetch departments:', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -29,7 +41,21 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchDepartments();
   }, []);
+
+  // Filter users based on search query and selected department
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = searchQuery.trim() === '' || 
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.phoneNumber?.includes(searchQuery) ||
+      user.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.designation?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesDepartment = selectedDepartment === '' || user.department === selectedDepartment;
+
+    return matchesSearch && matchesDepartment;
+  });
 
   const handleDelete = async () => {
     try {
@@ -94,6 +120,37 @@ const AdminDashboard = () => {
                     Add User
                   </button>
                 )}
+              </div>
+
+              {/* Search and Filter Section */}
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Search Box */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by name, phone, department, or designation..."
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+
+                {/* Department Filter */}
+                <div>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {error && (
@@ -162,7 +219,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((user) => (
+                      {filteredUsers.map((user) => (
                         <tr key={user._id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {user.name || <span className="text-red-500 italic">Required</span>}
@@ -226,9 +283,9 @@ const AdminDashboard = () => {
                           </td>
                         </tr>
                       ))}
-                      {users.length === 0 && (
+                      {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan="7" className="px-6 py-4 text-center text-gray-500 italic">
+                          <td colSpan="9" className="px-6 py-4 text-center text-gray-500 italic">
                             No users found
                           </td>
                         </tr>
