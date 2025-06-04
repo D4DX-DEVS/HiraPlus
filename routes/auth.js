@@ -639,7 +639,7 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
 
     const meeting = await Meeting.findOne({
       _id: req.params.meetingId,
-      department: req.user._id,
+      department: req.user.department,  // Fixed: Use department name instead of user ID
       status: 'pending' // Can only edit pending meetings
     });
 
@@ -687,7 +687,7 @@ router.delete('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
   try {
     const meeting = await Meeting.findOneAndDelete({
       _id: req.params.meetingId,
-      department: req.user._id,
+      department: req.user.department,  // Use department name instead of user ID
       status: 'pending' // Can only delete pending meetings
     });
     
