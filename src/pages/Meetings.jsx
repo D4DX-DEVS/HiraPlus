@@ -3,7 +3,14 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { PencilIcon, TrashIcon, PlusIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { 
+  PencilIcon, 
+  TrashIcon, 
+  PlusIcon, 
+  CheckCircleIcon, 
+  ClockIcon,
+  MagnifyingGlassIcon 
+} from '@heroicons/react/24/outline';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const Meetings = () => {
@@ -15,6 +22,11 @@ const Meetings = () => {
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, meetingId: null });
   const [statusConfirm, setStatusConfirm] = useState({ show: false, meeting: null });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [departments, setDepartments] = useState([]);
+  const [showCustomDepartment, setShowCustomDepartment] = useState(false);
+  const [customDepartment, setCustomDepartment] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -32,6 +44,51 @@ const Meetings = () => {
   });
 
   const halls = ['Auditorium', 'Conference Hall', 'Meeting Space'];
+
+  // Fetch departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
+        setDepartments(response.data.departments);
+        
+        // If editing and department exists, check if it's in the list
+        if (editingMeeting?.department && !response.data.departments.includes(editingMeeting.department)) {
+          setShowCustomDepartment(true);
+          setCustomDepartment(editingMeeting.department);
+        }
+      } catch (err) {
+        console.error('Failed to fetch departments:', err);
+      }
+    };
+    fetchDepartments();
+  }, [editingMeeting]);
+
+  const handleDepartmentChange = (e) => {
+    const value = e.target.value;
+    if (value === 'other') {
+      setShowCustomDepartment(true);
+      setFormData(prev => ({
+        ...prev,
+        department: ''
+      }));
+    } else {
+      setShowCustomDepartment(false);
+      setFormData(prev => ({
+        ...prev,
+        department: value
+      }));
+    }
+  };
+
+  const handleCustomDepartmentChange = (e) => {
+    const value = e.target.value;
+    setCustomDepartment(value);
+    setFormData(prev => ({
+      ...prev,
+      department: value
+    }));
+  };
 
   const fetchMeetings = async () => {
     try {
@@ -141,6 +198,19 @@ const Meetings = () => {
     }
   };
 
+  // Filter meetings based on search query and selected department
+  const filteredMeetings = meetings.filter(meeting => {
+    const matchesSearch = searchQuery.trim() === '' || 
+      meeting.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.hall?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesDepartment = selectedDepartment === '' || meeting.department === selectedDepartment;
+
+    return matchesSearch && matchesDepartment;
+  });
+
   useEffect(() => {
     fetchMeetings();
   }, []);
@@ -184,6 +254,37 @@ const Meetings = () => {
                 </button>
               </div>
 
+              {/* Search and Filter Section */}
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Search Box */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by title, description, department, or hall..."
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+
+                {/* Department Filter */}
+                <div>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {error && (
                 <div className="mb-4 rounded-md bg-red-50 p-3">
                   <div className="text-sm text-red-700">{error}</div>
@@ -212,14 +313,33 @@ const Meetings = () => {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Department</label>
-                          <input
-                            type="text"
-                            value={formData.department}
-                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                          <select
+                            value={showCustomDepartment ? 'other' : formData.department}
+                            onChange={handleDepartmentChange}
                             className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
                             required
-                          />
+                          >
+                            <option value="">Select Department</option>
+                            {departments.map(dept => (
+                              <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                            <option value="other">Other</option>
+                          </select>
                         </div>
+
+                        {showCustomDepartment && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">New Department Name</label>
+                            <input
+                              type="text"
+                              value={customDepartment}
+                              onChange={handleCustomDepartmentChange}
+                              className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                              placeholder="Enter new department name"
+                              required
+                            />
+                          </div>
+                        )}
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Start Date & Time</label>
@@ -391,7 +511,7 @@ const Meetings = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {meetings.map((meeting, index) => (
+                        {filteredMeetings.map((meeting, index) => (
                           <tr key={meeting._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.title}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.department}</td>
@@ -439,6 +559,13 @@ const Meetings = () => {
                             </td>
                           </tr>
                         ))}
+                        {filteredMeetings.length === 0 && (
+                          <tr>
+                            <td colSpan="7" className="px-6 py-4 text-center text-gray-500 italic">
+                              No meetings found
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
