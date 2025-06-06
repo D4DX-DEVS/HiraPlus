@@ -474,4 +474,41 @@ router.get('/check-in-statistics', receptionAuth, async (req, res) => {
   }
 });
 
+// Edit check-in status
+router.put('/edit-check-in/:checkInId', receptionAuth, async (req, res) => {
+  try {
+    const { checkInId } = req.params;
+
+    // Find the check-in record
+    const checkIn = await CheckIn.findById(checkInId);
+    if (!checkIn) {
+      return res.status(404).json({ message: 'Check-in record not found' });
+    }
+
+    // Toggle the status
+    const newStatus = checkIn.status === 'CheckedIn' ? 'Checkout' : 'CheckedIn';
+    
+    // Update the record
+    const updatedCheckIn = await CheckIn.findByIdAndUpdate(
+      checkInId,
+      {
+        status: newStatus,
+        // If changing to Checkout, set checkoutTime, if changing to CheckedIn, remove checkoutTime
+        ...(newStatus === 'Checkout' ? { checkoutTime: new Date() } : { checkoutTime: null })
+      },
+      { new: true } // Return the updated document
+    ).populate('user', 'name department designation');
+
+    res.json({
+      message: `Status successfully changed to ${newStatus}`,
+      checkIn: updatedCheckIn,
+      previousStatus: checkIn.status
+    });
+
+  } catch (error) {
+    console.error('Edit check-in status error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
