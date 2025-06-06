@@ -114,7 +114,8 @@ router.get('/check-ins/today', receptionAuth, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const checkIns = await CheckIn.find({
+    // Find all users who checked in today
+    const todayCheckIns = await CheckIn.find({
       date: {
         $gte: today,
         $lt: tomorrow
@@ -123,7 +124,25 @@ router.get('/check-ins/today', receptionAuth, async (req, res) => {
     .populate('user', 'name department designation')
     .sort({ checkedInTime: -1 });
 
-    res.json(checkIns);
+    // Find all users who checked in before today but haven't checked out
+    const previousCheckIns = await CheckIn.find({
+      date: { $lt: today },
+      status: 'CheckedIn'
+    })
+    .populate('user', 'name department designation')
+    .sort({ checkedInTime: -1 });
+
+    // Combine both results
+    const allCheckIns = [...previousCheckIns, ...todayCheckIns];
+
+    res.json({
+      total: allCheckIns.length,
+      checkIns: allCheckIns,
+      summary: {
+        todayCheckIns: todayCheckIns.length,
+        previousDaysStillCheckedIn: previousCheckIns.length
+      }
+    });
   } catch (error) {
     console.error('Fetch today check-ins error:', error);
     res.status(500).json({ message: error.message });
@@ -344,4 +363,115 @@ router.get('/departments', async (req, res) => {
     });
   }
 });
+
+// Get all currently checked in users (regardless of check-in date)
+router.get('/currently-checked-in', receptionAuth, async (req, res) => {
+  try {
+    // Find all check-in records with status 'CheckedIn'
+    const checkIns = await CheckIn.find({ 
+      status: 'CheckedIn'
+    })
+    .populate('user', 'name department designation email')
+    .sort({ checkedInTime: -1 }); // Most recent check-ins first
+
+    // Group check-ins by date
+    const groupedByDate = checkIns.reduce((acc, checkIn) => {
+      const date = checkIn.checkedInTime.toISOString().split('T')[0];
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(checkIn);
+      return acc;
+    }, {});
+
+    res.json({
+      total: checkIns.length,
+      checkIns: checkIns,
+      groupedByDate: groupedByDate,
+      message: 'Retrieved all currently checked-in users'
+    });
+  } catch (error) {
+    console.error('Fetch currently checked-in users error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get currently checked in users by department
+router.get('/currently-checked-in/by-department/:department', receptionAuth, async (req, res) => {
+  try {
+    const { department } = req.params;
+
+    const checkIns = await CheckIn.find({ 
+      status: 'CheckedIn'
+    })
+    .populate('user', 'name department designation email')
+    .sort({ checkedInTime: -1 });
+
+    // Filter check-ins by department
+    const departmentCheckIns = checkIns.filter(checkIn => 
+      checkIn.user.department.toLowerCase() === department.toLowerCase()
+    );
+
+    res.json({
+      department,
+      total: departmentCheckIns.length,
+      checkIns: departmentCheckIns
+    });
+  } catch (error) {
+    console.error('Fetch department checked-in users error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get check-in statistics
+router.get('/check-in-statistics', receptionAuth, async (req, res) => {
+  try {
+    const currentlyCheckedIn = await CheckIn.find({ 
+      status: 'CheckedIn' 
+    }).populate('user', 'name department designation');
+
+    // Group by department
+    const byDepartment = currentlyCheckedIn.reduce((acc, checkIn) => {
+      const dept = checkIn.user.department;
+      if (!acc[dept]) {
+        acc[dept] = {
+          count: 0,
+          users: []
+        };
+      }
+      acc[dept].count++;
+      acc[dept].users.push({
+        name: checkIn.user.name,
+        designation: checkIn.user.designation,
+        checkedInTime: checkIn.checkedInTime
+      });
+      return acc;
+    }, {});
+
+    // Get today's statistics
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayStats = await CheckIn.find({
+      checkedInTime: {
+        $gte: today,
+        $lt: tomorrow
+      }
+    });
+
+    res.json({
+      totalCurrentlyCheckedIn: currentlyCheckedIn.length,
+      byDepartment,
+      todayTotal: todayStats.length,
+      todayCheckedOut: todayStats.filter(stat => stat.status === 'Checkout').length,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Fetch check-in statistics error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
