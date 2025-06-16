@@ -106,26 +106,27 @@ const AdminDashboard = () => {
       <div className="flex pt-[60px] min-h-screen">
         <Sidebar isOpen={isSidebarOpen} />
         
-        <main className={`flex-1 bg-gray-100 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+        <main className={`flex-1 bg-gray-100 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'} relative z-0`}>
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
-                {!showAddForm && (
-                  <button
-                    onClick={() => setShowAddForm(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                  >
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Add User
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setEditingUser(null);
+                    setShowAddForm(true);
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                >
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  Add User
+                </button>
               </div>
 
               {/* Search and Filter Section */}
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
                 {/* Search Box */}
-                <div className="relative">
+                <div className="relative w-full">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                   </div>
@@ -134,7 +135,7 @@ const AdminDashboard = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by name, phone, department, or designation..."
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-ellipsis"
                   />
                 </div>
 
