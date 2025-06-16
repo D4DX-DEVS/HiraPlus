@@ -22,7 +22,7 @@ const meetingSchema = new mongoose.Schema({
   hall: {
     type: String,
     required: true,
-    enum: ['Auditorium', 'Conference Hall', 'Meeting Space']
+    enum: ['Auditorium [2nd Floor]', 'Conference Hall [3rd Floor]', 'Meeting Space [1st Floor]']
   },
   noOfPersons: {
     type: Number,
