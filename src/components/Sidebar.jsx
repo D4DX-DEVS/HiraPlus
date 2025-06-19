@@ -8,13 +8,15 @@ import {
   PhotoIcon,
   CalculatorIcon,
   UserGroupIcon,
-  ClockIcon
+  ClockIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import HiraPlusIcon from '../assets/HiraPlus.jpg';
 
 const Sidebar = ({ isOpen }) => {
   const navigation = [
     { name: 'Users', href: '/admin/dashboard', icon: UsersIcon },
+    { name: 'Departments', href: '/admin/departments', icon: BuildingOfficeIcon },
     { name: 'Meetings', href: '/admin/meetings', icon: ClockIcon },
     { name: 'Meals', href: '/admin/meals', icon: CalendarIcon },
     { name: 'Guest Meals', href: '/admin/guest-meals', icon: UserGroupIcon },
@@ -113,7 +115,7 @@ const Sidebar = ({ isOpen }) => {
             <div className="px-4 py-4 border-t border-green-800/40 bg-green-950/40 backdrop-blur-sm">
               <div className="text-center">
                 <p className="text-xs text-green-400/80">
-                  © 2024 Hira Plus
+                  © 2025 Hira Plus
                 </p>
                 <p className="text-xs text-green-500/60 mt-1">
                   v1.0.0

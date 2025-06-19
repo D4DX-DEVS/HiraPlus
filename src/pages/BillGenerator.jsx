@@ -459,7 +459,10 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
 };
 
 const BillGenerator = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [billType, setBillType] = useState('food');
@@ -507,8 +510,16 @@ const BillGenerator = () => {
         );
         // Extract unique departments and filter out empty values
         const uniqueDepartments = [...new Set(response.data
-          .map(user => user.department)
-          .filter(dept => dept && dept.trim())
+          .map(user => {
+            // Handle both string and object department formats
+            if (typeof user.department === 'string') {
+              return user.department;
+            } else if (user.department && typeof user.department === 'object') {
+              return user.department.title;
+            }
+            return null;
+          })
+          .filter(dept => dept && dept.trim && dept.trim())
         )].sort();
         setDepartments(uniqueDepartments);
       } catch (err) {
@@ -518,6 +529,11 @@ const BillGenerator = () => {
     };
     fetchDepartments();
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   const handleDateChange = (e) => {
     setDateRange({

@@ -10,7 +10,10 @@ const AdminMessages = () => {
   const [messages, setMessages] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, messageId: null });
   const [sendConfirm, setSendConfirm] = useState({ show: false, messageId: null });
   const [newMessage, setNewMessage] = useState({ title: '', description: '' });
@@ -31,6 +34,11 @@ const AdminMessages = () => {
   useEffect(() => {
     fetchMessages();
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   const handleDelete = async () => {
     try {
@@ -193,50 +201,68 @@ const AdminMessages = () => {
               )}
 
               {/* Messages List */}
-              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden">
-                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">All Messages</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Manage and send announcements to users
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                  <h3 className="text-base font-semibold text-gray-900">All Messages</h3>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {messages.length} message{messages.length !== 1 ? 's' : ''} found
                   </p>
                 </div>
-                <div className="divide-y divide-gray-200">
+                <div className="flex-1 overflow-auto">
                   {messages.length === 0 ? (
                     <div className="p-8 text-center">
-                      <div className="text-gray-400 text-lg mb-2">No messages found</div>
-                      <p className="text-gray-500 text-sm">Create your first message to get started</p>
+                      <div className="text-gray-400">
+                        <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <p className="text-base font-medium text-gray-900 mb-1">No messages found</p>
+                        <p className="text-sm text-gray-600">Create your first message to get started</p>
+                      </div>
                     </div>
                   ) : (
-                    messages.map((message) => (
-                      <div key={message._id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{message.title}</h3>
-                            <p className="text-gray-600 mb-3 line-clamp-2">{message.description}</p>
-                            <div className="flex items-center text-xs text-gray-500">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></div>
-                              Created on {format(new Date(message.createdAt), 'MMM d, yyyy')}
+                    <div className="divide-y divide-gray-200">
+                      {messages.map((message) => (
+                        <div key={message._id} className="p-3 hover:bg-gray-50 transition-colors duration-150">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0 mt-0.5">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-semibold text-gray-900 truncate" title={message.title}>
+                                  {message.title}
+                                </h3>
+                                <p className="mt-1 text-xs text-gray-600 line-clamp-2" title={message.description}>
+                                  {message.description}
+                                </p>
+                                <p className="mt-1.5 text-xs text-gray-400">
+                                  Created on {format(new Date(message.createdAt), 'MMM d, yyyy')}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => setSendConfirm({ show: true, messageId: message._id })}
+                                className="inline-flex items-center px-2 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                title="Send Message"
+                              >
+                                <PaperAirplaneIcon className="h-3 w-3 mr-1" />
+                                Send
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm({ show: true, messageId: message._id })}
+                                className="text-red-600 hover:text-red-900 transition-colors p-1 hover:bg-red-50 rounded"
+                                title="Delete Message"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => setSendConfirm({ show: true, messageId: message._id })}
-                              className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                            >
-                              <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-                              Send
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm({ show: true, messageId: message._id })}
-                              className="inline-flex items-center px-4 py-2 bg-red-100 text-red-700 font-medium rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all duration-200"
-                            >
-                              <TrashIcon className="h-4 w-4 mr-2" />
-                              Delete
-                            </button>
-                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

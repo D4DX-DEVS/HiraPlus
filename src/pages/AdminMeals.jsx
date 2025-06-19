@@ -13,7 +13,10 @@ const AdminMeals = () => {
   const [editingMeal, setEditingMeal] = useState(null);
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null, mealId: null });
 
@@ -46,6 +49,11 @@ const AdminMeals = () => {
   useEffect(() => {
     fetchAllMeals();
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   const handleDelete = async () => {
     try {
@@ -196,86 +204,117 @@ const AdminMeals = () => {
               )}
 
               {/* Meals Table */}
-              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden">
-                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Meal Consumption Records</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                  <h3 className="text-base font-semibold text-gray-900">Meal Consumption Records</h3>
+                  <p className="text-xs text-gray-600 mt-0.5">
                     Daily meal records for all registered users
                   </p>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <div className="flex-1 overflow-auto">
+                  <table className="w-full divide-y divide-gray-200 table-fixed">
+                    <thead className="bg-gray-50 sticky top-0">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '25%'}}>
                           User Details
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
                           Date
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
                           Breakfast
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
                           Lunch
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
                           Dinner
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {displayMeals.map((user) => (
-                        user.meals.map((meal) => (
-                          <tr key={meal._id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {user.name || 'No Name'}
+                      {displayMeals.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="px-6 py-8 text-center">
+                            <div className="text-gray-400">
+                              <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                              <p className="text-base font-medium text-gray-900 mb-1">No meal records found</p>
+                              <p className="text-sm text-gray-600">Try adjusting your search criteria or check back later.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        displayMeals.map((user) => (
+                          user.meals.map((meal, index) => (
+                            <tr key={meal._id} className="hover:bg-gray-50 transition-colors duration-150">
+                              <td className="px-3 py-2.5 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 flex-shrink-0">
+                                    {(user.name || 'N')?.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-medium text-gray-900 truncate" title={user.name || 'No Name'}>
+                                      {user.name || 'No Name'}
+                                    </div>
+                                    <div className="text-xs text-gray-500 truncate" title={user.phoneNumber}>
+                                      {user.phoneNumber}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {user.phoneNumber}
+                              </td>
+                              <td className="px-2 py-2.5 whitespace-nowrap text-xs text-gray-900">
+                                <div className="truncate" title={format(new Date(meal.date), 'dd/MM/yyyy')}>
+                                  {format(new Date(meal.date), 'dd/MM/yyyy')}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {format(new Date(meal.date), 'dd/MM/yyyy')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <span className={meal.breakfast ? 'text-green-600' : 'text-red-600'}>
-                                {meal.breakfast ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <span className={meal.lunch ? 'text-green-600' : 'text-red-600'}>
-                                {meal.lunch ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <span className={meal.dinner ? 'text-green-600' : 'text-red-600'}>
-                                {meal.dinner ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                onClick={() => handleEdit(meal)}
-                                className="text-indigo-600 hover:text-indigo-900 mr-4"
-                              >
-                                <PencilIcon className="h-5 w-5" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirm({ show: true, userId: user._id, mealId: meal._id })}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                <TrashIcon className="h-5 w-5" />
-                              </button>
-                            </td>
-                          </tr>
+                              </td>
+                              <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium ${
+                                  meal.breakfast ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {meal.breakfast ? '✓' : '✗'}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium ${
+                                  meal.lunch ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {meal.lunch ? '✓' : '✗'}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium ${
+                                  meal.dinner ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {meal.dinner ? '✓' : '✗'}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                                <div className="flex justify-center space-x-1">
+                                  <button
+                                    onClick={() => handleEdit(meal)}
+                                    className="text-green-600 hover:text-green-900 transition-colors p-1 hover:bg-green-50 rounded"
+                                    title="Edit Meal"
+                                  >
+                                    <PencilIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm({ show: true, userId: user._id, mealId: meal._id })}
+                                    className="text-red-600 hover:text-red-900 transition-colors p-1 hover:bg-red-50 rounded"
+                                    title="Delete Meal"
+                                  >
+                                    <TrashIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
                         ))
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>

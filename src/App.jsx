@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminDepartments from './pages/AdminDepartments';
 import AdminMeals from './pages/AdminMeals';
 import AdminNotifications from './pages/AdminNotifications';
 import AdminMessages from './pages/AdminMessages';
@@ -34,6 +35,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/departments"
+          element={
+            <ProtectedRoute>
+              <AdminDepartments />
             </ProtectedRoute>
           }
         />
