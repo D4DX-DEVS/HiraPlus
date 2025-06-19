@@ -97,146 +97,188 @@ const AdminMeals = () => {
   const displayMeals = filteredMeals || meals;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+      <Navbar 
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+        isSidebarOpen={isSidebarOpen}
+      />
       
-      <div className="flex pt-[60px] min-h-screen">
+      <div className="flex flex-1 h-full">
         <Sidebar isOpen={isSidebarOpen} />
         
-        <main className={`flex-1 bg-gray-100 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-          <div className="p-6">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Meal Records</h1>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <FunnelIcon className="h-5 w-5 mr-2" />
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
-                </button>
+        <main className={`flex-1 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
+        } relative z-0 h-full overflow-auto`}>
+          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              {/* Header Section */}
+              <div className="mb-4 flex-shrink-0">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                        Meal Records
+                      </h1>
+                      <p className="text-gray-600 text-lg">
+                        Monitor daily meal consumption and manage food requirements
+                      </p>
+                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                        <span className="flex items-center text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          {displayMeals.reduce((acc, user) => acc + user.meals.length, 0)} Total Records
+                        </span>
+                        <span className="flex items-center text-blue-600">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          {displayMeals.length} Active Users
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                    >
+                      <FunnelIcon className="h-5 w-5 mr-2" />
+                      {showFilters ? 'Hide Filters' : 'Show Filters'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
+              {/* Filter Section */}
               {showFilters && (
-                <div className="mb-8 bg-white shadow-lg rounded-lg p-6">
-                  <div className="flex items-end space-x-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={handleFilter}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        Apply Filter
-                      </button>
-                      <button
-                        onClick={clearFilters}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        Clear
-                      </button>
+                <div className="mb-6">
+                  <div className="bg-white rounded-xl shadow-md border border-gray-200/50 p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleFilter}
+                          className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-green-950 text-white font-semibold rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 transition-all duration-200"
+                        >
+                          Apply Filter
+                        </button>
+                        <button
+                          onClick={clearFilters}
+                          className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {error && (
-                <div className="mb-6 rounded-lg bg-red-50 p-4">
-                  <div className="text-base text-red-700">{error}</div>
+                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
+                    <div className="text-sm text-red-700 font-medium">{error}</div>
+                  </div>
                 </div>
               )}
 
-              <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        User Details
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Breakfast
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Lunch
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Dinner
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {displayMeals.map((user) => (
-                      user.meals.map((meal) => (
-                        <tr key={meal._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <div className="text-sm font-medium text-gray-900">
-                                {user.name || 'No Name'}
+              {/* Meals Table */}
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden">
+                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">Meal Consumption Records</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Daily meal records for all registered users
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          User Details
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Breakfast
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Lunch
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Dinner
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {displayMeals.map((user) => (
+                        user.meals.map((meal) => (
+                          <tr key={meal._id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {user.name || 'No Name'}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {user.phoneNumber}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {user.phoneNumber}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {format(new Date(meal.date), 'dd/MM/yyyy')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <span className={meal.breakfast ? 'text-green-600' : 'text-red-600'}>
-                              {meal.breakfast ? '✓' : '✗'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <span className={meal.lunch ? 'text-green-600' : 'text-red-600'}>
-                              {meal.lunch ? '✓' : '✗'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <span className={meal.dinner ? 'text-green-600' : 'text-red-600'}>
-                              {meal.dinner ? '✓' : '✗'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleEdit(meal)}
-                              className="text-indigo-600 hover:text-indigo-900 mr-4"
-                            >
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm({ show: true, userId: user._id, mealId: meal._id })}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ))}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {format(new Date(meal.date), 'dd/MM/yyyy')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span className={meal.breakfast ? 'text-green-600' : 'text-red-600'}>
+                                {meal.breakfast ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span className={meal.lunch ? 'text-green-600' : 'text-red-600'}>
+                                {meal.lunch ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span className={meal.dinner ? 'text-green-600' : 'text-red-600'}>
+                                {meal.dinner ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                onClick={() => handleEdit(meal)}
+                                className="text-indigo-600 hover:text-indigo-900 mr-4"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm({ show: true, userId: user._id, mealId: meal._id })}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <TrashIcon className="h-5 w-5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -274,7 +316,7 @@ const AdminMeals = () => {
                       type="checkbox"
                       checked={editingMeal.breakfast}
                       onChange={(e) => setEditingMeal({...editingMeal, breakfast: e.target.checked})}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -283,7 +325,7 @@ const AdminMeals = () => {
                       type="checkbox"
                       checked={editingMeal.lunch}
                       onChange={(e) => setEditingMeal({...editingMeal, lunch: e.target.checked})}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -292,7 +334,7 @@ const AdminMeals = () => {
                       type="checkbox"
                       checked={editingMeal.dinner}
                       onChange={(e) => setEditingMeal({...editingMeal, dinner: e.target.checked})}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                     />
                   </div>
                 </div>
@@ -301,14 +343,14 @@ const AdminMeals = () => {
                 <button
                   type="button"
                   onClick={handleSaveEdit}
-                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-green-950 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Save Changes
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingMeal(null)}
-                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
                 >
                   Cancel
                 </button>
