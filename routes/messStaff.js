@@ -344,9 +344,11 @@ router.get('/meeting-food-requirements', messStaffAuth, async (req, res) => {
         noOfPersons: meeting.noOfPersons,
         foodCounts: {
           breakfast: meeting.breakfast || 0,
-          midmorningSnacks: meeting.midmorningSnacks || 0,
+          morningSnacksCount: meeting.morningSnacksCount || 0,
+          morningTeaCount: meeting.morningTeaCount || 0,
           lunch: meeting.lunch || 0,
-          eveningsnacks: meeting.eveningsnacks || 0,
+          eveningSnacksCount: meeting.eveningSnacksCount || 0,
+          eveningTeaCount: meeting.eveningTeaCount || 0,
           dinner: meeting.dinner || 0
         },
         createdBy: meeting.createdBy
