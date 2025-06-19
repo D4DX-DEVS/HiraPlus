@@ -17,7 +17,7 @@ const deptHeadAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user details and check if they are a department head
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).populate('department', 'title');
     
     if (!user) {
       return res.status(404).json({

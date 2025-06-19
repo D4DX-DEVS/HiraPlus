@@ -6,9 +6,9 @@ const guestMealSchema = new mongoose.Schema({
     required: true
   },
   department: {
-    type: String,
-    required: true,
-    trim: true
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: true
   },
   addedBy: {
     type: mongoose.Schema.Types.Mixed,
