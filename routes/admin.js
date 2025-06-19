@@ -1187,6 +1187,7 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
               userId: '$_id.userId',
               name: '$user.name',
               phoneNumber: '$user.phoneNumber',
+              department: '$user.department',
               designation: '$user.designation',
               breakfastCount: '$breakfastCount',
               lunchCount: '$lunchCount',
@@ -1241,6 +1242,7 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
           userId: user._id,
           name: user.name || '',
           phoneNumber: user.phoneNumber || '',
+          department: user.department || '',
           designation: user.designation || '',
           breakfastCount: 0,
           lunchCount: 0,
@@ -1410,16 +1412,25 @@ router.post('/meetings', adminAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, foodRequired, breakfast,
-      midmorningSnacks, lunch, eveningsnacks, dinner,
+      hall, noOfPersons, hiraStaff, guests, foodRequired, breakfast,
+      morningSnacksCount, morningTeaCount, lunch,
+      eveningSnacksCount, eveningTeaCount, dinner,
       department
     } = req.body;
 
     // Validate required fields
-    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons || !department) {
+    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons || !hiraStaff || !guests || !department) {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
+      });
+    }
+
+    // Validate that total persons equals sum of hiraStaff and guests
+    if (parseInt(hiraStaff) + parseInt(guests) !== parseInt(noOfPersons)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Total number of persons must equal sum of HIRA staff and guests'
       });
     }
 
@@ -1453,11 +1464,15 @@ router.post('/meetings', adminAuth, async (req, res) => {
       endDatetime: new Date(endDatetime),
       hall,
       noOfPersons,
+      hiraStaff,
+      guests,
       foodRequired: foodRequired || false,
       breakfast: breakfast || 0,
-      midmorningSnacks: midmorningSnacks || 0,
+      morningSnacksCount: morningSnacksCount || 0,
+      morningTeaCount: morningTeaCount || 0,
       lunch: lunch || 0,
-      eveningsnacks: eveningsnacks || 0,
+      eveningSnacksCount: eveningSnacksCount || 0,
+      eveningTeaCount: eveningTeaCount || 0,
       dinner: dinner || 0,
       department: departmentName,
       status: 'approved', // Auto-approve for admin
@@ -1525,8 +1540,9 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, foodRequired, breakfast,
-      midmorningSnacks, lunch, eveningsnacks, dinner,
+      hall, noOfPersons, hiraStaff, guests, foodRequired, breakfast,
+      morningSnacksCount, morningTeaCount, lunch,
+      eveningSnacksCount, eveningTeaCount, dinner,
       department, status
     } = req.body;
 
@@ -1570,14 +1586,34 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
     if (startDatetime) meeting.startDatetime = new Date(startDatetime);
     if (endDatetime) meeting.endDatetime = new Date(endDatetime);
     if (hall) meeting.hall = hall;
-    if (noOfPersons) meeting.noOfPersons = noOfPersons;
+    
+    // Handle numeric fields with proper parsing
+    if (typeof noOfPersons !== 'undefined') meeting.noOfPersons = parseInt(noOfPersons);
+    if (typeof hiraStaff !== 'undefined') meeting.hiraStaff = parseInt(hiraStaff);
+    if (typeof guests !== 'undefined') meeting.guests = parseInt(guests);
+    if (typeof breakfast !== 'undefined') meeting.breakfast = parseInt(breakfast);
+    if (typeof morningSnacksCount !== 'undefined') meeting.morningSnacksCount = parseInt(morningSnacksCount);
+    if (typeof morningTeaCount !== 'undefined') meeting.morningTeaCount = parseInt(morningTeaCount);
+    if (typeof lunch !== 'undefined') meeting.lunch = parseInt(lunch);
+    if (typeof eveningSnacksCount !== 'undefined') meeting.eveningSnacksCount = parseInt(eveningSnacksCount);
+    if (typeof eveningTeaCount !== 'undefined') meeting.eveningTeaCount = parseInt(eveningTeaCount);
+    if (typeof dinner !== 'undefined') meeting.dinner = parseInt(dinner);
+    
+    // Handle boolean fields
     if (typeof foodRequired !== 'undefined') meeting.foodRequired = foodRequired;
-    if (typeof breakfast !== 'undefined') meeting.breakfast = breakfast;
-    if (typeof midmorningSnacks !== 'undefined') meeting.midmorningSnacks = midmorningSnacks;
-    if (typeof lunch !== 'undefined') meeting.lunch = lunch;
-    if (typeof eveningsnacks !== 'undefined') meeting.eveningsnacks = eveningsnacks;
-    if (typeof dinner !== 'undefined') meeting.dinner = dinner;
     if (status && ['approved', 'pending'].includes(status)) meeting.status = status;
+
+    // Validate that total persons equals sum of hiraStaff and guests
+    const totalHiraStaff = meeting.hiraStaff;
+    const totalGuests = meeting.guests;
+    const totalPersons = meeting.noOfPersons;
+    
+    if (totalHiraStaff + totalGuests !== totalPersons) {
+      return res.status(400).json({
+        success: false,
+        message: 'Total number of persons must equal sum of HIRA staff and guests'
+      });
+    }
 
     await meeting.save();
 
@@ -1641,6 +1677,236 @@ router.get('/departments', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// Get department-wise rent bills
+router.get('/department-rent-bills', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+
+    // Build the query
+    const query = {
+      status: 'approved',
+      startDatetime: { $gte: new Date(startDate), $lte: new Date(endDate) }
+    };
+
+    if (department) {
+      query.department = department;
+    }
+
+    // Fetch meetings and group by department
+    const meetings = await Meeting.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$department',
+          meetingCount: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: '$_id',
+          meetingCount: 1
+        }
+      },
+      { $sort: { department: 1 } }
+    ]);
+
+    res.json({
+      departments: meetings
+    });
+  } catch (error) {
+    console.error('Error fetching department rent bills:', error);
+    res.status(500).json({ message: 'Error fetching department rent bills' });
+  }
+});
+
+// Get department-wise guest meal bills
+router.get('/department-guest-meals', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Build match condition
+    const matchCondition = {
+      date: { $gte: start, $lte: end }
+    };
+
+    if (department) {
+      matchCondition.department = department;
+    }
+
+    // Get guest meal counts using aggregation
+    const guestMealCounts = await GuestMeal.aggregate([
+      {
+        $match: matchCondition
+      },
+      {
+        $group: {
+          _id: '$department',
+          breakfastCount: { $sum: '$breakfastCount' },
+          lunchCount: { $sum: '$lunchCount' },
+          dinnerCount: { $sum: '$dinnerCount' },
+          totalMeals: {
+            $sum: {
+              $add: ['$breakfastCount', '$lunchCount', '$dinnerCount']
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: '$_id',
+          breakfastCount: 1,
+          lunchCount: 1,
+          dinnerCount: 1,
+          totalMeals: 1
+        }
+      },
+      {
+        $sort: { department: 1 }
+      }
+    ]);
+
+    res.json({
+      departments: guestMealCounts
+    });
+  } catch (error) {
+    console.error('Error fetching guest meal bills:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch guest meal bills',
+      error: error.message 
+    });
+  }
+});
+
+// Get department-wise meeting food bills
+router.get('/meeting-food-bills', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Build match condition for meetings within date range and approved status
+    const matchCondition = {
+      status: 'approved',
+      startDatetime: { $gte: start, $lte: end },
+      foodRequired: true
+    };
+
+    if (department) {
+      matchCondition.department = department;
+    }
+
+    // Get meeting food counts using aggregation
+    const meetingFoodCounts = await Meeting.aggregate([
+      {
+        $match: matchCondition
+      },
+      {
+        $group: {
+          _id: '$department',
+          breakfast: { $sum: '$breakfast' },
+          lunch: { $sum: '$lunch' },
+          dinner: { $sum: '$dinner' },
+          morningSnacksCount: { $sum: '$morningSnacksCount' },
+          morningTeaCount: { $sum: '$morningTeaCount' },
+          eveningSnacksCount: { $sum: '$eveningSnacksCount' },
+          eveningTeaCount: { $sum: '$eveningTeaCount' },
+          totalMeetings: { $sum: 1 },
+          totalFood: {
+            $sum: {
+              $add: [
+                '$breakfast',
+                '$lunch', 
+                '$dinner',
+                '$morningSnacksCount',
+                '$morningTeaCount',
+                '$eveningSnacksCount',
+                '$eveningTeaCount'
+              ]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: '$_id',
+          breakfast: 1,
+          lunch: 1,
+          dinner: 1,
+          morningSnacksCount: 1,
+          morningTeaCount: 1,
+          eveningSnacksCount: 1,
+          eveningTeaCount: 1,
+          totalMeetings: 1,
+          totalFood: 1
+        }
+      },
+      {
+        $sort: { department: 1 }
+      }
+    ]);
+
+    // Calculate overall totals
+    const overallTotals = meetingFoodCounts.reduce((acc, dept) => {
+      acc.breakfast += dept.breakfast || 0;
+      acc.lunch += dept.lunch || 0;
+      acc.dinner += dept.dinner || 0;
+      acc.morningSnacksCount += dept.morningSnacksCount || 0;
+      acc.morningTeaCount += dept.morningTeaCount || 0;
+      acc.eveningSnacksCount += dept.eveningSnacksCount || 0;
+      acc.eveningTeaCount += dept.eveningTeaCount || 0;
+      acc.totalMeetings += dept.totalMeetings || 0;
+      acc.totalFood += dept.totalFood || 0;
+      return acc;
+    }, {
+      breakfast: 0,
+      lunch: 0,
+      dinner: 0,
+      morningSnacksCount: 0,
+      morningTeaCount: 0,
+      eveningSnacksCount: 0,
+      eveningTeaCount: 0,
+      totalMeetings: 0,
+      totalFood: 0
+    });
+
+    res.json({
+      dateRange: {
+        from: start,
+        to: end
+      },
+      overallTotals,
+      departments: meetingFoodCounts
+    });
+  } catch (error) {
+    console.error('Error fetching meeting food bills:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch meeting food bills',
+      error: error.message 
     });
   }
 });

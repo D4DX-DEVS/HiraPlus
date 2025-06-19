@@ -22,12 +22,26 @@ const meetingSchema = new mongoose.Schema({
   hall: {
     type: String,
     required: true,
-    enum: ['Auditorium', 'Conference Hall', 'Meeting Space']
+    enum: ['Auditorium [2nd Floor]', 'Conference Hall [3rd Floor]', 'Meeting Space [1st Floor]']
+  },
+  rent: {
+    type: Number,
+    default: 2000
   },
   noOfPersons: {
     type: Number,
     required: true,
     min: 1
+  },
+  hiraStaff: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  guests: {
+    type: Number,
+    required: true,
+    min: 0
   },
   foodRequired: {
     type: Boolean,
@@ -37,7 +51,11 @@ const meetingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  midmorningSnacks: {
+  morningSnacksCount: {
+    type: Number,
+    default: 0
+  },
+  morningTeaCount: {
     type: Number,
     default: 0
   },
@@ -45,7 +63,11 @@ const meetingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  eveningsnacks: {
+  eveningSnacksCount: {
+    type: Number,
+    default: 0
+  },
+  eveningTeaCount: {
     type: Number,
     default: 0
   },
@@ -82,11 +104,19 @@ meetingSchema.pre('save', function(next) {
 // Add validation for food counts if foodRequired is true
 meetingSchema.pre('save', function(next) {
   if (this.foodRequired) {
-    const totalFood = this.breakfast + this.midmorningSnacks + 
-                     this.lunch + this.eveningsnacks + this.dinner;
+    const totalFood = this.breakfast + this.morningSnacksCount + this.morningTeaCount +
+                     this.lunch + this.eveningSnacksCount + this.eveningTeaCount + this.dinner;
     if (totalFood === 0) {
       next(new Error('At least one meal count must be specified when food is required'));
     }
+  }
+  next();
+});
+
+// Add validation for total persons matching sum of hiraStaff and guests
+meetingSchema.pre('save', function(next) {
+  if (this.hiraStaff + this.guests !== this.noOfPersons) {
+    next(new Error('Total number of persons must equal sum of HIRA staff and guests'));
   }
   next();
 });

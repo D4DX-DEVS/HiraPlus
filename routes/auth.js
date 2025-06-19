@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const GuestMeal = require('../models/GuestMeal');
+const CheckIn = require('../models/CheckIn');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const deptHeadAuth = require('../middleware/deptHeadAuth');
@@ -729,6 +730,54 @@ router.get('/departments', async (req, res) => {
     });
   } catch (error) {
     console.error('Fetch departments error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get today's checked-in users (Public route)
+router.get('/today-checked-in', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Find all check-ins from today
+    const todayCheckIns = await CheckIn.find({
+      date: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: 'CheckedIn' // Only get users who are still checked in
+    })
+    .populate('user', 'name department designation')
+    .sort({ checkedInTime: -1 });
+
+    // Group check-ins by department for better organization
+    const byDepartment = todayCheckIns.reduce((acc, checkIn) => {
+      const dept = checkIn.user.department;
+      if (!acc[dept]) {
+        acc[dept] = [];
+      }
+      acc[dept].push({
+        name: checkIn.user.name,
+        designation: checkIn.user.designation,
+        checkedInTime: checkIn.checkedInTime
+      });
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      totalCheckedIn: todayCheckIns.length,
+      byDepartment,
+      checkIns: todayCheckIns
+    });
+  } catch (error) {
+    console.error('Fetch today checked-in users error:', error);
     res.status(500).json({
       success: false,
       message: error.message
