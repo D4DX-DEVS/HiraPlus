@@ -9,6 +9,7 @@ import AdminBanners from './pages/AdminBanners';
 import BillGenerator from './pages/BillGenerator';
 import GuestMeals from './pages/GuestMeals';
 import Meetings from './pages/Meetings';
+import LandingPage from './pages/LandingPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -23,8 +24,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Redirect root to admin login */}
-        <Route path="/" element={<Navigate to="/admin/login" replace />} />
+        {/* Landing page as root */}
+        <Route path="/" element={<LandingPage />} />
         
         {/* Admin routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -92,8 +93,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        
       </Routes>
     </Router>
   );

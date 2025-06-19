@@ -32,18 +32,26 @@ const Meetings = () => {
     description: '',
     startDatetime: '',
     endDatetime: '',
-    hall: 'Auditorium',
+    hall: 'Auditorium [2nd Floor]',
     noOfPersons: 0,
+    hiraStaff: 0,
+    guests: 0,
     foodRequired: false,
     breakfast: 0,
-    midmorningSnacks: 0,
+    morningSnacksCount: 0,
+    morningTeaCount: 0,
     lunch: 0,
-    eveningsnacks: 0,
+    eveningSnacksCount: 0,
+    eveningTeaCount: 0,
     dinner: 0,
     department: ''
   });
 
-  const halls = ['Auditorium', 'Conference Hall', 'Meeting Space'];
+  const halls = [
+    'Auditorium [2nd Floor]',
+    'Conference Hall [3rd Floor]',
+    'Meeting Space [1st Floor]'
+  ];
 
   // Fetch departments
   useEffect(() => {
@@ -115,10 +123,25 @@ const Meetings = () => {
       const url = `${import.meta.env.VITE_API_URL}/admin/meetings${editingMeeting ? `/${editingMeeting._id}` : ''}`;
       const method = editingMeeting ? 'put' : 'post';
 
+      // Ensure all numeric fields are properly parsed
+      const submitData = {
+        ...formData,
+        noOfPersons: parseInt(formData.noOfPersons) || 0,
+        hiraStaff: Math.floor(formData.noOfPersons / 2) || 0,
+        guests: Math.ceil(formData.noOfPersons / 2) || 0,
+        breakfast: parseInt(formData.breakfast) || 0,
+        morningSnacksCount: parseInt(formData.morningSnacksCount) || 0,
+        morningTeaCount: parseInt(formData.morningTeaCount) || 0,
+        lunch: parseInt(formData.lunch) || 0,
+        eveningSnacksCount: parseInt(formData.eveningSnacksCount) || 0,
+        eveningTeaCount: parseInt(formData.eveningTeaCount) || 0,
+        dinner: parseInt(formData.dinner) || 0
+      };
+
       await axios({
         method,
         url,
-        data: formData,
+        data: submitData,
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -129,13 +152,17 @@ const Meetings = () => {
         description: '',
         startDatetime: '',
         endDatetime: '',
-        hall: 'Auditorium',
+        hall: 'Auditorium [2nd Floor]',
         noOfPersons: 0,
+        hiraStaff: 0,
+        guests: 0,
         foodRequired: false,
         breakfast: 0,
-        midmorningSnacks: 0,
+        morningSnacksCount: 0,
+        morningTeaCount: 0,
         lunch: 0,
-        eveningsnacks: 0,
+        eveningSnacksCount: 0,
+        eveningTeaCount: 0,
         dinner: 0,
         department: ''
       });
@@ -161,19 +188,23 @@ const Meetings = () => {
   const handleEdit = (meeting) => {
     setEditingMeeting(meeting);
     setFormData({
-      title: meeting.title,
-      description: meeting.description,
+      title: meeting.title || '',
+      description: meeting.description || '',
       startDatetime: format(new Date(meeting.startDatetime), "yyyy-MM-dd'T'HH:mm"),
       endDatetime: format(new Date(meeting.endDatetime), "yyyy-MM-dd'T'HH:mm"),
-      hall: meeting.hall,
-      noOfPersons: meeting.noOfPersons,
-      foodRequired: meeting.foodRequired,
+      hall: meeting.hall || 'Auditorium [2nd Floor]',
+      noOfPersons: meeting.noOfPersons || 0,
+      hiraStaff: meeting.hiraStaff || 0,
+      guests: meeting.guests || 0,
+      foodRequired: meeting.foodRequired || false,
       breakfast: meeting.breakfast || 0,
-      midmorningSnacks: meeting.midmorningSnacks || 0,
+      morningSnacksCount: meeting.morningSnacksCount || 0,
+      morningTeaCount: meeting.morningTeaCount || 0,
       lunch: meeting.lunch || 0,
-      eveningsnacks: meeting.eveningsnacks || 0,
+      eveningSnacksCount: meeting.eveningSnacksCount || 0,
+      eveningTeaCount: meeting.eveningTeaCount || 0,
       dinner: meeting.dinner || 0,
-      department: meeting.department
+      department: meeting.department || ''
     });
     setShowModal(true);
   };
@@ -216,107 +247,188 @@ const Meetings = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+      <Navbar 
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+        isSidebarOpen={isSidebarOpen}
+      />
       
-      <div className="flex pt-[60px] min-h-screen">
+      <div className="flex flex-1 h-full">
         <Sidebar isOpen={isSidebarOpen} />
         
-        <main className={`flex-1 bg-gray-100 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-          <div className="p-6">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-semibold text-gray-900">Meeting Management</h1>
-                <button
-                  onClick={() => {
-                    setEditingMeeting(null);
-                    setFormData({
-                      title: '',
-                      description: '',
-                      startDatetime: '',
-                      endDatetime: '',
-                      hall: 'Auditorium',
-                      noOfPersons: 0,
-                      foodRequired: false,
-                      breakfast: 0,
-                      midmorningSnacks: 0,
-                      lunch: 0,
-                      eveningsnacks: 0,
-                      dinner: 0,
-                      department: ''
-                    });
-                    setShowModal(true);
-                  }}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md flex items-center hover:bg-indigo-700"
-                >
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  Add Meeting
-                </button>
+        <main className={`flex-1 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
+        } relative z-0 h-full overflow-auto`}>
+          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              {/* Header Section */}
+              <div className="mb-4 flex-shrink-0">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                        Meeting Management
+                      </h1>
+                      <p className="text-gray-600 text-lg">
+                        Schedule meetings, manage bookings, and track approval status
+                      </p>
+                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                        <span className="flex items-center text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          {filteredMeetings.filter(m => m.status === 'approved').length} Approved
+                        </span>
+                        <span className="flex items-center text-yellow-600">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                          {filteredMeetings.filter(m => m.status === 'pending').length} Pending
+                        </span>
+                        <span className="flex items-center text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          {filteredMeetings.length} Total
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingMeeting(null);
+                        setFormData({
+                          title: '',
+                          description: '',
+                          startDatetime: '',
+                          endDatetime: '',
+                          hall: 'Auditorium [2nd Floor]',
+                          noOfPersons: 0,
+                          hiraStaff: 0,
+                          guests: 0,
+                          foodRequired: false,
+                          breakfast: 0,
+                          morningSnacksCount: 0,
+                          morningTeaCount: 0,
+                          lunch: 0,
+                          eveningSnacksCount: 0,
+                          eveningTeaCount: 0,
+                          dinner: 0,
+                          department: ''
+                        });
+                        setShowModal(true);
+                      }}
+                      className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                    >
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      Add Meeting
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Search and Filter Section */}
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Search Box */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by title, description, department, or hall..."
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
+              <div className="mb-6">
+                <div className="bg-white rounded-xl shadow-md border border-gray-200/50 p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Search Box */}
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by title, description, department, or hall..."
+                        className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                      />
+                    </div>
 
-                {/* Department Filter */}
-                <div>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  >
-                    <option value="">All Departments</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
+                    {/* Department Filter */}
+                    <div>
+                      <select
+                        value={selectedDepartment}
+                        onChange={(e) => setSelectedDepartment(e.target.value)}
+                        className="block w-full px-4 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                      >
+                        <option value="">All Departments</option>
+                        {departments.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {error && (
-                <div className="mb-4 rounded-md bg-red-50 p-3">
-                  <div className="text-sm text-red-700">{error}</div>
+                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
+                    <div className="text-sm text-red-700 font-medium">{error}</div>
+                  </div>
                 </div>
               )}
 
-              {/* Modal */}
+              {/* Add/Edit Form */}
               {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <h2 className="text-xl font-semibold mb-4">
-                      {editingMeeting ? 'Edit Meeting' : 'Add Meeting'}
-                    </h2>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="mb-4 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-6 flex-shrink-0 max-w-4xl mx-auto">
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          {editingMeeting ? 'Edit Meeting' : 'Add Meeting'}
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {editingMeeting ? 'Update meeting details and requirements' : 'Create a new meeting with all necessary details'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowModal(false);
+                          setEditingMeeting(null);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Close"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Basic Information */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Title</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                              Title
+                            </span>
+                          </label>
                           <input
                             type="text"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                            placeholder="Enter meeting title"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Department</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              </svg>
+                              Department
+                            </span>
+                          </label>
                           <select
                             value={showCustomDepartment ? 'other' : formData.department}
                             onChange={handleDepartmentChange}
-                            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                             required
                           >
                             <option value="">Select Department</option>
@@ -328,13 +440,20 @@ const Meetings = () => {
                         </div>
 
                         {showCustomDepartment && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">New Department Name</label>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <span className="flex items-center">
+                                <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                New Department Name
+                              </span>
+                            </label>
                             <input
                               type="text"
                               value={customDepartment}
                               onChange={handleCustomDepartmentChange}
-                              className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                               placeholder="Enter new department name"
                               required
                             />
@@ -342,33 +461,54 @@ const Meetings = () => {
                         )}
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Start Date & Time</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Start Date & Time
+                            </span>
+                          </label>
                           <input
                             type="datetime-local"
                             value={formData.startDatetime}
                             onChange={(e) => setFormData({ ...formData, startDatetime: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">End Date & Time</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              End Date & Time
+                            </span>
+                          </label>
                           <input
                             type="datetime-local"
                             value={formData.endDatetime}
                             onChange={(e) => setFormData({ ...formData, endDatetime: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Hall</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              </svg>
+                              Hall
+                            </span>
+                          </label>
                           <select
                             value={formData.hall}
                             onChange={(e) => setFormData({ ...formData, hall: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                             required
                           >
                             {halls.map(hall => (
@@ -378,132 +518,198 @@ const Meetings = () => {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Number of Persons</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                              </svg>
+                              Total Participants
+                            </span>
+                          </label>
                           <input
                             type="number"
-                            min="1"
+                            min="0"
                             value={formData.noOfPersons}
-                            onChange={(e) => setFormData({ ...formData, noOfPersons: parseInt(e.target.value) || 0 })}
-                            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                            onChange={(e) => {
+                              const total = parseInt(e.target.value) || 0;
+                              setFormData(prev => ({
+                                ...prev,
+                                noOfPersons: total,
+                                hiraStaff: Math.floor(total / 2),
+                                guests: Math.ceil(total / 2)
+                              }));
+                            }}
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                            placeholder="0"
                             required
                           />
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <span className="flex items-center">
+                            <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                            </svg>
+                            Description
+                          </span>
+                        </label>
                         <textarea
                           value={formData.description}
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           rows={3}
-                          className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
+                          className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
+                          placeholder="Enter meeting description"
                           required
                         />
                       </div>
+                    </div>
 
-                      <div className="space-y-4">
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id="foodRequired"
-                            checked={formData.foodRequired}
-                            onChange={(e) => setFormData({ ...formData, foodRequired: e.target.checked })}
-                            className="h-4 w-4 text-indigo-600 rounded border-gray-300"
-                          />
-                          <label htmlFor="foodRequired" className="ml-2 text-sm font-medium text-gray-700">
-                            Food Required
-                          </label>
-                        </div>
+                    {/* Food Requirements */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center mb-4">
+                        <input
+                          type="checkbox"
+                          id="foodRequired"
+                          checked={formData.foodRequired}
+                          onChange={(e) => setFormData({ ...formData, foodRequired: e.target.checked })}
+                          className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="foodRequired" className="ml-3 text-lg font-semibold text-gray-900">
+                          Food Required
+                        </label>
+                      </div>
 
-                        {formData.foodRequired && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Breakfast</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={formData.breakfast}
-                                onChange={(e) => setFormData({ ...formData, breakfast: parseInt(e.target.value) || 0 })}
-                                className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Mid-morning Snacks</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={formData.midmorningSnacks}
-                                onChange={(e) => setFormData({ ...formData, midmorningSnacks: parseInt(e.target.value) || 0 })}
-                                className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Lunch</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={formData.lunch}
-                                onChange={(e) => setFormData({ ...formData, lunch: parseInt(e.target.value) || 0 })}
-                                className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Evening Snacks</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={formData.eveningsnacks}
-                                onChange={(e) => setFormData({ ...formData, eveningsnacks: parseInt(e.target.value) || 0 })}
-                                className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Dinner</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={formData.dinner}
-                                onChange={(e) => setFormData({ ...formData, dinner: parseInt(e.target.value) || 0 })}
-                                className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2"
-                              />
-                            </div>
+                      {formData.foodRequired && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Breakfast</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.breakfast}
+                              onChange={(e) => setFormData({ ...formData, breakfast: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
                           </div>
-                        )}
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Morning Snacks</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.morningSnacksCount}
+                              onChange={(e) => setFormData({ ...formData, morningSnacksCount: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Morning Tea</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.morningTeaCount}
+                              onChange={(e) => setFormData({ ...formData, morningTeaCount: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Lunch</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.lunch}
+                              onChange={(e) => setFormData({ ...formData, lunch: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Evening Snacks</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.eveningSnacksCount}
+                              onChange={(e) => setFormData({ ...formData, eveningSnacksCount: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Evening Tea</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.eveningTeaCount}
+                              onChange={(e) => setFormData({ ...formData, eveningTeaCount: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Dinner</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.dinner}
+                              onChange={(e) => setFormData({ ...formData, dinner: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="mt-6 flex justify-end space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => setShowModal(false)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
-                        >
-                          {editingMeeting ? 'Update' : 'Create'}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+                    {/* Action Buttons */}
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowModal(false);
+                          setEditingMeeting(null);
+                        }}
+                        className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                      >
+                        {editingMeeting ? 'Update Meeting' : 'Create Meeting'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
 
+              {/* Meetings Table */}
               {loading ? (
-                <div className="text-center py-12">
-                  <div className="text-lg text-gray-600">Loading...</div>
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center py-12">
+                    <div className="text-lg text-gray-600">Loading...</div>
+                  </div>
                 </div>
               ) : (
-                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
+                  <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                    <h3 className="text-base font-semibold text-gray-900">Meeting Directory</h3>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      {filteredMeetings.length} meeting{filteredMeetings.length !== 1 ? 's' : ''} found
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hall</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
                           <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -511,60 +717,68 @@ const Meetings = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMeetings.map((meeting, index) => (
-                          <tr key={meeting._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.title}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.department}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.hall}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {format(new Date(meeting.startDatetime), 'MMM d, yyyy HH:mm')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {format(new Date(meeting.endDatetime), 'MMM d, yyyy HH:mm')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                              <button
-                                onClick={() => setStatusConfirm({ show: true, meeting })}
-                                className={`px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${
-                                  meeting.status === 'approved' 
-                                    ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                                }`}
-                              >
-                                {meeting.status === 'approved' ? (
-                                  <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                ) : (
-                                  <ClockIcon className="h-4 w-4 mr-1" />
-                                )}
-                                {meeting.status}
-                              </button>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end space-x-2">
-                                <button
-                                  onClick={() => handleEdit(meeting)}
-                                  className="text-indigo-600 hover:text-indigo-900 transition-colors p-1.5 hover:bg-indigo-50 rounded-full"
-                                  title="Edit"
-                                >
-                                  <PencilIcon className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => setDeleteConfirm({ show: true, meetingId: meeting._id })}
-                                  className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-                                  title="Delete"
-                                >
-                                  <TrashIcon className="h-4 w-4" />
-                                </button>
+                        {filteredMeetings.length === 0 ? (
+                          <tr>
+                            <td colSpan="8" className="px-6 py-8 text-center">
+                              <div className="text-gray-400">
+                                <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3a4 4 0 118 0v4m-4 8v6m0 0l4-4m-4 4l-4-4m4-16a8 8 0 11-8 8 8 8 0 018-8z" />
+                                </svg>
+                                <p className="text-base font-medium text-gray-900 mb-1">No meetings found</p>
+                                <p className="text-sm text-gray-600">Try adjusting your search criteria or add a new meeting.</p>
                               </div>
                             </td>
                           </tr>
-                        ))}
-                        {filteredMeetings.length === 0 && (
-                          <tr>
-                            <td colSpan="7" className="px-6 py-4 text-center text-gray-500 italic">
-                              No meetings found
-                            </td>
-                          </tr>
+                        ) : (
+                          filteredMeetings.map((meeting, index) => (
+                            <tr key={meeting._id} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.title}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.department}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.hall}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.noOfPersons}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {format(new Date(meeting.startDatetime), 'MMM d, yyyy HH:mm')}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {format(new Date(meeting.endDatetime), 'MMM d, yyyy HH:mm')}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                <button
+                                  onClick={() => setStatusConfirm({ show: true, meeting })}
+                                  className={`px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${
+                                    meeting.status === 'approved' 
+                                      ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                  }`}
+                                >
+                                  {meeting.status === 'approved' ? (
+                                    <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                  ) : (
+                                    <ClockIcon className="h-4 w-4 mr-1" />
+                                  )}
+                                  {meeting.status}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex justify-end space-x-2">
+                                  <button
+                                    onClick={() => handleEdit(meeting)}
+                                    className="text-green-600 hover:text-green-900 transition-colors p-1.5 hover:bg-green-50 rounded-full"
+                                    title="Edit"
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm({ show: true, meetingId: meeting._id })}
+                                    className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
+                                    title="Delete"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
                         )}
                       </tbody>
                     </table>

@@ -91,170 +91,382 @@ const styles = StyleSheet.create({
   },
 });
 
+// Add ErrorBoundary component
+class PDFErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <button className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600">
+          Error generating PDF
+        </button>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // PDF Document Component
-const BillPDF = ({ billData, dateRange, mealRates, departmentShare, totalAmount, departmentPayable, employeePayable, departmentData, selectedDepartment }) => {
-  // Safely filter departments
-  const filteredDepartments = departmentData?.departments?.filter(
-    dept => !selectedDepartment || dept.department === selectedDepartment
-  ) || [];
+const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange, mealRates, meetingFoodRates, rentRate, departmentShare, totalAmount, departmentPayable, employeePayable, departmentData, selectedDepartment, billType }) => {
+  try {
+    // Early return if required data is missing
+    if (!dateRange?.startDate || !dateRange?.endDate) {
+      console.error('Missing date range');
+      return null;
+    }
 
-  // Safely get users from departments
-  const filteredUsers = billData?.departments
-    ?.filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-    ?.map(dept => dept.users)
-    ?.flat() || [];
+    // For rent bills, ensure we have rentData
+    if (billType === 'rent' && (!rentData?.departments || rentData.departments.length === 0)) {
+      console.error('Missing rent data');
+      return null;
+    }
 
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.header}>
-          Monthly Mess Bill Report
-          {selectedDepartment && ` - ${selectedDepartment} Department`}
-        </Text>
-        
-        <View style={styles.section}>
-          <Text style={styles.dateRange}>
-            Billing Period: {format(new Date(dateRange.startDate), 'MMMM d, yyyy')} to {format(new Date(dateRange.endDate), 'MMMM d, yyyy')}
+    // For food bills, ensure we have billData and departmentData
+    if (billType === 'food' && (!billData?.departments || !departmentData?.departments)) {
+      console.error('Missing food bill data');
+      return null;
+    }
+
+    // For guest meals, ensure we have guestMealData
+    if (billType === 'guest' && (!guestMealData?.departments || guestMealData.departments.length === 0)) {
+      console.error('Missing guest meal data');
+      return null;
+    }
+
+    // For meeting food, ensure we have meetingFoodData
+    if (billType === 'meeting' && (!meetingFoodData?.departments || meetingFoodData.departments.length === 0)) {
+      console.error('Missing meeting food data');
+      return null;
+    }
+
+    // Get the appropriate departments based on bill type
+    const departments = billType === 'food' 
+      ? departmentData.departments
+      : billType === 'rent' ? rentData.departments 
+      : billType === 'meeting' ? meetingFoodData.departments
+      : guestMealData.departments;
+
+    const filteredDepartments = departments.filter(
+      dept => !selectedDepartment || dept.department === selectedDepartment
+    );
+
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.header}>
+            {billType === 'food' ? 'Monthly Mess Bill Report' 
+             : billType === 'rent' ? 'Monthly Auditorium Rent Report' 
+             : billType === 'meeting' ? 'Monthly Meeting Food Report'
+             : 'Monthly Guest Meals Report'}
+            {selectedDepartment ? ` - ${selectedDepartment} Department` : ''}
           </Text>
-
-          <Text style={styles.ratesInfo}>
-            Meal Rates: Breakfast {String(mealRates.breakfast)} | Lunch {String(mealRates.lunch)} | Dinner {String(mealRates.dinner)}
-          </Text>
-          <Text style={styles.ratesInfo}>
-            Department Share: {String(departmentShare)}%
-          </Text>
-        </View>
-
-        {/* Summary Section */}
-        <View style={[styles.section, { flexDirection: 'row', justifyContent: 'space-between' }]}>
-          <View style={[styles.summaryCard, { flex: 1, marginRight: 10 }]}>
-            <Text style={styles.summaryTitle}>Total Amount</Text>
-            <Text style={styles.summaryValue}>{String(Math.round(totalAmount))}</Text>
-          </View>
-          <View style={[styles.summaryCard, { flex: 1, marginHorizontal: 10 }]}>
-            <Text style={styles.summaryTitle}>Department Share</Text>
-            <Text style={styles.summaryValue}>{String(Math.round(departmentPayable))}</Text>
-          </View>
-          <View style={[styles.summaryCard, { flex: 1, marginLeft: 10 }]}>
-            <Text style={styles.summaryTitle}>Employee Payable</Text>
-            <Text style={styles.summaryValue}>{String(Math.round(employeePayable))}</Text>
-          </View>
-        </View>
-
-        {/* Department-wise Summary Table */}
-        {filteredDepartments.length > 0 && (
+          
           <View style={styles.section}>
-            <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
-              {selectedDepartment ? `${selectedDepartment} Department Summary` : 'Department-wise Summary'}
+            <Text style={styles.dateRange}>
+              Billing Period: {format(new Date(dateRange.startDate), 'MMMM d, yyyy')} to {format(new Date(dateRange.endDate), 'MMMM d, yyyy')}
             </Text>
-            <View style={styles.table}>
-              {/* Table Header */}
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
-                <Text style={styles.tableCellRight}>B</Text>
-                <Text style={styles.tableCellRight}>L</Text>
-                <Text style={styles.tableCellRight}>D</Text>
-                <Text style={styles.tableCellRight}>Total</Text>
-                <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Amount</Text>
-                <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept.</Text>
-                <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Emp.</Text>
-              </View>
 
-              {/* Department Rows */}
-              {filteredDepartments.map((dept) => {
-                const deptTotal = (
-                  dept.breakfastCount * mealRates.breakfast +
-                  dept.lunchCount * mealRates.lunch +
-                  dept.dinnerCount * mealRates.dinner
-                );
-                const deptShare = (deptTotal * departmentShare) / 100;
-                const empShare = deptTotal - deptShare;
+            {billType === 'food' ? (
+              <Text style={styles.ratesInfo}>
+                Meal Rates: Breakfast {mealRates?.breakfast || 0} | Lunch {mealRates?.lunch || 0} | Dinner {mealRates?.dinner || 0}
+              </Text>
+            ) : billType === 'rent' ? (
+              <Text style={styles.ratesInfo}>
+                Auditorium Rent Rate: {rentRate || 0}
+              </Text>
+            ) : billType === 'meeting' ? (
+              <>
+                <Text style={styles.ratesInfo}>
+                  Meeting Food Rates: Breakfast {meetingFoodRates?.breakfast || 0} | Lunch {meetingFoodRates?.lunch || 0} | Dinner {meetingFoodRates?.dinner || 0}
+                </Text>
+                <Text style={styles.ratesInfo}>
+                  Snacks & Tea: Morning Snacks {meetingFoodRates?.morningSnacks || 0} | Morning Tea {meetingFoodRates?.morningTea || 0} | Evening Snacks {meetingFoodRates?.eveningSnacks || 0} | Evening Tea {meetingFoodRates?.eveningTea || 0}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.ratesInfo}>
+                Guest Meal Rates: Breakfast {mealRates?.breakfast || 0} | Lunch {mealRates?.lunch || 0} | Dinner {mealRates?.dinner || 0}
+              </Text>
+            )}
+            <Text style={styles.ratesInfo}>
+              Department Share: {departmentShare || 0}%
+            </Text>
+          </View>
 
-                return (
-                  <View key={dept.department} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, { flex: 2 }]}>{dept.department}</Text>
-                    <Text style={styles.tableCellRight}>{dept.breakfastCount}</Text>
-                    <Text style={styles.tableCellRight}>{dept.lunchCount}</Text>
-                    <Text style={styles.tableCellRight}>{dept.dinnerCount}</Text>
-                    <Text style={styles.tableCellRight}>{dept.totalMeals}</Text>
-                    <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptTotal)}</Text>
-                    <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptShare)}</Text>
-                    <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(empShare)}</Text>
-                  </View>
-                );
-              })}
+          {/* Summary Section */}
+          <View style={[styles.section, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+            <View style={[styles.summaryCard, { flex: 1, marginRight: 10 }]}>
+              <Text style={styles.summaryTitle}>Total Amount</Text>
+              <Text style={styles.summaryValue}>{Math.round(totalAmount || 0)}</Text>
+            </View>
+            <View style={[styles.summaryCard, { flex: 1, marginHorizontal: 10 }]}>
+              <Text style={styles.summaryTitle}>Department Share</Text>
+              <Text style={styles.summaryValue}>{Math.round(departmentPayable || 0)}</Text>
+            </View>
+            <View style={[styles.summaryCard, { flex: 1, marginLeft: 10 }]}>
+              <Text style={styles.summaryTitle}>Employee Payable</Text>
+              <Text style={styles.summaryValue}>{Math.round(employeePayable || 0)}</Text>
             </View>
           </View>
-        )}
 
-        {/* User-wise Bills Table */}
-        {filteredUsers.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
-              {selectedDepartment ? `${selectedDepartment} Employee Details` : 'Employee-wise Details'}
-            </Text>
-            <View style={styles.table}>
-              {/* Table Header */}
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>Name</Text>
-                <Text style={[styles.tableCell, { flex: 1.5 }]}>Department</Text>
-                <Text style={[styles.tableCellRight, { flex: 1 }]}>Breakfast</Text>
-                <Text style={[styles.tableCellRight, { flex: 1 }]}>Lunch</Text>
-                <Text style={[styles.tableCellRight, { flex: 1 }]}>Dinner</Text>
-                <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Total</Text>
-                <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept. Share</Text>
-                <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Emp. Pay</Text>
+          {/* Rent Bills Table */}
+          {billType === 'rent' && (
+            <View style={styles.section}>
+              <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
+                {selectedDepartment ? `${selectedDepartment} Department Rent Summary` : 'Department-wise Rent Summary'}
+              </Text>
+              <View style={styles.table}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
+                  <Text style={styles.tableCellRight}>Meetings</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Total Rent</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept. Share</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Emp. Share</Text>
+                </View>
+
+                {filteredDepartments.map((dept) => {
+                  if (!dept) return null;
+                  const totalRent = (dept.meetingCount || 0) * (rentRate || 0);
+                  const deptShare = (totalRent * (departmentShare || 0)) / 100;
+                  const empShare = totalRent - deptShare;
+
+                  return (
+                    <View key={dept.department} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 2 }]}>{dept.department || ''}</Text>
+                      <Text style={styles.tableCellRight}>{dept.meetingCount || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(totalRent)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptShare)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(empShare)}</Text>
+                    </View>
+                  );
+                })}
               </View>
-
-              {/* Table Body */}
-              {filteredUsers.map((user, index) => {
-                const breakfastAmount = user.breakfastCount * mealRates.breakfast;
-                const lunchAmount = user.lunchCount * mealRates.lunch;
-                const dinnerAmount = user.dinnerCount * mealRates.dinner;
-                const totalMealAmount = breakfastAmount + lunchAmount + dinnerAmount;
-                const deptShare = (totalMealAmount * departmentShare) / 100;
-                const empShare = totalMealAmount - deptShare;
-
-                return (
-                  <View key={user.userId} style={[styles.tableRow, { backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }]}>
-                    <Text style={[styles.tableCell, { flex: 2 }]}>{user.name}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5 }]}>{user.department}</Text>
-                    <View style={[styles.tableCellRight, { flex: 1 }]}>
-                      <Text>{String(Math.round(breakfastAmount))}</Text>
-                      {user.breakfastCount > 0 && (
-                        <Text style={styles.mealCount}>{String(user.breakfastCount)} meals</Text>
-                      )}
-                    </View>
-                    <View style={[styles.tableCellRight, { flex: 1 }]}>
-                      <Text>{String(Math.round(lunchAmount))}</Text>
-                      {user.lunchCount > 0 && (
-                        <Text style={styles.mealCount}>{String(user.lunchCount)} meals</Text>
-                      )}
-                    </View>
-                    <View style={[styles.tableCellRight, { flex: 1 }]}>
-                      <Text>{String(Math.round(dinnerAmount))}</Text>
-                      {user.dinnerCount > 0 && (
-                        <Text style={styles.mealCount}>{String(user.dinnerCount)} meals</Text>
-                      )}
-                    </View>
-                    <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{String(Math.round(totalMealAmount))}</Text>
-                    <Text style={[styles.tableCellRight, { flex: 1.2, color: '#059669' }]}>{String(Math.round(deptShare))}</Text>
-                    <Text style={[styles.tableCellRight, { flex: 1.2, color: '#DC2626' }]}>{String(Math.round(empShare))}</Text>
-                  </View>
-                );
-              })}
             </View>
-          </View>
-        )}
-      </Page>
-    </Document>
-  );
+          )}
+
+          {/* Food Bills Tables */}
+          {billType === 'food' && (
+            <>
+              {filteredDepartments.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
+                    {selectedDepartment ? `${selectedDepartment} Department Summary` : 'Department-wise Summary'}
+                  </Text>
+                  <View style={styles.table}>
+                    <View style={[styles.tableRow, styles.tableHeader]}>
+                      <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
+                      <Text style={styles.tableCellRight}>B</Text>
+                      <Text style={styles.tableCellRight}>L</Text>
+                      <Text style={styles.tableCellRight}>D</Text>
+                      <Text style={styles.tableCellRight}>Total</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Amount</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept.</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Emp.</Text>
+                    </View>
+
+                    {filteredDepartments.map((dept) => {
+                      if (!dept) return null;
+                      const deptTotal = (
+                        (dept.breakfastCount || 0) * (mealRates?.breakfast || 0) +
+                        (dept.lunchCount || 0) * (mealRates?.lunch || 0) +
+                        (dept.dinnerCount || 0) * (mealRates?.dinner || 0)
+                      );
+                      const deptShare = (deptTotal * (departmentShare || 0)) / 100;
+                      const empShare = deptTotal - deptShare;
+
+                      return (
+                        <View key={dept.department} style={styles.tableRow}>
+                          <Text style={[styles.tableCell, { flex: 2 }]}>{dept.department || ''}</Text>
+                          <Text style={styles.tableCellRight}>{dept.breakfastCount || 0}</Text>
+                          <Text style={styles.tableCellRight}>{dept.lunchCount || 0}</Text>
+                          <Text style={styles.tableCellRight}>{dept.dinnerCount || 0}</Text>
+                          <Text style={styles.tableCellRight}>{dept.totalMeals || 0}</Text>
+                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptTotal)}</Text>
+                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptShare)}</Text>
+                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(empShare)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {billData?.departments && (
+                <View style={styles.section}>
+                  <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
+                    {selectedDepartment ? `${selectedDepartment} Employee Details` : 'Employee-wise Details'}
+                  </Text>
+                  <View style={styles.table}>
+                    <View style={[styles.tableRow, styles.tableHeader]}>
+                      <Text style={[styles.tableCell, { flex: 2 }]}>Name</Text>
+                      <Text style={[styles.tableCell, { flex: 1.5 }]}>Department</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1 }]}>Breakfast</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1 }]}>Lunch</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1 }]}>Dinner</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Total</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept. Share ()</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Employee Payable ()</Text>
+                    </View>
+
+                    {billData.departments
+                      .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+                      .map(dept => dept.users.map(user => ({ ...user, parentDepartment: dept.department })))
+                      .flat()
+                      .map((user, index) => {
+                        const breakfastAmount = (user.breakfastCount || 0) * mealRates.breakfast;
+                        const lunchAmount = (user.lunchCount || 0) * mealRates.lunch;
+                        const dinnerAmount = (user.dinnerCount || 0) * mealRates.dinner;
+                        const totalMealAmount = breakfastAmount + lunchAmount + dinnerAmount;
+                        const totalMeals = (user.breakfastCount || 0) + (user.lunchCount || 0) + (user.dinnerCount || 0);
+                        const deptShare = (totalMealAmount * departmentShare) / 100;
+                        const empPayable = totalMealAmount - deptShare;
+
+                        return (
+                          <View key={`${user.userId}-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} style={styles.tableRow}>
+                            <Text style={[styles.tableCell, { flex: 2 }]}>{user.name || 'N/A'}</Text>
+                            <Text style={[styles.tableCell, { flex: 1.5 }]}>{user.department || user.parentDepartment || 'N/A'}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1 }]}>{breakfastAmount.toFixed(2)}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1 }]}>{lunchAmount.toFixed(2)}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1 }]}>{dinnerAmount.toFixed(2)}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{totalMeals}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{totalMealAmount.toFixed(2)}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{deptShare.toFixed(2)}</Text>
+                            <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{empPayable.toFixed(2)}</Text>
+                          </View>
+                        );
+                      })}
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+
+          {/* Meeting Food Table */}
+          {meetingFoodData?.departments && billType === 'meeting' && (
+            <View style={styles.section}>
+              <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
+                {selectedDepartment ? `${selectedDepartment} Department Meeting Food Summary` : 'Department-wise Meeting Food Summary'}
+              </Text>
+              <View style={styles.table}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 1.5 }]}>Department</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>B</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>L</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>D</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>MS</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>MT</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>ES</Text>
+                  <Text style={[styles.tableCellRight, { flex: 0.8 }]}>ET</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1 }]}>Amount</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1 }]}>Dept.</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1 }]}>Emp.</Text>
+                </View>
+
+                {filteredDepartments.map((dept) => {
+                  if (!dept) return null;
+                  const deptTotal = (
+                    (dept.breakfast || 0) * meetingFoodRates.breakfast +
+                    (dept.lunch || 0) * meetingFoodRates.lunch +
+                    (dept.dinner || 0) * meetingFoodRates.dinner +
+                    (dept.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                    (dept.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                    (dept.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                    (dept.eveningTeaCount || 0) * meetingFoodRates.eveningTea
+                  );
+                  const deptShare = (deptTotal * departmentShare) / 100;
+                  const empShare = deptTotal - deptShare;
+
+                  return (
+                    <View key={dept.department} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 1.5 }]}>{dept.department || ''}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.breakfast || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.lunch || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.dinner || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.morningSnacksCount || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.morningTeaCount || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.eveningSnacksCount || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.8 }]}>{dept.eveningTeaCount || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1 }]}>{Math.round(deptTotal)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1 }]}>{Math.round(deptShare)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1 }]}>{Math.round(empShare)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Guest Meals Table */}
+          {guestMealData?.departments && billType === 'guest' && (
+            <View style={styles.section}>
+              <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
+                {selectedDepartment ? `${selectedDepartment} Department Guest Meals Summary` : 'Department-wise Guest Meals Summary'}
+              </Text>
+              <View style={styles.table}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
+                  <Text style={styles.tableCellRight}>Breakfast</Text>
+                  <Text style={styles.tableCellRight}>Lunch</Text>
+                  <Text style={styles.tableCellRight}>Dinner</Text>
+                  <Text style={styles.tableCellRight}>Total Meals</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Total Amount</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept. Share</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Emp. Share</Text>
+                </View>
+
+                {filteredDepartments.map((dept) => {
+                  if (!dept) return null;
+                  const deptTotal = (
+                    dept.breakfastCount * mealRates.breakfast +
+                    dept.lunchCount * mealRates.lunch +
+                    dept.dinnerCount * mealRates.dinner
+                  );
+                  const deptShare = (deptTotal * departmentShare) / 100;
+                  const empShare = deptTotal - deptShare;
+
+                  return (
+                    <View key={dept.department} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 2 }]}>{dept.department || ''}</Text>
+                      <Text style={styles.tableCellRight}>{dept.breakfastCount || 0}</Text>
+                      <Text style={styles.tableCellRight}>{dept.lunchCount || 0}</Text>
+                      <Text style={styles.tableCellRight}>{dept.dinnerCount || 0}</Text>
+                      <Text style={styles.tableCellRight}>{dept.totalMeals || 0}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptTotal)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptShare)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(empShare)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </Page>
+      </Document>
+    );
+  } catch (error) {
+    console.error('Error rendering PDF:', error);
+    return null;
+  }
 };
 
 const BillGenerator = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [billType, setBillType] = useState('food');
+  const [rentRate, setRentRate] = useState(2000);
+  const [rentData, setRentData] = useState(null);
+  const [guestMealData, setGuestMealData] = useState(null);
+  const [meetingFoodData, setMeetingFoodData] = useState(null);
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: ''
@@ -263,6 +475,15 @@ const BillGenerator = () => {
     breakfast: 30,
     lunch: 60,
     dinner: 20
+  });
+  const [meetingFoodRates, setMeetingFoodRates] = useState({
+    breakfast: 30,
+    lunch: 60,
+    dinner: 20,
+    morningSnacks: 15,
+    morningTea: 10,
+    eveningSnacks: 15,
+    eveningTea: 10
   });
   const [departmentShare, setDepartmentShare] = useState(80);
   const [billData, setBillData] = useState(null);
@@ -312,6 +533,13 @@ const BillGenerator = () => {
     });
   };
 
+  const handleMeetingFoodRateChange = (e) => {
+    setMeetingFoodRates({
+      ...meetingFoodRates,
+      [e.target.name]: parseFloat(e.target.value) || 0
+    });
+  };
+
   const calculateBills = async () => {
     if (!dateRange.startDate || !dateRange.endDate) {
       setError('Please select both start and end dates');
@@ -324,63 +552,162 @@ const BillGenerator = () => {
     try {
       const token = localStorage.getItem('adminToken');
       
-      // Fetch user-wise meal counts
-      const userResponse = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/department-user-meals`,
-        {
-          params: {
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
-            department: selectedDepartment || undefined
-          },
-          headers: { Authorization: `Bearer ${token}` }
+      if (billType === 'meeting') {
+        // Meeting food bill calculation
+        const meetingResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/meeting-food-bills`,
+          {
+            params: {
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
+              department: selectedDepartment || undefined
+            },
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (meetingResponse.data && meetingResponse.data.departments) {
+          setMeetingFoodData(meetingResponse.data);
+          const total = meetingResponse.data.departments
+            .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+            .reduce((acc, dept) => {
+              return acc + (
+                (dept.breakfast || 0) * meetingFoodRates.breakfast +
+                (dept.lunch || 0) * meetingFoodRates.lunch +
+                (dept.dinner || 0) * meetingFoodRates.dinner +
+                (dept.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                (dept.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                (dept.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                (dept.eveningTeaCount || 0) * meetingFoodRates.eveningTea
+              );
+            }, 0);
+
+          const deptShare = (total * departmentShare) / 100;
+          const empShare = total - deptShare;
+
+          setTotalAmount(total);
+          setDepartmentPayable(deptShare);
+          setEmployeePayable(empShare);
         }
-      );
+      } else if (billType === 'guest') {
+        // Guest meal bill calculation
+        const guestResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/department-guest-meals`,
+          {
+            params: {
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
+              department: selectedDepartment || undefined
+            },
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
 
-      // Fetch department-wise meal counts
-      const deptResponse = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/department-meal-counts`,
-        {
-          params: {
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
-            department: selectedDepartment || undefined
-          },
-          headers: { Authorization: `Bearer ${token}` }
+        if (guestResponse.data && guestResponse.data.departments) {
+          setGuestMealData(guestResponse.data);
+          const total = guestResponse.data.departments
+            .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+            .reduce((acc, dept) => {
+              return acc + (
+                dept.breakfastCount * mealRates.breakfast +
+                dept.lunchCount * mealRates.lunch +
+                dept.dinnerCount * mealRates.dinner
+              );
+            }, 0);
+
+          const deptShare = (total * departmentShare) / 100;
+          const empShare = total - deptShare;
+
+          setTotalAmount(total);
+          setDepartmentPayable(deptShare);
+          setEmployeePayable(empShare);
         }
-      );
+      } else if (billType === 'food') {
+        // Fetch user-wise meal counts
+        const userResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/department-user-meals`,
+          {
+            params: {
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
+              department: selectedDepartment || undefined
+            },
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
 
-      // Ensure we have valid data before setting state
-      if (deptResponse.data && deptResponse.data.departments) {
-        setDepartmentData(deptResponse.data);
+        // Fetch department-wise meal counts
+        const deptResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/department-meal-counts`,
+          {
+            params: {
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
+              department: selectedDepartment || undefined
+            },
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
 
-        // Calculate total amount from department data
-        const total = deptResponse.data.departments
-          .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-          .reduce((acc, dept) => {
-            return acc + (
-              dept.breakfastCount * mealRates.breakfast +
-              dept.lunchCount * mealRates.lunch +
-              dept.dinnerCount * mealRates.dinner
-            );
-          }, 0);
+        // Ensure we have valid data before setting state
+        if (deptResponse.data && deptResponse.data.departments) {
+          setDepartmentData(deptResponse.data);
 
-        // Calculate department and employee shares
-        const deptShare = (total * departmentShare) / 100;
-        const empShare = total - deptShare;
+          // Calculate total amount from department data
+          const total = deptResponse.data.departments
+            .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+            .reduce((acc, dept) => {
+              return acc + (
+                dept.breakfastCount * mealRates.breakfast +
+                dept.lunchCount * mealRates.lunch +
+                dept.dinnerCount * mealRates.dinner
+              );
+            }, 0);
 
-        setTotalAmount(total);
-        setDepartmentPayable(deptShare);
-        setEmployeePayable(empShare);
-      }
+          // Calculate department and employee shares
+          const deptShare = (total * departmentShare) / 100;
+          const empShare = total - deptShare;
 
-      // Ensure we have valid user data before setting state
-      if (userResponse.data && (userResponse.data.departments || userResponse.data.users)) {
-        setBillData(userResponse.data);
+          setTotalAmount(total);
+          setDepartmentPayable(deptShare);
+          setEmployeePayable(empShare);
+        }
+
+        // Ensure we have valid user data before setting state
+        if (userResponse.data && (userResponse.data.departments || userResponse.data.users)) {
+          setBillData(userResponse.data);
+        }
+      } else if (billType === 'rent') {
+        // Fetch rent data
+        const rentResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/department-rent-bills`,
+          {
+            params: {
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
+              department: selectedDepartment || undefined
+            },
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (rentResponse.data) {
+          setRentData(rentResponse.data);
+          const total = rentResponse.data.departments
+            .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+            .reduce((acc, dept) => acc + (dept.meetingCount * rentRate), 0);
+
+          const deptShare = (total * departmentShare) / 100;
+          const empShare = total - deptShare;
+
+          setTotalAmount(total);
+          setDepartmentPayable(deptShare);
+          setEmployeePayable(empShare);
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch meal data:', err);
-      setError('Failed to fetch meal data');
+      console.error('Failed to fetch data:', err);
+      setError('Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -392,44 +719,207 @@ const BillGenerator = () => {
     (billData.departments || billData.users);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+      <Navbar 
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+        isSidebarOpen={isSidebarOpen}
+      />
       
-      <div className="flex pt-[60px] min-h-screen">
+      <div className="flex flex-1 h-full">
         <Sidebar isOpen={isSidebarOpen} />
         
-        <main className={`flex-1 bg-gray-100 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-          <div className="p-6">
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl font-semibold text-gray-900 mb-6">Monthly Mess Bill Generator</h1>
-
-              {error && (
-                <div className="mb-4 rounded-md bg-red-50 p-3">
-                  <div className="text-sm text-red-700">{error}</div>
-                </div>
-              )}
-
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-blue-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900">Total Amount</h3>
-                  <p className="text-3xl font-bold text-blue-600">₹{Math.round(totalAmount)}</p>
-                </div>
-                <div className="bg-green-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900">Department Share</h3>
-                  <p className="text-3xl font-bold text-green-600">₹{Math.round(departmentPayable)}</p>
-                </div>
-                <div className="bg-red-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900">Employee Payable</h3>
-                  <p className="text-3xl font-bold text-red-600">₹{Math.round(employeePayable)}</p>
+        <main className={`flex-1 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
+        } relative z-0 h-full overflow-auto`}>
+          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              {/* Header Section */}
+              <div className="mb-4 flex-shrink-0">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                        Monthly Bill Generator
+                      </h1>
+                      <p className="text-gray-600 text-lg">
+                        Generate comprehensive billing reports for departments and employees
+                      </p>
+                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                        <span className="flex items-center text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          {billType === 'food' ? 'Food Bills' : 
+                           billType === 'rent' ? 'Auditorium Rent' : 
+                           billType === 'meeting' ? 'Meeting Food' : 
+                           billType === 'guest' ? 'Guest Meals' : 'Select Bill Type'}
+                        </span>
+                        {selectedDepartment && (
+                          <span className="flex items-center text-blue-600">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                            {selectedDepartment} Department
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
+              {error && (
+                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
+                    <div className="text-sm text-red-700 font-medium">{error}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 p-6 lg:p-8 mb-8">
+                {/* Bill Type Selection */}
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Bill Type</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label className="relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 shadow-sm focus:outline-none hover:border-green-500 transition-all duration-200">
+                      <input
+                        type="radio"
+                        value="food"
+                        checked={billType === 'food'}
+                        onChange={(e) => {
+                          setBillType(e.target.value);
+                          setRentData(null);
+                          setBillData(null);
+                          setGuestMealData(null);
+                          setMeetingFoodData(null);
+                          setDepartmentData(null);
+                        }}
+                        className="sr-only"
+                      />
+                      <span className="flex flex-1">
+                        <span className="flex flex-col">
+                          <span className={`block text-sm font-medium ${billType === 'food' ? 'text-green-900' : 'text-gray-900'}`}>
+                            Food Bills
+                          </span>
+                          <span className={`mt-1 flex items-center text-sm ${billType === 'food' ? 'text-green-600' : 'text-gray-500'}`}>
+                            Employee meals
+                          </span>
+                        </span>
+                      </span>
+                      {billType === 'food' && (
+                        <div className="h-5 w-5 text-green-600">
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </label>
+                    
+                    <label className="relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 shadow-sm focus:outline-none hover:border-green-500 transition-all duration-200">
+                      <input
+                        type="radio"
+                        value="rent"
+                        checked={billType === 'rent'}
+                        onChange={(e) => {
+                          setBillType(e.target.value);
+                          setRentData(null);
+                          setBillData(null);
+                          setGuestMealData(null);
+                          setMeetingFoodData(null);
+                          setDepartmentData(null);
+                        }}
+                        className="sr-only"
+                      />
+                      <span className="flex flex-1">
+                        <span className="flex flex-col">
+                          <span className={`block text-sm font-medium ${billType === 'rent' ? 'text-green-900' : 'text-gray-900'}`}>
+                            Auditorium Rent
+                          </span>
+                          <span className={`mt-1 flex items-center text-sm ${billType === 'rent' ? 'text-green-600' : 'text-gray-500'}`}>
+                            Meeting costs
+                          </span>
+                        </span>
+                      </span>
+                      {billType === 'rent' && (
+                        <div className="h-5 w-5 text-green-600">
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </label>
+                    
+                    <label className="relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 shadow-sm focus:outline-none hover:border-green-500 transition-all duration-200">
+                      <input
+                        type="radio"
+                        value="guest"
+                        checked={billType === 'guest'}
+                        onChange={(e) => {
+                          setBillType(e.target.value);
+                          setRentData(null);
+                          setBillData(null);
+                          setGuestMealData(null);
+                          setMeetingFoodData(null);
+                          setDepartmentData(null);
+                        }}
+                        className="sr-only"
+                      />
+                      <span className="flex flex-1">
+                        <span className="flex flex-col">
+                          <span className={`block text-sm font-medium ${billType === 'guest' ? 'text-green-900' : 'text-gray-900'}`}>
+                            Guest Meals
+                          </span>
+                          <span className={`mt-1 flex items-center text-sm ${billType === 'guest' ? 'text-green-600' : 'text-gray-500'}`}>
+                            Visitor meals
+                          </span>
+                        </span>
+                      </span>
+                      {billType === 'guest' && (
+                        <div className="h-5 w-5 text-green-600">
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </label>
+                    
+                    <label className="relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 shadow-sm focus:outline-none hover:border-green-500 transition-all duration-200">
+                      <input
+                        type="radio"
+                        value="meeting"
+                        checked={billType === 'meeting'}
+                        onChange={(e) => {
+                          setBillType(e.target.value);
+                          setRentData(null);
+                          setBillData(null);
+                          setGuestMealData(null);
+                          setMeetingFoodData(null);
+                          setDepartmentData(null);
+                        }}
+                        className="sr-only"
+                      />
+                      <span className="flex flex-1">
+                        <span className="flex flex-col">
+                          <span className={`block text-sm font-medium ${billType === 'meeting' ? 'text-green-900' : 'text-gray-900'}`}>
+                            Meeting Food
+                          </span>
+                          <span className={`mt-1 flex items-center text-sm ${billType === 'meeting' ? 'text-green-600' : 'text-gray-500'}`}>
+                            Event catering
+                          </span>
+                        </span>
+                      </span>
+                      {billType === 'meeting' && (
+                        <div className="h-5 w-5 text-green-600">
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
                 {/* Department Selection */}
                 <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Select Department</h2>
-                  <div className="max-w-xs">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Department</h2>
+                  <div className="max-w-md">
                     <select
                       value={selectedDepartment}
                       onChange={(e) => {
@@ -442,7 +932,7 @@ const BillGenerator = () => {
                         setEmployeePayable(0);
                         setDepartmentPayable(0);
                       }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                     >
                       <option value="">All Departments</option>
                       {departments.map((dept) => (
@@ -452,80 +942,433 @@ const BillGenerator = () => {
                   </div>
                 </div>
 
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Amount</h3>
+                    <p className="text-3xl font-bold text-blue-600">₹{Math.round(totalAmount).toLocaleString()}</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Department Share</h3>
+                    <p className="text-3xl font-bold text-green-600">₹{Math.round(departmentPayable).toLocaleString()}</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Employee Payable</h3>
+                    <p className="text-3xl font-bold text-red-600">₹{Math.round(employeePayable).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {/* Bill Details Table - Show after calculation */}
+                {((billType === 'food' && departmentData?.departments) || 
+                  (billType === 'rent' && rentData?.departments) ||
+                  (billType === 'guest' && guestMealData?.departments) ||
+                  (billType === 'meeting' && meetingFoodData?.departments)) && (
+                  <div className="mb-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {billType === 'food' ? 'Food Bill Details' : 
+                         billType === 'rent' ? 'Auditorium Rent Details' : 
+                         billType === 'meeting' ? 'Meeting Food Details' : 
+                         'Guest Meal Details'}
+                      </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Department
+                            </th>
+                            {billType === 'food' && (
+                              <>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                              </>
+                            )}
+                            {billType === 'rent' && (
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meetings</th>
+                            )}
+                            {billType === 'guest' && (
+                              <>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                              </>
+                            )}
+                            {billType === 'meeting' && (
+                              <>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">B</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MS</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MT</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ES</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ET</th>
+                              </>
+                            )}
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {billType === 'food' && departmentData?.departments?.map((dept) => (
+                            <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.breakfastCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.lunchCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.dinnerCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                                ₹{Math.round((dept.breakfastCount * mealRates.breakfast) + (dept.lunchCount * mealRates.lunch) + (dept.dinnerCount * mealRates.dinner)).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                          {billType === 'rent' && rentData?.departments?.map((dept) => (
+                            <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.meetingCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                                ₹{Math.round(dept.meetingCount * rentRate).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                          {billType === 'guest' && guestMealData?.departments?.map((dept) => (
+                            <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.breakfastCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.lunchCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.dinnerCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                                ₹{Math.round((dept.breakfastCount * mealRates.breakfast) + (dept.lunchCount * mealRates.lunch) + (dept.dinnerCount * mealRates.dinner)).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                          {billType === 'meeting' && meetingFoodData?.departments?.map((dept) => (
+                            <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.breakfast || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.lunch || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.dinner || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.morningSnacksCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.morningTeaCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.eveningSnacksCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.eveningTeaCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                                ₹{Math.round(
+                                  (dept.breakfast || 0) * meetingFoodRates.breakfast +
+                                  (dept.lunch || 0) * meetingFoodRates.lunch +
+                                  (dept.dinner || 0) * meetingFoodRates.dinner +
+                                  (dept.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                                  (dept.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                                  (dept.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                                  (dept.eveningTeaCount || 0) * meetingFoodRates.eveningTea
+                                ).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* User-wise Bill Details Table - Show for food bills only */}
+                {billType === 'food' && billData?.departments && (
+                  <div className="mb-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Individual Employee Bills
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Detailed breakdown of each employee's meal consumption and bill amount
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Employee Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Department
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Breakfast
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Lunch
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Dinner
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Meals
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Dept. Share
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Employee Payable
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {billData.departments
+                            .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+                            .map(dept => dept.users.map(user => ({ ...user, parentDepartment: dept.department })))
+                            .flat()
+                            .map((user, index) => {
+                              const breakfastAmount = (user.breakfastCount || 0) * mealRates.breakfast;
+                              const lunchAmount = (user.lunchCount || 0) * mealRates.lunch;
+                              const dinnerAmount = (user.dinnerCount || 0) * mealRates.dinner;
+                              const totalMealAmount = breakfastAmount + lunchAmount + dinnerAmount;
+                              const totalMeals = (user.breakfastCount || 0) + (user.lunchCount || 0) + (user.dinnerCount || 0);
+                              const deptShare = (totalMealAmount * departmentShare) / 100;
+                              const empPayable = totalMealAmount - deptShare;
+
+                              return (
+                                <tr key={`${user.userId}-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {user.name || 'N/A'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {user.department || user.parentDepartment || 'N/A'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <div className="flex flex-col">
+                                      <span>{user.breakfastCount || 0}</span>
+                                      <span className="text-xs text-gray-400">₹{breakfastAmount.toFixed(2)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <div className="flex flex-col">
+                                      <span>{user.lunchCount || 0}</span>
+                                      <span className="text-xs text-gray-400">₹{lunchAmount.toFixed(2)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <div className="flex flex-col">
+                                      <span>{user.dinnerCount || 0}</span>
+                                      <span className="text-xs text-gray-400">₹{dinnerAmount.toFixed(2)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span className="font-medium">{totalMeals}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
+                                    ₹{totalMealAmount.toFixed(2)}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                                    ₹{deptShare.toFixed(2)}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
+                                    ₹{empPayable.toFixed(2)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                      
+                      {/* Summary Row */}
+                      <tfoot className="bg-gray-100 border-t-2 border-gray-300">
+                        <tr>
+                          <td className="px-6 py-4 text-sm font-bold text-gray-900" colSpan="6">
+                            TOTAL ({billData.departments
+                              .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+                              .reduce((acc, dept) => acc + dept.users.length, 0)} employees)
+                          </td>
+                          <td className="px-6 py-4 text-sm font-bold text-blue-600">
+                            ₹{Math.round(totalAmount).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-bold text-green-600">
+                            ₹{Math.round(departmentPayable).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-bold text-red-600">
+                            ₹{Math.round(employeePayable).toLocaleString()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </div>
+                  </div>
+                )}
+
                 {/* Billing Period */}
                 <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Billing Period</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Billing Period</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">From Date</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
                       <input
                         type="date"
                         name="startDate"
                         value={dateRange.startDate}
                         onChange={handleDateChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">To Date</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
                       <input
                         type="date"
                         name="endDate"
                         value={dateRange.endDate}
                         onChange={handleDateChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Meal Rates */}
-                <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Meal Rates (₹)</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Breakfast</label>
+                {/* Rent Rate (show only for rent bills) */}
+                {billType === 'rent' && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Rent Rate (₹)</h2>
+                    <div className="max-w-md">
                       <input
                         type="number"
-                        name="breakfast"
-                        value={mealRates.breakfast}
-                        onChange={handleMealRateChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Lunch</label>
-                      <input
-                        type="number"
-                        name="lunch"
-                        value={mealRates.lunch}
-                        onChange={handleMealRateChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Dinner</label>
-                      <input
-                        type="number"
-                        name="dinner"
-                        value={mealRates.dinner}
-                        onChange={handleMealRateChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        value={rentRate}
+                        onChange={(e) => setRentRate(parseFloat(e.target.value) || 2000)}
+                        className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                        placeholder="Enter rent amount"
                       />
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Meal Rates (show for food and guest bills) */}
+                {(billType === 'food' || billType === 'guest') && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Meal Rates</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Breakfast</label>
+                        <input
+                          type="number"
+                          name="breakfast"
+                          value={mealRates.breakfast}
+                          onChange={handleMealRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Lunch</label>
+                        <input
+                          type="number"
+                          name="lunch"
+                          value={mealRates.lunch}
+                          onChange={handleMealRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Dinner</label>
+                        <input
+                          type="number"
+                          name="dinner"
+                          value={mealRates.dinner}
+                          onChange={handleMealRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Meeting Food Rates (show for meeting bills) */}
+                {billType === 'meeting' && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Meeting Food Rates</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Breakfast</label>
+                        <input
+                          type="number"
+                          name="breakfast"
+                          value={meetingFoodRates.breakfast}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Lunch</label>
+                        <input
+                          type="number"
+                          name="lunch"
+                          value={meetingFoodRates.lunch}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Dinner</label>
+                        <input
+                          type="number"
+                          name="dinner"
+                          value={meetingFoodRates.dinner}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Morning Snacks</label>
+                        <input
+                          type="number"
+                          name="morningSnacks"
+                          value={meetingFoodRates.morningSnacks}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Morning Tea</label>
+                        <input
+                          type="number"
+                          name="morningTea"
+                          value={meetingFoodRates.morningTea}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Evening Snacks</label>
+                        <input
+                          type="number"
+                          name="eveningSnacks"
+                          value={meetingFoodRates.eveningSnacks}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Evening Tea</label>
+                        <input
+                          type="number"
+                          name="eveningTea"
+                          value={meetingFoodRates.eveningTea}
+                          onChange={handleMeetingFoodRateChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Department Share */}
                 <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Department Share</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Department Share</h2>
                   <div className="max-w-xs">
                     <div className="mt-1 relative rounded-md shadow-sm">
                       <input
                         type="number"
                         value={departmentShare}
                         onChange={(e) => setDepartmentShare(parseFloat(e.target.value) || 0)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                         placeholder="Enter percentage"
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -540,177 +1383,52 @@ const BillGenerator = () => {
                   <button
                     onClick={calculateBills}
                     disabled={loading}
-                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50"
                   >
                     {loading ? 'Calculating...' : 'Generate Bills'}
                   </button>
                   
-                  {billData && departmentData && departmentData.departments && (
-                    <PDFDownloadLink
-                      document={
-                        <BillPDF
-                          billData={billData}
-                          dateRange={dateRange}
-                          mealRates={mealRates}
-                          departmentShare={departmentShare}
-                          totalAmount={totalAmount}
-                          departmentPayable={departmentPayable}
-                          employeePayable={employeePayable}
-                          departmentData={departmentData}
-                          selectedDepartment={selectedDepartment}
-                        />
-                      }
-                      fileName={`mess-bill-${format(new Date(dateRange.startDate), 'yyyy-MM-dd')}${selectedDepartment ? `-${selectedDepartment}` : ''}.pdf`}
-                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      {({ blob, url, loading, error }) =>
-                        loading ? 'Preparing PDF...' : 'Download PDF'
-                      }
-                    </PDFDownloadLink>
+                  {((billType === 'food' && billData && departmentData?.departments) || 
+                    (billType === 'rent' && rentData?.departments) ||
+                    (billType === 'guest' && guestMealData?.departments) ||
+                    (billType === 'meeting' && meetingFoodData?.departments)) && (
+                    <PDFErrorBoundary>
+                      <PDFDownloadLink
+                        document={
+                          <BillPDF
+                            billData={billData}
+                            rentData={rentData}
+                            guestMealData={guestMealData}
+                            meetingFoodData={meetingFoodData}
+                            dateRange={dateRange}
+                            mealRates={mealRates}
+                            meetingFoodRates={meetingFoodRates}
+                            rentRate={rentRate}
+                            departmentShare={departmentShare}
+                            totalAmount={totalAmount}
+                            departmentPayable={departmentPayable}
+                            employeePayable={employeePayable}
+                            departmentData={departmentData}
+                            selectedDepartment={selectedDepartment}
+                            billType={billType}
+                          />
+                        }
+                        fileName={`${billType === 'food' ? 'mess-bill' : billType === 'rent' ? 'rent-bill' : billType === 'meeting' ? 'meeting-food-bill' : 'guest-meal-bill'}-${format(new Date(dateRange.startDate), 'yyyy-MM-dd')}${selectedDepartment ? `-${selectedDepartment}` : ''}.pdf`}
+                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        {({ blob, url, loading, error }) => {
+                          if (loading) return 'Preparing PDF...';
+                          if (error) {
+                            console.error('PDF generation error:', error);
+                            return 'Error generating PDF';
+                          }
+                          return 'Download PDF';
+                        }}
+                      </PDFDownloadLink>
+                    </PDFErrorBoundary>
                   )}
                 </div>
               </div>
-
-              {/* Department-wise Summary */}
-              {departmentData?.departments && (
-                <div className="bg-white shadow-sm rounded-lg overflow-hidden mb-8">
-                  <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {selectedDepartment ? `${selectedDepartment} Department Summary` : 'Department-wise Summary'}
-                    </h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Meals</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dept. Share (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Emp. Share (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {departmentData.departments
-                          .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-                          .map((dept, index) => {
-                            const deptTotal = (
-                              dept.breakfastCount * mealRates.breakfast +
-                              dept.lunchCount * mealRates.lunch +
-                              dept.dinnerCount * mealRates.dinner
-                            );
-                            const deptShare = (deptTotal * departmentShare) / 100;
-                            const empShare = deptTotal - deptShare;
-
-                            return (
-                              <tr key={dept.department} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {dept.department}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  {dept.breakfastCount}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  {dept.lunchCount}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  {dept.dinnerCount}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  {dept.totalMeals}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                                  ₹{deptTotal.toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-green-600">
-                                  ₹{deptShare.toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-red-600">
-                                  ₹{empShare.toFixed(2)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Generated Bills Table */}
-              {billData?.departments && (
-                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-                  <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {selectedDepartment ? `${selectedDepartment} Employee Details` : 'Generated Bills'}
-                    </h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dept. Share (₹)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Payable (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {billData.departments
-                          .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-                          .map(dept => dept.users)
-                          .flat()
-                          .map((user, index) => {
-                            const breakfastAmount = user.breakfastCount * mealRates.breakfast;
-                            const lunchAmount = user.lunchCount * mealRates.lunch;
-                            const dinnerAmount = user.dinnerCount * mealRates.dinner;
-                            const totalMealAmount = breakfastAmount + lunchAmount + dinnerAmount;
-                            const deptShare = (totalMealAmount * departmentShare) / 100;
-                            const empShare = totalMealAmount - deptShare;
-
-                            return (
-                              <tr key={user.userId} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.department}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  ₹{breakfastAmount.toFixed(2)}
-                                  <br />
-                                  <span className="text-xs text-gray-500">({user.breakfastCount})</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  ₹{lunchAmount.toFixed(2)}
-                                  <br />
-                                  <span className="text-xs text-gray-500">({user.lunchCount})</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                  ₹{dinnerAmount.toFixed(2)}
-                                  <br />
-                                  <span className="text-xs text-gray-500">({user.dinnerCount})</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                                  ₹{totalMealAmount.toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-green-600">
-                                  ₹{deptShare.toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-red-600">
-                                  ₹{empShare.toFixed(2)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </main>

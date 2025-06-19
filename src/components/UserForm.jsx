@@ -115,89 +115,112 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="text-base text-red-700">{error}</div>
-        </div>
-      )}
-      
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-            Name
-          </label>
-          <div className="relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <UserIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-            </div>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-              placeholder="Enter full name"
-            />
+    <div className="max-w-3xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-md bg-red-50 p-3">
+            <div className="text-sm text-red-700">{error}</div>
           </div>
-        </div>
-
-        <div>
-          <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-2">
-            Phone Number
-          </label>
-          <div className="relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <PhoneIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              Name
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <UserIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              </div>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                placeholder="Enter full name"
+              />
             </div>
-            <input
-              type="tel"
-              id="phone-number"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              required
-              className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-              placeholder="Enter 10-digit phone number"
-            />
           </div>
-        </div>
 
-        <div>
-          <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
-            Department
-          </label>
-          <div className="relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <BriefcaseIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+          <div>
+            <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <PhoneIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              </div>
+              <input
+                type="tel"
+                id="phone-number"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                placeholder="Enter 10-digit phone number"
+              />
             </div>
-            <select
-              id="department"
-              name="department"
-              value={showCustomDepartment ? 'other' : formData.department}
-              onChange={handleChange}
-              required
-              className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-            >
-              <option value="">Select Department</option>
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-              <option value="other">Other</option>
-            </select>
+          </div>
+
+          <div>
+            <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+              Department
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <BriefcaseIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              </div>
+              <select
+                id="department"
+                name="department"
+                value={showCustomDepartment ? 'other' : formData.department}
+                onChange={handleChange}
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+              >
+                <option value="">Select Department</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="designation" className="block text-sm font-medium text-gray-700 mb-1">
+              Designation
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <AcademicCapIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              </div>
+              <input
+                type="text"
+                id="designation"
+                name="designation"
+                value={formData.designation}
+                onChange={handleChange}
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                placeholder="Enter designation"
+              />
+            </div>
           </div>
         </div>
 
         {showCustomDepartment && (
           <div>
-            <label htmlFor="custom-department" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="custom-department" className="block text-sm font-medium text-gray-700 mb-1">
               New Department Name
             </label>
             <div className="relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <BriefcaseIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                <BriefcaseIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
               </div>
               <input
                 type="text"
@@ -205,82 +228,63 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
                 value={customDepartment}
                 onChange={handleCustomDepartmentChange}
                 required
-                className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
                 placeholder="Enter new department name"
               />
             </div>
           </div>
         )}
 
-        <div>
-          <label htmlFor="designation" className="block text-sm font-medium text-gray-700 mb-2">
-            Designation
-          </label>
-          <div className="relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <AcademicCapIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center space-x-3">
             <input
-              type="text"
-              id="designation"
-              name="designation"
-              value={formData.designation}
+              type="checkbox"
+              id="isDeptHead"
+              name="isDeptHead"
+              checked={formData.isDeptHead}
               onChange={handleChange}
-              required
-              className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-              placeholder="Enter designation"
+              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
             />
+            <label htmlFor="isDeptHead" className="text-sm font-medium text-gray-700 flex items-center">
+              <UserGroupIcon className="h-4 w-4 text-gray-400 mr-2" />
+              Department Head
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <input
-            type="checkbox"
-            id="isDeptHead"
-            name="isDeptHead"
-            checked={formData.isDeptHead}
-            onChange={handleChange}
-            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <label htmlFor="isDeptHead" className="text-sm font-medium text-gray-700 flex items-center">
-            <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
-            Department Head
-          </label>
-        </div>
-
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700">Status</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-lg border-2 border-indigo-100 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-3">
-        {onCancel && (
+        <div className="flex justify-end space-x-3 pt-4">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              Cancel
+            </button>
+          )}
           <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-950 hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
-            Cancel
+            {loading ? 'Saving...' : (initialData ? 'Update' : 'Create')}
           </button>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          {loading ? 'Saving...' : (initialData ? 'Update' : 'Create')}
-        </button>
-      </div>
-    </form>
+        </div>
+      </form>
+    </div>
   );
 };
 
