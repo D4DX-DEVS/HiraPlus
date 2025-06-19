@@ -12,7 +12,10 @@ const AdminNotifications = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, notificationId: null });
   const [newNotification, setNewNotification] = useState({ title: '', description: '' });
 
@@ -35,6 +38,11 @@ const AdminNotifications = () => {
   useEffect(() => {
     fetchNotifications();
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   const handleDelete = async () => {
     try {
@@ -227,43 +235,65 @@ const AdminNotifications = () => {
               )}
 
               {/* Notifications List */}
-              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden">
-                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">All Notifications</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Previously sent notifications and announcements
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                  <h3 className="text-base font-semibold text-gray-900">All Notifications</h3>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {notifications.length} notification{notifications.length !== 1 ? 's' : ''} found
                   </p>
                 </div>
-                {isLoading && notifications.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="text-gray-400 text-lg mb-2">Loading notifications...</div>
-                  </div>
-                ) : notifications.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">No notifications found</div>
-                ) : (
-                  <ul className="divide-y divide-gray-200">
-                    {notifications.map((notification) => (
-                      <li key={notification._id} className="p-6 hover:bg-gray-50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-base font-medium text-gray-900">{notification.title}</h3>
-                            <p className="mt-1 text-sm text-gray-500">{notification.description}</p>
-                            <p className="mt-2 text-xs text-gray-400">
-                              Created: {format(new Date(notification.createdAt), 'MMM d, yyyy h:mm a')}
-                            </p>
+                <div className="flex-1 overflow-auto">
+                  {isLoading && notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="text-gray-400 text-lg mb-2">Loading notifications...</div>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="text-gray-400">
+                        <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 17h5l-5 5v-5zM15 17H9a4 4 0 01-4-4V8a4 4 0 014-4h6a4 4 0 014 4v5" />
+                        </svg>
+                        <p className="text-base font-medium text-gray-900 mb-1">No notifications found</p>
+                        <p className="text-sm text-gray-600">Create your first notification to get started.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {notifications.map((notification, index) => (
+                        <div key={notification._id} className="p-3 hover:bg-gray-50 transition-colors duration-150">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0 mt-0.5">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 2L13 9h7l-5.5 4 2 7L10 15l-6.5 5 2-7L1 9h7l3-7z"/>
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-semibold text-gray-900 truncate" title={notification.title}>
+                                  {notification.title}
+                                </h3>
+                                <p className="mt-1 text-xs text-gray-600 line-clamp-2" title={notification.description}>
+                                  {notification.description}
+                                </p>
+                                <p className="mt-1.5 text-xs text-gray-400">
+                                  {format(new Date(notification.createdAt), 'MMM d, yyyy h:mm a')}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setDeleteConfirm({ show: true, notificationId: notification._id })}
+                              disabled={isLoading}
+                              className="text-red-600 hover:text-red-900 transition-colors p-1 hover:bg-red-50 rounded flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete Notification"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
                           </div>
-                          <button
-                            onClick={() => setDeleteConfirm({ show: true, notificationId: notification._id })}
-                            disabled={isLoading}
-                            className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

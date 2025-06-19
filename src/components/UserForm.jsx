@@ -31,9 +31,16 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         setDepartments(response.data.departments);
         
         // If editing and department exists, check if it's in the list
-        if (initialData?.department && !response.data.departments.includes(initialData.department)) {
-          setShowCustomDepartment(true);
-          setCustomDepartment(initialData.department);
+        if (initialData?.department) {
+          const initialDeptName = typeof initialData.department === 'string' ? initialData.department : initialData.department.title;
+          const departmentExists = response.data.departments.some(dept => 
+            (typeof dept === 'string' ? dept : dept.title) === initialDeptName
+          );
+          
+          if (!departmentExists) {
+            setShowCustomDepartment(true);
+            setCustomDepartment(initialDeptName);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch departments:', err);
@@ -44,10 +51,11 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
 
   useEffect(() => {
     if (initialData) {
+      const departmentValue = typeof initialData.department === 'string' ? initialData.department : initialData.department?.title || '';
       setFormData({
         name: initialData.name || '',
         phoneNumber: initialData.phoneNumber || '',
-        department: initialData.department || '',
+        department: departmentValue,
         designation: initialData.designation || '',
         isDeptHead: initialData.isDeptHead || false,
         status: initialData.status || 'active'
@@ -184,7 +192,9 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               >
                 <option value="">Select Department</option>
                 {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
+                  <option key={typeof dept === 'string' ? dept : dept._id} value={typeof dept === 'string' ? dept : dept.title}>
+                    {typeof dept === 'string' ? dept : dept.title}
+                  </option>
                 ))}
                 <option value="other">Other</option>
               </select>

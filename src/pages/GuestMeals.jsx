@@ -7,7 +7,10 @@ import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const GuestMeals = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [guestMeals, setGuestMeals] = useState([]);
@@ -50,7 +53,10 @@ const GuestMeals = () => {
   useEffect(() => {
     if (editingMeal && departments.length > 0) {
       // Check if the meal's department exists in the departments list
-      const departmentExists = departments.includes(editingMeal.department);
+      const mealDeptName = typeof editingMeal.department === 'string' ? editingMeal.department : editingMeal.department?.title || '';
+      const departmentExists = departments.some(dept => 
+        (typeof dept === 'string' ? dept : dept.title) === mealDeptName
+      );
       
       if (departmentExists) {
         // Department exists, use it directly
@@ -58,15 +64,15 @@ const GuestMeals = () => {
         setCustomDepartment('');
         setFormData(prev => ({
           ...prev,
-          department: editingMeal.department
+          department: mealDeptName
         }));
       } else {
         // Department doesn't exist, show custom input
         setShowCustomDepartment(true);
-        setCustomDepartment(editingMeal.department);
+        setCustomDepartment(mealDeptName);
         setFormData(prev => ({
           ...prev,
-          department: editingMeal.department
+          department: mealDeptName
         }));
       }
     }
@@ -145,9 +151,10 @@ const GuestMeals = () => {
 
   const handleEdit = (meal) => {
     setEditingMeal(meal);
+    const departmentValue = typeof meal.department === 'string' ? meal.department : meal.department?.title || '';
     setFormData({
       date: format(new Date(meal.date), 'yyyy-MM-dd'),
-      department: meal.department,
+      department: departmentValue,
       breakfastCount: meal.breakfastCount || 0,
       lunchCount: meal.lunchCount || 0,
       dinnerCount: meal.dinnerCount || 0
@@ -187,6 +194,11 @@ const GuestMeals = () => {
   useEffect(() => {
     fetchGuestMeals();
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
@@ -325,7 +337,9 @@ const GuestMeals = () => {
                             >
                               <option value="">Select Department</option>
                               {departments.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
+                                <option key={typeof dept === 'string' ? dept : dept._id} value={typeof dept === 'string' ? dept : dept.title}>
+                                  {typeof dept === 'string' ? dept : dept.title}
+                                </option>
                               ))}
                               <option value="other">Other</option>
                             </select>
@@ -520,7 +534,9 @@ const GuestMeals = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {format(new Date(meal.date), 'MMM d, yyyy')}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meal.department}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {typeof meal.department === 'string' ? meal.department : meal.department?.title || 'N/A'}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.breakfastCount || 0}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.lunchCount || 0}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.dinnerCount || 0}</td>
@@ -528,7 +544,7 @@ const GuestMeals = () => {
                                   {typeof meal.addedBy === 'string' ? 
                                     meal.addedBy : 
                                     meal.addedBy?.name ? 
-                                      `${meal.addedBy.name} (${meal.addedBy.department})` : 
+                                      `${meal.addedBy.name} (${typeof meal.addedBy.department === 'string' ? meal.addedBy.department : meal.addedBy.department?.title || 'N/A'})` : 
                                       'N/A'
                                   }
                                 </td>

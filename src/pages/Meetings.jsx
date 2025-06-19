@@ -14,7 +14,10 @@ import {
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const Meetings = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [meetings, setMeetings] = useState([]);
@@ -33,9 +36,9 @@ const Meetings = () => {
     startDatetime: '',
     endDatetime: '',
     hall: 'Auditorium [2nd Floor]',
-    noOfPersons: 0,
+    noOfPersons: 1,
     hiraStaff: 0,
-    guests: 0,
+    guests: 1,
     foodRequired: false,
     breakfast: 0,
     morningSnacksCount: 0,
@@ -61,9 +64,16 @@ const Meetings = () => {
         setDepartments(response.data.departments);
         
         // If editing and department exists, check if it's in the list
-        if (editingMeeting?.department && !response.data.departments.includes(editingMeeting.department)) {
-          setShowCustomDepartment(true);
-          setCustomDepartment(editingMeeting.department);
+        if (editingMeeting?.department) {
+          const editingDeptName = typeof editingMeeting.department === 'string' ? editingMeeting.department : editingMeeting.department.title;
+          const departmentExists = response.data.departments.some(dept => 
+            (typeof dept === 'string' ? dept : dept.title) === editingDeptName
+          );
+          
+          if (!departmentExists) {
+            setShowCustomDepartment(true);
+            setCustomDepartment(editingDeptName);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch departments:', err);
@@ -118,6 +128,33 @@ const Meetings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Frontend validation
+    if (!formData.title.trim()) {
+      setError('Title is required');
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError('Description is required');
+      return;
+    }
+    if (!formData.startDatetime) {
+      setError('Start date and time is required');
+      return;
+    }
+    if (!formData.endDatetime) {
+      setError('End date and time is required');
+      return;
+    }
+    if (!formData.department) {
+      setError('Department is required');
+      return;
+    }
+    if (parseInt(formData.noOfPersons) < 1) {
+      setError('Number of participants must be at least 1');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('adminToken');
       const url = `${import.meta.env.VITE_API_URL}/admin/meetings${editingMeeting ? `/${editingMeeting._id}` : ''}`;
@@ -126,9 +163,9 @@ const Meetings = () => {
       // Ensure all numeric fields are properly parsed
       const submitData = {
         ...formData,
-        noOfPersons: parseInt(formData.noOfPersons) || 0,
-        hiraStaff: Math.floor(formData.noOfPersons / 2) || 0,
-        guests: Math.ceil(formData.noOfPersons / 2) || 0,
+        noOfPersons: parseInt(formData.noOfPersons) || 1,
+        hiraStaff: Math.floor(parseInt(formData.noOfPersons) / 2) || 0,
+        guests: Math.ceil(parseInt(formData.noOfPersons) / 2) || 1,
         breakfast: parseInt(formData.breakfast) || 0,
         morningSnacksCount: parseInt(formData.morningSnacksCount) || 0,
         morningTeaCount: parseInt(formData.morningTeaCount) || 0,
@@ -137,6 +174,8 @@ const Meetings = () => {
         eveningTeaCount: parseInt(formData.eveningTeaCount) || 0,
         dinner: parseInt(formData.dinner) || 0
       };
+
+      console.log('Submitting meeting data:', submitData);
 
       await axios({
         method,
@@ -153,9 +192,9 @@ const Meetings = () => {
         startDatetime: '',
         endDatetime: '',
         hall: 'Auditorium [2nd Floor]',
-        noOfPersons: 0,
+        noOfPersons: 1,
         hiraStaff: 0,
-        guests: 0,
+        guests: 1,
         foodRequired: false,
         breakfast: 0,
         morningSnacksCount: 0,
@@ -166,8 +205,10 @@ const Meetings = () => {
         dinner: 0,
         department: ''
       });
+      setError(''); // Clear any previous errors
       fetchMeetings();
     } catch (err) {
+      console.error('Meeting submission error:', err);
       setError(err.response?.data?.message || 'Failed to save meeting');
     }
   };
@@ -187,6 +228,7 @@ const Meetings = () => {
 
   const handleEdit = (meeting) => {
     setEditingMeeting(meeting);
+    const departmentValue = typeof meeting.department === 'string' ? meeting.department : meeting.department?.title || '';
     setFormData({
       title: meeting.title || '',
       description: meeting.description || '',
@@ -204,7 +246,7 @@ const Meetings = () => {
       eveningSnacksCount: meeting.eveningSnacksCount || 0,
       eveningTeaCount: meeting.eveningTeaCount || 0,
       dinner: meeting.dinner || 0,
-      department: meeting.department || ''
+      department: departmentValue
     });
     setShowModal(true);
   };
@@ -231,13 +273,14 @@ const Meetings = () => {
 
   // Filter meetings based on search query and selected department
   const filteredMeetings = meetings.filter(meeting => {
+    const departmentName = typeof meeting.department === 'string' ? meeting.department : meeting.department?.title || '';
     const matchesSearch = searchQuery.trim() === '' || 
       meeting.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      meeting.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      departmentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.hall?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesDepartment = selectedDepartment === '' || meeting.department === selectedDepartment;
+    const matchesDepartment = selectedDepartment === '' || departmentName === selectedDepartment;
 
     return matchesSearch && matchesDepartment;
   });
@@ -245,6 +288,11 @@ const Meetings = () => {
   useEffect(() => {
     fetchMeetings();
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
@@ -296,9 +344,9 @@ const Meetings = () => {
                           startDatetime: '',
                           endDatetime: '',
                           hall: 'Auditorium [2nd Floor]',
-                          noOfPersons: 0,
+                          noOfPersons: 1,
                           hiraStaff: 0,
-                          guests: 0,
+                          guests: 1,
                           foodRequired: false,
                           breakfast: 0,
                           morningSnacksCount: 0,
@@ -339,15 +387,17 @@ const Meetings = () => {
                     </div>
 
                     {/* Department Filter */}
-                    <div>
+                    <div className="flex-1">
                       <select
                         value={selectedDepartment}
                         onChange={(e) => setSelectedDepartment(e.target.value)}
-                        className="block w-full px-4 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                       >
                         <option value="">All Departments</option>
                         {departments.map(dept => (
-                          <option key={dept} value={dept}>{dept}</option>
+                          <option key={typeof dept === 'string' ? dept : dept._id} value={typeof dept === 'string' ? dept : dept.title}>
+                            {typeof dept === 'string' ? dept : dept.title}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -426,16 +476,19 @@ const Meetings = () => {
                             </span>
                           </label>
                           <select
+                            required
                             value={showCustomDepartment ? 'other' : formData.department}
                             onChange={handleDepartmentChange}
                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                            required
+                            disabled={loading}
                           >
                             <option value="">Select Department</option>
                             {departments.map(dept => (
-                              <option key={dept} value={dept}>{dept}</option>
+                              <option key={typeof dept === 'string' ? dept : dept._id} value={typeof dept === 'string' ? dept : dept.title}>
+                                {typeof dept === 'string' ? dept : dept.title}
+                              </option>
                             ))}
-                            <option value="other">Other</option>
+                            <option value="other">Add New Department</option>
                           </select>
                         </div>
 
@@ -528,10 +581,10 @@ const Meetings = () => {
                           </label>
                           <input
                             type="number"
-                            min="0"
+                            min="1"
                             value={formData.noOfPersons}
                             onChange={(e) => {
-                              const total = parseInt(e.target.value) || 0;
+                              const total = parseInt(e.target.value) || 1;
                               setFormData(prev => ({
                                 ...prev,
                                 noOfPersons: total,
@@ -540,7 +593,7 @@ const Meetings = () => {
                               }));
                             }}
                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                            placeholder="0"
+                            placeholder="1"
                             required
                           />
                         </div>
@@ -733,7 +786,9 @@ const Meetings = () => {
                           filteredMeetings.map((meeting, index) => (
                             <tr key={meeting._id} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.title}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.department}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {typeof meeting.department === 'string' ? meeting.department : meeting.department?.title || 'N/A'}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.hall}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.noOfPersons}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
