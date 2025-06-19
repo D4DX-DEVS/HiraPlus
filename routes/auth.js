@@ -357,6 +357,7 @@ router.get('/users', async (req, res) => {
   try {
     // Get all users, excluding sensitive information
     const users = await User.find()
+      .populate('department', 'title')
       .select('name phoneNumber department designation -_id')
       .sort({ name: 1 });
 
@@ -539,6 +540,7 @@ router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
 router.get('/meetings', async (req, res) => {
   try {
     const meetings = await Meeting.find()
+      .populate('department', 'title')
       .populate('createdBy', 'name department')
       .sort({ startDatetime: -1 });
 
@@ -591,9 +593,8 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
     });
 
     await meeting.save();
-    await meeting.populate([
-      { path: 'createdBy', select: 'name department' }
-    ]);
+    await meeting.populate('department', 'title');
+    await meeting.populate('createdBy', 'name');
 
     res.status(201).json({
       success: true,
@@ -613,6 +614,7 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
 router.get('/dept-meetings', deptHeadAuth, async (req, res) => {
   try {
     const meetings = await Meeting.find({ department: req.user.department })
+      .populate('department', 'title')
       .populate('createdBy', 'name department')
       .sort({ startDatetime: -1 });
 
@@ -666,7 +668,7 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
     if (typeof dinner !== 'undefined') meeting.dinner = dinner;
 
     await meeting.save();
-    await meeting.populate('department', 'name');
+    await meeting.populate('department', 'title');
     await meeting.populate('createdBy', 'name');
 
     res.json({
@@ -715,18 +717,16 @@ router.delete('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
 // Get all departments (Public route)
 router.get('/departments', async (req, res) => {
   try {
-    // Get unique departments from users collection
-    const departments = await User.distinct('department');
-
-    // Filter out null/empty departments and sort alphabetically
-    const validDepartments = departments
-      .filter(dept => dept && dept.trim())
-      .sort((a, b) => a.localeCompare(b));
+    const Department = require('../models/Department');
+    
+    const departments = await Department.find()
+      .select('title')
+      .sort({ title: 1 });
 
     res.json({
       success: true,
-      departments: validDepartments,
-      total: validDepartments.length
+      departments: departments.map(dept => dept.title),
+      total: departments.length
     });
   } catch (error) {
     console.error('Fetch departments error:', error);
@@ -754,6 +754,14 @@ router.get('/today-checked-in', async (req, res) => {
       status: 'CheckedIn' // Only get users who are still checked in
     })
     .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 });
 
     // Group check-ins by department for better organization

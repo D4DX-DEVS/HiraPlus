@@ -61,7 +61,14 @@ router.post('/check-in/:userId', receptionAuth, async (req, res) => {
     await checkIn.save();
 
     // Populate user details in response
-    await checkIn.populate('user', 'name department designation');
+    await checkIn.populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     res.status(201).json({
       message: 'User checked in successfully',
@@ -94,7 +101,14 @@ router.post('/checkout/:userId', receptionAuth, async (req, res) => {
     await checkIn.save();
 
     // Populate user details in response
-    await checkIn.populate('user', 'name department designation');
+    await checkIn.populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     res.json({
       message: 'User checked out successfully',
@@ -121,7 +135,14 @@ router.get('/check-ins/today', receptionAuth, async (req, res) => {
         $lt: tomorrow
       }
     })
-    .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 });
 
     // Find all users who checked in before today but haven't checked out
@@ -129,7 +150,14 @@ router.get('/check-ins/today', receptionAuth, async (req, res) => {
       date: { $lt: today },
       status: 'CheckedIn'
     })
-    .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 });
 
     // Combine both results
@@ -157,7 +185,14 @@ router.get('/check-in-status/:userId', receptionAuth, async (req, res) => {
     const activeCheckIn = await CheckIn.findOne({
       user: userId,
       status: 'CheckedIn'
-    }).populate('user', 'name department designation');
+    }).populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     res.json({
       isCheckedIn: !!activeCheckIn,
@@ -184,7 +219,14 @@ router.get('/checkouts/today', receptionAuth, async (req, res) => {
       },
       status: 'Checkout'
     })
-    .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkoutTime: -1 });
 
     res.json(checkouts);
@@ -213,7 +255,14 @@ router.get('/check-ins/by-date', receptionAuth, async (req, res) => {
         $lt: endDate
       }
     })
-    .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 });
 
     res.json({
@@ -247,7 +296,14 @@ router.get('/checkouts/by-date', receptionAuth, async (req, res) => {
       },
       status: 'Checkout'
     })
-    .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkoutTime: -1 });
 
     res.json({
@@ -280,7 +336,14 @@ router.get('/attendance/by-date', receptionAuth, async (req, res) => {
         $lt: endDate
       }
     })
-    .populate('user', 'name department designation')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 });
 
     const summary = {
@@ -296,7 +359,7 @@ router.get('/attendance/by-date', receptionAuth, async (req, res) => {
 
     // Group by department
     allRecords.forEach(record => {
-      const dept = record.user.department;
+      const dept = record.user.department.title;
       if (!summary.byDepartment[dept]) {
         summary.byDepartment[dept] = {
           totalCheckIns: 0,
@@ -342,18 +405,16 @@ router.get('/users/all', async (req, res) => {
 // Get all departments (Public route)
 router.get('/departments', async (req, res) => {
   try {
-    // Get unique departments from users collection
-    const departments = await User.distinct('department');
-
-    // Filter out null/empty departments and sort alphabetically
-    const validDepartments = departments
-      .filter(dept => dept && dept.trim())
-      .sort((a, b) => a.localeCompare(b));
+    const Department = require('../models/Department');
+    
+    const departments = await Department.find()
+      .select('title')
+      .sort({ title: 1 });
 
     res.json({
       success: true,
-      departments: validDepartments,
-      total: validDepartments.length
+      departments: departments.map(dept => dept.title),
+      total: departments.length
     });
   } catch (error) {
     console.error('Fetch departments error:', error);
@@ -371,7 +432,14 @@ router.get('/currently-checked-in', receptionAuth, async (req, res) => {
     const checkIns = await CheckIn.find({ 
       status: 'CheckedIn'
     })
-    .populate('user', 'name department designation email')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 }); // Most recent check-ins first
 
     // Group check-ins by date
@@ -404,12 +472,19 @@ router.get('/currently-checked-in/by-department/:department', receptionAuth, asy
     const checkIns = await CheckIn.find({ 
       status: 'CheckedIn'
     })
-    .populate('user', 'name department designation email')
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ checkedInTime: -1 });
 
     // Filter check-ins by department
     const departmentCheckIns = checkIns.filter(checkIn => 
-      checkIn.user.department.toLowerCase() === department.toLowerCase()
+      checkIn.user.department.title.toLowerCase() === department.toLowerCase()
     );
 
     res.json({
@@ -428,11 +503,18 @@ router.get('/check-in-statistics', receptionAuth, async (req, res) => {
   try {
     const currentlyCheckedIn = await CheckIn.find({ 
       status: 'CheckedIn' 
-    }).populate('user', 'name department designation');
+    }).populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     // Group by department
     const byDepartment = currentlyCheckedIn.reduce((acc, checkIn) => {
-      const dept = checkIn.user.department;
+      const dept = checkIn.user.department.title;
       if (!acc[dept]) {
         acc[dept] = {
           count: 0,
@@ -497,7 +579,14 @@ router.put('/edit-check-in/:checkInId', receptionAuth, async (req, res) => {
         ...(newStatus === 'Checkout' ? { checkoutTime: new Date() } : { checkoutTime: null })
       },
       { new: true } // Return the updated document
-    ).populate('user', 'name department designation');
+    ).populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     res.json({
       message: `Status successfully changed to ${newStatus}`,

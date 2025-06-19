@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Department = require('../models/Department');
 const Meal = require('../models/Meal');
 const Notification = require('../models/Notification');
 const Message = require('../models/Message');
@@ -48,20 +49,33 @@ router.post('/users', adminAuth, async (req, res) => {
 
     // Clean and trim all fields
     name = name.trim();
-    department = department.trim();
     designation = designation.trim();
     phoneNumber = String(phoneNumber).trim().replace('+91', '').replace(/\D/g, '');
 
     // Validate all fields have content after trimming
-    if (!name || !department || !designation) {
+    if (!name || !designation) {
       return res.status(400).json({ 
-        message: 'Name, department, and designation cannot be empty' 
+        message: 'Name and designation cannot be empty' 
       });
     }
     
     if (phoneNumber.length !== 10) {
       return res.status(400).json({ 
         message: 'Please provide a valid 10-digit phone number' 
+      });
+    }
+
+    // Find department by ID or title
+    let departmentDoc;
+    if (mongoose.Types.ObjectId.isValid(department)) {
+      departmentDoc = await Department.findById(department);
+    } else {
+      departmentDoc = await Department.findOne({ title: department.trim() });
+    }
+
+    if (!departmentDoc) {
+      return res.status(400).json({ 
+        message: 'Invalid department. Please select a valid department.' 
       });
     }
 
@@ -73,12 +87,15 @@ router.post('/users', adminAuth, async (req, res) => {
     const user = new User({ 
       phoneNumber,
       name,
-      department,
+      department: departmentDoc._id,
       designation,
       isDeptHead: isDeptHead || false,
       status: status || 'active'
     });
     await user.save();
+
+    // Populate department for response
+    await user.populate('department', 'title');
 
     res.status(201).json({ 
       message: 'User added successfully',
@@ -102,6 +119,7 @@ router.post('/users', adminAuth, async (req, res) => {
 router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
+      .populate('department', 'title')
       .select('name phoneNumber department designation isVerified isDeptHead status createdAt')
       .sort({ createdAt: -1 });
 
@@ -178,7 +196,22 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
 
     // Update other fields if provided
     if (name) user.name = name.trim();
-    if (department) user.department = department.trim();
+    if (department) {
+      // Find department by ID or title
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+
+      if (!departmentDoc) {
+        return res.status(400).json({ 
+          message: 'Invalid department. Please select a valid department.' 
+        });
+      }
+      user.department = departmentDoc._id;
+    }
     if (designation) user.designation = designation.trim();
     if (typeof isDeptHead !== 'undefined') user.isDeptHead = isDeptHead;
     if (status && ['active', 'inactive'].includes(status)) user.status = status;
@@ -187,14 +220,14 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (user.name && !user.name.trim()) {
       return res.status(400).json({ message: 'Name cannot be empty' });
     }
-    if (user.department && !user.department.trim()) {
-      return res.status(400).json({ message: 'Department cannot be empty' });
-    }
     if (user.designation && !user.designation.trim()) {
       return res.status(400).json({ message: 'Designation cannot be empty' });
     }
 
     await user.save();
+
+    // Populate department for response
+    await user.populate('department', 'title');
 
     res.json({
       message: 'User updated successfully',
@@ -227,7 +260,7 @@ router.get('/users/meals', adminAuth, async (req, res) => {
       name: 1, 
       department: 1, 
       designation: 1 
-    });
+    }).populate('department', 'title');
     
     // Prepare date filter for meals
     const mealQuery = {};
@@ -615,6 +648,10 @@ router.get('/meals/:mealType', adminAuth, async (req, res) => {
     }).populate({
       path: 'userId',
       select: 'name phoneNumber department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      },
       match: { _id: { $exists: true } }  // Only populate if user exists
     });
 
@@ -679,7 +716,7 @@ router.get('/meals/counts/summary', adminAuth, async (req, res) => {
 // Admin: Get single user by ID
 router.get('/users/:userId', adminAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
+    const user = await User.findById(req.params.userId).populate('department', 'title');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -749,9 +786,24 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
         $unwind: '$user'
       },
       {
+        $lookup: {
+          from: 'departments',
+          localField: 'user.department',
+          foreignField: '_id',
+          as: 'userDepartment'
+        }
+      },
+      {
+        $unwind: { path: '$userDepartment', preserveNullAndEmptyArrays: true }
+      },
+      {
         $group: {
-          _id: '$userId',
+          _id: {
+            userId: '$userId',
+            department: '$userDepartment._id'
+          },
           user: { $first: '$user' },
+          userDepartment: { $first: '$userDepartment' },
           breakfastCount: {
             $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
           },
@@ -764,59 +816,97 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
         }
       },
       {
-        $project: {
-          _id: 1,
-          name: '$user.name',
-          phoneNumber: '$user.phoneNumber',
-          department: '$user.department',
-          designation: '$user.designation',
-          breakfastCount: 1,
-          lunchCount: 1,
-          dinnerCount: 1
+        $group: {
+          _id: '$_id.department',
+          departmentTitle: { $first: '$userDepartment.title' },
+          users: {
+            $push: {
+              userId: '$_id.userId',
+              name: '$user.name',
+              phoneNumber: '$user.phoneNumber',
+              department: '$userDepartment.title',
+              designation: '$user.designation',
+              breakfastCount: '$breakfastCount',
+              lunchCount: '$lunchCount',
+              dinnerCount: '$dinnerCount',
+              totalMeals: { $add: ['$breakfastCount', '$lunchCount', '$dinnerCount'] }
+            }
+          },
+          departmentTotals: {
+            $push: {
+              breakfast: '$breakfastCount',
+              lunch: '$lunchCount',
+              dinner: '$dinnerCount'
+            }
+          }
         }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
+          users: 1,
+          totals: {
+            breakfast: { $sum: '$departmentTotals.breakfast' },
+            lunch: { $sum: '$departmentTotals.lunch' },
+            dinner: { $sum: '$departmentTotals.dinner' },
+            total: {
+              $sum: {
+                $map: {
+                  input: '$departmentTotals',
+                  as: 'total',
+                  in: { $add: ['$$total.breakfast', '$$total.lunch', '$$total.dinner'] }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $sort: { 'totals.total': -1 }
       }
     ]);
 
-    // Transform the data
-    const userMealCounts = mealCounts.map(count => ({
-      userId: count._id,
-      name: count.name || '',
-      phoneNumber: count.phoneNumber || '',
-      department: count.department || '',
-      designation: count.designation || '',
-      mealCounts: {
-        breakfast: count.breakfastCount,
-        lunch: count.lunchCount,
-        dinner: count.dinnerCount,
-        total: count.breakfastCount + count.lunchCount + count.dinnerCount
-      }
-    }));
+    // Add users with no meals for each department and sort users by total meals
+    const departmentsWithAllUsers = await Promise.all(
+      mealCounts.map(async (dept) => {
+        // Find department ObjectId for querying users
+        const departmentDoc = await Department.findOne({ title: dept.department });
+        if (!departmentDoc) return dept;
 
-    // Add users with no meals
-    const usersWithNoMeals = users
-      .filter(user => !mealCounts.find(count => count._id.toString() === user._id.toString()))
-      .map(user => ({
-        userId: user._id,
-        name: user.name || '',
-        phoneNumber: user.phoneNumber || '',
-        department: user.department || '',
-        designation: user.designation || '',
-        mealCounts: {
-          breakfast: 0,
-          lunch: 0,
-          dinner: 0,
-          total: 0
-        }
-      }));
+        const deptUsers = await User.find({ 
+          department: departmentDoc._id,
+          _id: { $nin: dept.users.map(u => u.userId) }
+        }).populate('department', 'title');
 
-    const allUsers = [...userMealCounts, ...usersWithNoMeals];
+        const usersWithNoMeals = deptUsers.map(user => ({
+          userId: user._id,
+          name: user.name || '',
+          phoneNumber: user.phoneNumber || '',
+          department: user.department ? user.department.title : '',
+          designation: user.designation || '',
+          breakfastCount: 0,
+          lunchCount: 0,
+          dinnerCount: 0,
+          totalMeals: 0
+        }));
+
+        // Combine and sort all users by total meals
+        const allUsers = [...dept.users, ...usersWithNoMeals].sort((a, b) => b.totalMeals - a.totalMeals);
+
+        return {
+          ...dept,
+          users: allUsers
+        };
+      })
+    );
 
     // Calculate overall totals
-    const overallTotals = allUsers.reduce((acc, user) => {
-      acc.breakfast += user.mealCounts.breakfast;
-      acc.lunch += user.mealCounts.lunch;
-      acc.dinner += user.mealCounts.dinner;
-      acc.total += user.mealCounts.total;
+    const overallTotals = departmentsWithAllUsers.reduce((acc, dept) => {
+      acc.breakfast += dept.totals.breakfast;
+      acc.lunch += dept.totals.lunch;
+      acc.dinner += dept.totals.dinner;
+      acc.total += dept.totals.total;
       return acc;
     }, { breakfast: 0, lunch: 0, dinner: 0, total: 0 });
 
@@ -826,7 +916,7 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
         to: end
       },
       overallTotals,
-      users: allUsers.sort((a, b) => b.mealCounts.total - a.mealCounts.total)
+      departments: departmentsWithAllUsers
     });
 
   } catch (error) {
@@ -841,8 +931,10 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
 // Admin: Get all guest meals with department summary
 router.get('/guest-meals', adminAuth, async (req, res) => {
   try {
-    // First, get all guest meals without population
-    const guestMeals = await GuestMeal.find().sort({ date: -1 });
+    // Get all guest meals with proper population
+    const guestMeals = await GuestMeal.find()
+      .populate('department', 'title')
+      .sort({ date: -1 });
 
     // Process each meal to handle addedBy field
     const processedMeals = await Promise.all(guestMeals.map(async (meal) => {
@@ -855,7 +947,7 @@ router.get('/guest-meals', adminAuth, async (req, res) => {
       
       // If addedBy is an ObjectId, try to populate user info
       try {
-        const user = await User.findById(meal.addedBy).select('name department');
+        const user = await User.findById(meal.addedBy).populate('department', 'title').select('name department');
         if (user) {
           mealObj.addedBy = {
             name: user.name,
@@ -873,9 +965,10 @@ router.get('/guest-meals', adminAuth, async (req, res) => {
 
     // Group meals by department and calculate totals
     const departmentSummary = processedMeals.reduce((acc, meal) => {
-      if (!acc[meal.department]) {
-        acc[meal.department] = {
-          department: meal.department,
+      const deptTitle = meal.department ? meal.department.title : 'Unknown';
+      if (!acc[deptTitle]) {
+        acc[deptTitle] = {
+          department: deptTitle,
           totalBreakfast: 0,
           totalLunch: 0,
           totalDinner: 0,
@@ -883,10 +976,10 @@ router.get('/guest-meals', adminAuth, async (req, res) => {
         };
       }
       
-      acc[meal.department].totalBreakfast += meal.breakfastCount || 0;
-      acc[meal.department].totalLunch += meal.lunchCount || 0;
-      acc[meal.department].totalDinner += meal.dinnerCount || 0;
-      acc[meal.department].totalMeals += 
+      acc[deptTitle].totalBreakfast += meal.breakfastCount || 0;
+      acc[deptTitle].totalLunch += meal.lunchCount || 0;
+      acc[deptTitle].totalDinner += meal.dinnerCount || 0;
+      acc[deptTitle].totalMeals += 
         (meal.breakfastCount || 0) + 
         (meal.lunchCount || 0) + 
         (meal.dinnerCount || 0);
@@ -930,13 +1023,23 @@ router.get('/guest-meals/today', adminAuth, async (req, res) => {
         $gte: today,
         $lt: tomorrow
       }
-    }).populate('addedBy', 'name department');
+    })
+    .populate('department', 'title')
+    .populate({
+      path: 'addedBy',
+      select: 'name department',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     // Calculate department-wise totals for today
     const departmentTotals = guestMeals.reduce((acc, meal) => {
-      if (!acc[meal.department]) {
-        acc[meal.department] = {
-          department: meal.department,
+      const deptTitle = meal.department ? meal.department.title : 'Unknown';
+      if (!acc[deptTitle]) {
+        acc[deptTitle] = {
+          department: deptTitle,
           breakfast: 0,
           lunch: 0,
           dinner: 0,
@@ -944,10 +1047,10 @@ router.get('/guest-meals/today', adminAuth, async (req, res) => {
         };
       }
 
-      acc[meal.department].breakfast += meal.breakfastCount || 0;
-      acc[meal.department].lunch += meal.lunchCount || 0;
-      acc[meal.department].dinner += meal.dinnerCount || 0;
-      acc[meal.department].total += 
+      acc[deptTitle].breakfast += meal.breakfastCount || 0;
+      acc[deptTitle].lunch += meal.lunchCount || 0;
+      acc[deptTitle].dinner += meal.dinnerCount || 0;
+      acc[deptTitle].total += 
         (meal.breakfastCount || 0) + 
         (meal.lunchCount || 0) + 
         (meal.dinnerCount || 0);
@@ -982,15 +1085,38 @@ router.get('/guest-meals/today', adminAuth, async (req, res) => {
 // Admin: Get guest meals by department
 router.get('/guest-meals/department/:department', adminAuth, async (req, res) => {
   try {
+    // Find department by ID or title
+    let departmentDoc;
+    if (mongoose.Types.ObjectId.isValid(req.params.department)) {
+      departmentDoc = await Department.findById(req.params.department);
+    } else {
+      departmentDoc = await Department.findOne({ title: req.params.department });
+    }
+
+    if (!departmentDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department not found'
+      });
+    }
+
     const guestMeals = await GuestMeal.find({
-      department: req.params.department
+      department: departmentDoc._id
     })
-    .populate('addedBy', 'name department')
+    .populate('department', 'title')
+    .populate({
+      path: 'addedBy',
+      select: 'name department',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
     .sort({ date: -1 });
 
     // Calculate department totals
     const departmentTotals = {
-      department: req.params.department,
+      department: departmentDoc.title,
       totalBreakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
       totalLunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
       totalDinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0)
@@ -1048,6 +1174,17 @@ router.get('/department-meal-counts', adminAuth, async (req, res) => {
         $unwind: '$user'
       },
       {
+        $lookup: {
+          from: 'departments',
+          localField: 'user.department',
+          foreignField: '_id',
+          as: 'userDepartment'
+        }
+      },
+      {
+        $unwind: { path: '$userDepartment', preserveNullAndEmptyArrays: true }
+      },
+      {
         $group: {
           _id: '$user.department',
           breakfastCount: {
@@ -1065,7 +1202,7 @@ router.get('/department-meal-counts', adminAuth, async (req, res) => {
       {
         $project: {
           _id: 0,
-          department: '$_id',
+          department: { $ifNull: ['$userDepartment.title', 'Unknown'] },
           breakfastCount: 1,
           lunchCount: 1,
           dinnerCount: 1,
@@ -1126,13 +1263,21 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    // Build match condition
-    const matchCondition = {
-      date: { $gte: start, $lte: end }
-    };
-
     // Get users by department
-    const userQuery = department ? { department } : {};
+    let userQuery = {};
+    if (department) {
+      // Find department by ID or title
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+
+      if (departmentDoc) {
+        userQuery.department = departmentDoc._id;
+      }
+    }
     const users = await User.find(userQuery).lean();
 
     if (!users || users.length === 0) {
@@ -1146,7 +1291,7 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
     const mealCounts = await Meal.aggregate([
       {
         $match: {
-          ...matchCondition,
+          date: { $gte: start, $lte: end },
           userId: { $in: users.map(user => user._id) }
         }
       },
@@ -1162,12 +1307,24 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
         $unwind: '$user'
       },
       {
+        $lookup: {
+          from: 'departments',
+          localField: 'user.department',
+          foreignField: '_id',
+          as: 'userDepartment'
+        }
+      },
+      {
+        $unwind: { path: '$userDepartment', preserveNullAndEmptyArrays: true }
+      },
+      {
         $group: {
           _id: {
             userId: '$userId',
-            department: '$user.department'
+            department: '$userDepartment._id'
           },
           user: { $first: '$user' },
+          userDepartment: { $first: '$userDepartment' },
           breakfastCount: {
             $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
           },
@@ -1182,12 +1339,13 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
       {
         $group: {
           _id: '$_id.department',
+          departmentTitle: { $first: '$userDepartment.title' },
           users: {
             $push: {
               userId: '$_id.userId',
               name: '$user.name',
               phoneNumber: '$user.phoneNumber',
-              department: '$user.department',
+              department: '$userDepartment.title',
               designation: '$user.designation',
               breakfastCount: '$breakfastCount',
               lunchCount: '$lunchCount',
@@ -1207,7 +1365,7 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
       {
         $project: {
           _id: 0,
-          department: '$_id',
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
           users: 1,
           totals: {
             breakfast: { $sum: '$departmentTotals.breakfast' },
@@ -1233,16 +1391,20 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
     // Add users with no meals for each department and sort users by total meals
     const departmentsWithAllUsers = await Promise.all(
       mealCounts.map(async (dept) => {
+        // Find department ObjectId for querying users
+        const departmentDoc = await Department.findOne({ title: dept.department });
+        if (!departmentDoc) return dept;
+
         const deptUsers = await User.find({ 
-          department: dept.department,
+          department: departmentDoc._id,
           _id: { $nin: dept.users.map(u => u.userId) }
-        });
+        }).populate('department', 'title');
 
         const usersWithNoMeals = deptUsers.map(user => ({
           userId: user._id,
           name: user.name || '',
           phoneNumber: user.phoneNumber || '',
-          department: user.department || '',
+          department: user.department ? user.department.title : '',
           designation: user.designation || '',
           breakfastCount: 0,
           lunchCount: 0,
@@ -1296,6 +1458,21 @@ router.post('/guest-meals', adminAuth, async (req, res) => {
       });
     }
 
+    // Find department by ID or title
+    let departmentDoc;
+    if (mongoose.Types.ObjectId.isValid(department)) {
+      departmentDoc = await Department.findById(department);
+    } else {
+      departmentDoc = await Department.findOne({ title: department.trim() });
+    }
+
+    if (!departmentDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department. Please select a valid department.'
+      });
+    }
+
     // Validate counts are non-negative numbers
     const counts = { breakfastCount, lunchCount, dinnerCount };
     for (const [key, value] of Object.entries(counts)) {
@@ -1309,7 +1486,7 @@ router.post('/guest-meals', adminAuth, async (req, res) => {
 
     const guestMeal = new GuestMeal({
       date: new Date(date),
-      department,
+      department: departmentDoc._id,
       addedBy: "Admin",
       breakfastCount: breakfastCount || 0,
       lunchCount: lunchCount || 0,
@@ -1317,6 +1494,9 @@ router.post('/guest-meals', adminAuth, async (req, res) => {
     });
 
     await guestMeal.save();
+
+    // Populate department for response
+    await guestMeal.populate('department', 'title');
 
     res.status(201).json({
       success: true,
@@ -1346,26 +1526,43 @@ router.put('/guest-meals/:id', adminAuth, async (req, res) => {
       });
     }
 
-    // Validate department if provided
-    if (department && !department.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Department cannot be empty'
-      });
+    // Handle department update if provided
+    if (department) {
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+
+      if (!departmentDoc) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department. Please select a valid department.'
+        });
+      }
+      guestMeal.department = departmentDoc._id;
     }
 
     // Update fields if provided
     if (date) guestMeal.date = new Date(date);
-    if (department) guestMeal.department = department.trim();
     if (typeof breakfastCount !== 'undefined') guestMeal.breakfastCount = breakfastCount;
     if (typeof lunchCount !== 'undefined') guestMeal.lunchCount = lunchCount;
     if (typeof dinnerCount !== 'undefined') guestMeal.dinnerCount = dinnerCount;
 
     await guestMeal.save();
 
-    // Populate addedBy field before sending response if it's a User reference
+    // Populate fields before sending response
+    await guestMeal.populate('department', 'title');
     if (typeof guestMeal.addedBy === 'object' && guestMeal.addedBy !== null) {
-      await guestMeal.populate('addedBy', 'name department');
+      await guestMeal.populate({
+        path: 'addedBy',
+        select: 'name department',
+        populate: {
+          path: 'department',
+          select: 'title'
+        }
+      });
     }
 
     res.json({
@@ -1419,42 +1616,55 @@ router.post('/meetings', adminAuth, async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons || !hiraStaff || !guests || !department) {
+    if (!title || !description || !startDatetime || !endDatetime || !hall || !department) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields'
+        message: 'Please provide all required fields: title, description, startDatetime, endDatetime, hall, and department'
+      });
+    }
+
+    // Validate numeric fields (allow 0 but not undefined/null)
+    if (typeof noOfPersons === 'undefined' || typeof hiraStaff === 'undefined' || typeof guests === 'undefined') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide noOfPersons, hiraStaff, and guests'
+      });
+    }
+
+    // Convert to numbers
+    const numPersons = parseInt(noOfPersons);
+    const numHiraStaff = parseInt(hiraStaff);
+    const numGuests = parseInt(guests);
+
+    // Validate minimum values
+    if (numPersons < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Number of persons must be at least 1'
       });
     }
 
     // Validate that total persons equals sum of hiraStaff and guests
-    if (parseInt(hiraStaff) + parseInt(guests) !== parseInt(noOfPersons)) {
+    if (numHiraStaff + numGuests !== numPersons) {
       return res.status(400).json({
         success: false,
         message: 'Total number of persons must equal sum of HIRA staff and guests'
       });
     }
 
-    // Find department name if an ID is provided
-    let departmentName = department;
-    if (department.length === 24 && /^[0-9a-fA-F]{24}$/.test(department)) {
-      const user = await User.findById(department);
-      if (!user) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid department'
-        });
-      }
-      departmentName = user.department;
+    // Find department by ID or title
+    let departmentDoc;
+    if (mongoose.Types.ObjectId.isValid(department)) {
+      departmentDoc = await Department.findById(department);
     } else {
-      // Validate if department exists
-      const departmentExists = await User.findOne({ department: department.trim() });
-      if (!departmentExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid department'
-        });
-      }
-      departmentName = departmentExists.department;
+      departmentDoc = await Department.findOne({ title: department.trim() });
+    }
+
+    if (!departmentDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department. Please select a valid department.'
+      });
     }
 
     const meeting = new Meeting({
@@ -1463,23 +1673,26 @@ router.post('/meetings', adminAuth, async (req, res) => {
       startDatetime: new Date(startDatetime),
       endDatetime: new Date(endDatetime),
       hall,
-      noOfPersons,
-      hiraStaff,
-      guests,
+      noOfPersons: numPersons,
+      hiraStaff: numHiraStaff,
+      guests: numGuests,
       foodRequired: foodRequired || false,
-      breakfast: breakfast || 0,
-      morningSnacksCount: morningSnacksCount || 0,
-      morningTeaCount: morningTeaCount || 0,
-      lunch: lunch || 0,
-      eveningSnacksCount: eveningSnacksCount || 0,
-      eveningTeaCount: eveningTeaCount || 0,
-      dinner: dinner || 0,
-      department: departmentName,
+      breakfast: parseInt(breakfast) || 0,
+      morningSnacksCount: parseInt(morningSnacksCount) || 0,
+      morningTeaCount: parseInt(morningTeaCount) || 0,
+      lunch: parseInt(lunch) || 0,
+      eveningSnacksCount: parseInt(eveningSnacksCount) || 0,
+      eveningTeaCount: parseInt(eveningTeaCount) || 0,
+      dinner: parseInt(dinner) || 0,
+      department: departmentDoc._id,
       status: 'approved', // Auto-approve for admin
       createdBy: 'admin'
     });
 
     await meeting.save();
+
+    // Populate department for response
+    await meeting.populate('department', 'title');
 
     res.status(201).json({
       success: true,
@@ -1499,32 +1712,12 @@ router.post('/meetings', adminAuth, async (req, res) => {
 router.get('/meetings', adminAuth, async (req, res) => {
   try {
     const meetings = await Meeting.find()
+      .populate('department', 'title')
       .sort({ startDatetime: -1 });
-
-    // Get all users for department lookup
-    const users = await User.find({}, 'department');
-    const departmentMap = users.reduce((acc, user) => {
-      if (user.department) {
-        acc[user._id.toString()] = user.department;
-      }
-      return acc;
-    }, {});
-
-    // Map meetings to include proper department names
-    const mappedMeetings = meetings.map(meeting => {
-      const meetingObj = meeting.toObject();
-      
-      // If department looks like an ObjectId, try to find the department name
-      if (meetingObj.department && meetingObj.department.length === 24 && /^[0-9a-fA-F]{24}$/.test(meetingObj.department)) {
-        meetingObj.department = departmentMap[meetingObj.department] || 'Unknown';
-      }
-      
-      return meetingObj;
-    });
 
     res.json({
       success: true,
-      meetings: mappedMeetings
+      meetings
     });
   } catch (error) {
     console.error('Fetch meetings error:', error);
@@ -1554,30 +1747,22 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
       });
     }
 
-    // If department is being updated, validate and get the name
+    // If department is being updated, validate and get the reference
     if (department && department !== meeting.department) {
-      let departmentName = department;
-      if (department.length === 24 && /^[0-9a-fA-F]{24}$/.test(department)) {
-        const user = await User.findById(department);
-        if (!user) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid department'
-          });
-        }
-        departmentName = user.department;
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
       } else {
-        // Validate if department exists
-        const departmentExists = await User.findOne({ department: department.trim() });
-        if (!departmentExists) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid department'
-          });
-        }
-        departmentName = departmentExists.department;
+        departmentDoc = await Department.findOne({ title: department.trim() });
       }
-      meeting.department = departmentName;
+
+      if (!departmentDoc) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department. Please select a valid department.'
+        });
+      }
+      meeting.department = departmentDoc._id;
     }
 
     // Update fields if provided
@@ -1616,6 +1801,9 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
     }
 
     await meeting.save();
+
+    // Populate department for response
+    await meeting.populate('department', 'title');
 
     res.json({
       success: true,
@@ -1656,24 +1844,166 @@ router.delete('/meetings/:meetingId', adminAuth, async (req, res) => {
   }
 });
 
-// Get all departments (Public route)
+// Get all departments (Updated to return full objects)
 router.get('/departments', async (req, res) => {
   try {
-    // Get unique departments from users collection
-    const departments = await User.distinct('department');
-
-    // Filter out null/empty departments and sort alphabetically
-    const validDepartments = departments
-      .filter(dept => dept && dept.trim())
-      .sort((a, b) => a.localeCompare(b));
+    const departments = await Department.find()
+      .sort({ title: 1 });
 
     res.json({
       success: true,
-      departments: validDepartments,
-      total: validDepartments.length
+      departments,
+      total: departments.length
     });
   } catch (error) {
     console.error('Fetch departments error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// GET department by ID
+router.get('/departments/:id', async (req, res) => {
+  try {
+    const department = await Department.findById(req.params.id);
+    
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      department
+    });
+  } catch (error) {
+    console.error('Get department by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// CREATE new department (Admin only)
+router.post('/departments', adminAuth, async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department title is required'
+      });
+    }
+
+    // Check if department already exists
+    const existingDepartment = await Department.findOne({ 
+      title: { $regex: new RegExp(`^${title.trim()}$`, 'i') }
+    });
+
+    if (existingDepartment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department with this title already exists'
+      });
+    }
+
+    const department = new Department({
+      title: title.trim()
+    });
+
+    await department.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Department created successfully',
+      department
+    });
+  } catch (error) {
+    console.error('Create department error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// UPDATE department (Admin only)
+router.put('/departments/:id', adminAuth, async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department title is required'
+      });
+    }
+
+    // Check if department exists
+    const department = await Department.findById(req.params.id);
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found'
+      });
+    }
+
+    // Check if another department with the same title exists
+    const existingDepartment = await Department.findOne({ 
+      title: { $regex: new RegExp(`^${title.trim()}$`, 'i') },
+      _id: { $ne: req.params.id }
+    });
+
+    if (existingDepartment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Another department with this title already exists'
+      });
+    }
+
+    department.title = title.trim();
+    await department.save();
+
+    res.json({
+      success: true,
+      message: 'Department updated successfully',
+      department
+    });
+  } catch (error) {
+    console.error('Update department error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// DELETE department (Admin only)
+router.delete('/departments/:id', adminAuth, async (req, res) => {
+  try {
+    const department = await Department.findById(req.params.id);
+    
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found'
+      });
+    }
+
+    await Department.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: 'Department deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete department error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -1686,29 +2016,61 @@ router.get('/department-rent-bills', adminAuth, async (req, res) => {
   try {
     const { startDate, endDate, department } = req.query;
 
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
     // Build the query
-    const query = {
+    const matchCondition = {
       status: 'approved',
-      startDatetime: { $gte: new Date(startDate), $lte: new Date(endDate) }
+      startDatetime: { $gte: start, $lte: end }
     };
 
     if (department) {
-      query.department = department;
+      // Find department by ID or title
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+
+      if (departmentDoc) {
+        matchCondition.department = departmentDoc._id;
+      }
     }
 
-    // Fetch meetings and group by department
+    // Fetch meetings and group by department with department name lookup
     const meetings = await Meeting.aggregate([
-      { $match: query },
+      { $match: matchCondition },
+      {
+        $lookup: {
+          from: 'departments',
+          localField: 'department',
+          foreignField: '_id',
+          as: 'departmentInfo'
+        }
+      },
+      {
+        $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true }
+      },
       {
         $group: {
           _id: '$department',
+          departmentTitle: { $first: '$departmentInfo.title' },
           meetingCount: { $sum: 1 }
         }
       },
       {
         $project: {
           _id: 0,
-          department: '$_id',
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
           meetingCount: 1
         }
       },
@@ -1745,7 +2107,17 @@ router.get('/department-guest-meals', adminAuth, async (req, res) => {
     };
 
     if (department) {
-      matchCondition.department = department;
+      // Find department by ID or title
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+
+      if (departmentDoc) {
+        matchCondition.department = departmentDoc._id;
+      }
     }
 
     // Get guest meal counts using aggregation
@@ -1754,8 +2126,20 @@ router.get('/department-guest-meals', adminAuth, async (req, res) => {
         $match: matchCondition
       },
       {
+        $lookup: {
+          from: 'departments',
+          localField: 'department',
+          foreignField: '_id',
+          as: 'departmentInfo'
+        }
+      },
+      {
+        $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true }
+      },
+      {
         $group: {
           _id: '$department',
+          departmentTitle: { $first: '$departmentInfo.title' },
           breakfastCount: { $sum: '$breakfastCount' },
           lunchCount: { $sum: '$lunchCount' },
           dinnerCount: { $sum: '$dinnerCount' },
@@ -1769,7 +2153,7 @@ router.get('/department-guest-meals', adminAuth, async (req, res) => {
       {
         $project: {
           _id: 0,
-          department: '$_id',
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
           breakfastCount: 1,
           lunchCount: 1,
           dinnerCount: 1,
@@ -1816,7 +2200,17 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
     };
 
     if (department) {
-      matchCondition.department = department;
+      // Find department by ID or title
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+
+      if (departmentDoc) {
+        matchCondition.department = departmentDoc._id;
+      }
     }
 
     // Get meeting food counts using aggregation
@@ -1825,8 +2219,20 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
         $match: matchCondition
       },
       {
+        $lookup: {
+          from: 'departments',
+          localField: 'department',
+          foreignField: '_id',
+          as: 'departmentInfo'
+        }
+      },
+      {
+        $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true }
+      },
+      {
         $group: {
           _id: '$department',
+          departmentTitle: { $first: '$departmentInfo.title' },
           breakfast: { $sum: '$breakfast' },
           lunch: { $sum: '$lunch' },
           dinner: { $sum: '$dinner' },
@@ -1853,7 +2259,7 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
       {
         $project: {
           _id: 0,
-          department: '$_id',
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
           breakfast: 1,
           lunch: 1,
           dinner: 1,

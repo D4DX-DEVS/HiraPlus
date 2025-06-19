@@ -76,9 +76,9 @@ const meetingSchema = new mongoose.Schema({
     default: 0
   },
   department: {
-    type: String,
-    required: true,
-    trim: true
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: true
   },
   status: {
     type: String,
