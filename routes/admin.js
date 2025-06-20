@@ -1187,6 +1187,7 @@ router.get('/department-meal-counts', adminAuth, async (req, res) => {
       {
         $group: {
           _id: '$user.department',
+          departmentTitle: { $first: '$userDepartment.title' },
           breakfastCount: {
             $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
           },
@@ -1202,7 +1203,7 @@ router.get('/department-meal-counts', adminAuth, async (req, res) => {
       {
         $project: {
           _id: 0,
-          department: { $ifNull: ['$userDepartment.title', 'Unknown'] },
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
           breakfastCount: 1,
           lunchCount: 1,
           dinnerCount: 1,
@@ -2014,7 +2015,7 @@ router.delete('/departments/:id', adminAuth, async (req, res) => {
 // Get department-wise rent bills
 router.get('/department-rent-bills', adminAuth, async (req, res) => {
   try {
-    const { startDate, endDate, department } = req.query;
+    const { startDate, endDate, department, venue } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
@@ -2031,6 +2032,11 @@ router.get('/department-rent-bills', adminAuth, async (req, res) => {
       status: 'approved',
       startDatetime: { $gte: start, $lte: end }
     };
+
+    // Add venue filter if provided
+    if (venue) {
+      matchCondition.hall = venue;
+    }
 
     if (department) {
       // Find department by ID or title
@@ -2180,7 +2186,7 @@ router.get('/department-guest-meals', adminAuth, async (req, res) => {
 // Get department-wise meeting food bills
 router.get('/meeting-food-bills', adminAuth, async (req, res) => {
   try {
-    const { startDate, endDate, department } = req.query;
+    const { startDate, endDate, department, venue } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
@@ -2198,6 +2204,11 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
       startDatetime: { $gte: start, $lte: end },
       foodRequired: true
     };
+
+    // Add venue filter if provided
+    if (venue) {
+      matchCondition.hall = venue;
+    }
 
     if (department) {
       // Find department by ID or title
