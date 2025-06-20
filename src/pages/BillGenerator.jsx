@@ -116,7 +116,7 @@ class PDFErrorBoundary extends React.Component {
 }
 
 // PDF Document Component
-const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange, mealRates, meetingFoodRates, rentRate, departmentShare, totalAmount, departmentPayable, employeePayable, departmentData, selectedDepartment, billType }) => {
+const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange, mealRates, meetingFoodRates, rentRate, departmentShare, totalAmount, departmentPayable, employeePayable, departmentData, selectedDepartment, billType, selectedVenue }) => {
   try {
     // Early return if required data is missing
     if (!dateRange?.startDate || !dateRange?.endDate) {
@@ -144,7 +144,7 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
 
     // For meeting food, ensure we have meetingFoodData
     if (billType === 'meeting' && (!meetingFoodData?.departments || meetingFoodData.departments.length === 0)) {
-      console.error('Missing meeting food data');
+      console.error('Missing meeting food / snacks data');
       return null;
     }
 
@@ -164,7 +164,7 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
         <Page size="A4" style={styles.page}>
           <Text style={styles.header}>
             {billType === 'food' ? 'Monthly Mess Bill Report' 
-             : billType === 'rent' ? 'Monthly Auditorium Rent Report' 
+             : billType === 'rent' ? `Monthly Venue Rent Report${selectedVenue ? ` - ${selectedVenue}` : ''}` 
              : billType === 'meeting' ? 'Monthly Meeting Food Report'
              : 'Monthly Guest Meals Report'}
             {selectedDepartment ? ` - ${selectedDepartment} Department` : ''}
@@ -181,12 +181,12 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
               </Text>
             ) : billType === 'rent' ? (
               <Text style={styles.ratesInfo}>
-                Auditorium Rent Rate: {rentRate || 0}
+                Venue: {selectedVenue || 'All Venues'} | Rent Rate: ₹{rentRate || 0} per meeting
               </Text>
             ) : billType === 'meeting' ? (
               <>
                 <Text style={styles.ratesInfo}>
-                  Meeting Food Rates: Breakfast {meetingFoodRates?.breakfast || 0} | Lunch {meetingFoodRates?.lunch || 0} | Dinner {meetingFoodRates?.dinner || 0}
+                  Meeting Food / Snacks Rates: Breakfast {meetingFoodRates?.breakfast || 0} | Lunch {meetingFoodRates?.lunch || 0} | Dinner {meetingFoodRates?.dinner || 0}
                 </Text>
                 <Text style={styles.ratesInfo}>
                   Snacks & Tea: Morning Snacks {meetingFoodRates?.morningSnacks || 0} | Morning Tea {meetingFoodRates?.morningTea || 0} | Evening Snacks {meetingFoodRates?.eveningSnacks || 0} | Evening Tea {meetingFoodRates?.eveningTea || 0}
@@ -223,6 +223,7 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
             <View style={styles.section}>
               <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
                 {selectedDepartment ? `${selectedDepartment} Department Rent Summary` : 'Department-wise Rent Summary'}
+                {selectedVenue ? ` - ${selectedVenue}` : ''}
               </Text>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
@@ -354,7 +355,7 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
           {meetingFoodData?.departments && billType === 'meeting' && (
             <View style={styles.section}>
               <Text style={[styles.summaryTitle, { marginBottom: 10 }]}>
-                {selectedDepartment ? `${selectedDepartment} Department Meeting Food Summary` : 'Department-wise Meeting Food Summary'}
+                {selectedDepartment ? `${selectedDepartment} Department Meeting Food / Snacks Summary` : 'Department-wise Meeting Food / Snacks Summary'}
               </Text>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
@@ -465,8 +466,14 @@ const BillGenerator = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [billType, setBillType] = useState('food');
-  const [rentRate, setRentRate] = useState(2000);
+  const [selectedVenue, setSelectedVenue] = useState('');
+  const [rentRates, setRentRates] = useState({
+    'Auditorium [2nd Floor]': 2000,
+    'Conference Hall [3rd Floor]': 1500,
+    'Meeting Space [1st Floor]': 1000
+  });
   const [rentData, setRentData] = useState(null);
   const [guestMealData, setGuestMealData] = useState(null);
   const [meetingFoodData, setMeetingFoodData] = useState(null);
@@ -475,20 +482,20 @@ const BillGenerator = () => {
     endDate: ''
   });
   const [mealRates, setMealRates] = useState({
-    breakfast: 30,
-    lunch: 60,
-    dinner: 20
+    breakfast: 40,
+    lunch: 80,
+    dinner: 40
   });
   const [meetingFoodRates, setMeetingFoodRates] = useState({
-    breakfast: 30,
-    lunch: 60,
-    dinner: 20,
-    morningSnacks: 15,
-    morningTea: 10,
-    eveningSnacks: 15,
-    eveningTea: 10
+    breakfast: 40,
+    lunch: 80,
+    dinner: 40,
+    morningSnacks: 12,
+    morningTea: 12,
+    eveningSnacks: 12,
+    eveningTea: 12
   });
-  const [departmentShare, setDepartmentShare] = useState(80);
+  const [departmentShare, setDepartmentShare] = useState(75);
   const [billData, setBillData] = useState(null);
   const [departmentData, setDepartmentData] = useState(null);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -496,6 +503,12 @@ const BillGenerator = () => {
   const [departmentPayable, setDepartmentPayable] = useState(0);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [departments, setDepartments] = useState([]);
+
+  const venues = [
+    'Auditorium [2nd Floor]',
+    'Conference Hall [3rd Floor]',
+    'Meeting Space [1st Floor]'
+  ];
 
   // Fetch departments on component mount
   useEffect(() => {
@@ -556,6 +569,14 @@ const BillGenerator = () => {
     });
   };
 
+  const handleGenerateClick = () => {
+    if (!dateRange.startDate || !dateRange.endDate) {
+      setError('Please select both start and end dates');
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
   const calculateBills = async () => {
     if (!dateRange.startDate || !dateRange.endDate) {
       setError('Please select both start and end dates');
@@ -564,6 +585,7 @@ const BillGenerator = () => {
 
     setLoading(true);
     setError('');
+    setShowConfirmDialog(false);
 
     try {
       const token = localStorage.getItem('adminToken');
@@ -695,13 +717,19 @@ const BillGenerator = () => {
         }
       } else if (billType === 'rent') {
         // Fetch rent data
+        if (!selectedVenue) {
+          setError('Please select a venue for rent bill calculation');
+          return;
+        }
+
         const rentResponse = await axios.get(
           `${import.meta.env.VITE_API_URL}/admin/department-rent-bills`,
           {
             params: {
               startDate: dateRange.startDate,
               endDate: dateRange.endDate,
-              department: selectedDepartment || undefined
+              department: selectedDepartment || undefined,
+              venue: selectedVenue
             },
             headers: { Authorization: `Bearer ${token}` }
           }
@@ -711,7 +739,7 @@ const BillGenerator = () => {
           setRentData(rentResponse.data);
           const total = rentResponse.data.departments
             .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-            .reduce((acc, dept) => acc + (dept.meetingCount * rentRate), 0);
+            .reduce((acc, dept) => acc + (dept.meetingCount * rentRates[selectedVenue] || 0), 0);
 
           const deptShare = (total * departmentShare) / 100;
           const empShare = total - deptShare;
@@ -747,31 +775,34 @@ const BillGenerator = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         Monthly Bill Generator
                       </h1>
-                      <p className="text-gray-600 text-lg">
-                        Generate comprehensive billing reports for departments and employees
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {billType === 'food' ? 'Food Bills' : 
-                           billType === 'rent' ? 'Auditorium Rent' : 
-                           billType === 'meeting' ? 'Meeting Food' : 
+                           billType === 'rent' ? 'Venue Rent' : 
+                           billType === 'meeting' ? 'Meeting Food / Snacks' : 
                            billType === 'guest' ? 'Guest Meals' : 'Select Bill Type'}
                         </span>
                         {selectedDepartment && (
                           <span className="flex items-center text-blue-600">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
                             {selectedDepartment} Department
+                          </span>
+                        )}
+                        {billType === 'rent' && selectedVenue && (
+                          <span className="flex items-center text-purple-600">
+                            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></div>
+                            {selectedVenue}
                           </span>
                         )}
                       </div>
@@ -781,7 +812,7 @@ const BillGenerator = () => {
               </div>
 
               {error && (
-                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>
@@ -789,7 +820,7 @@ const BillGenerator = () => {
                 </div>
               )}
 
-              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 p-6 lg:p-8 mb-8">
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-5 mb-6">
                 {/* Bill Type Selection */}
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Bill Type</h2>
@@ -801,11 +832,15 @@ const BillGenerator = () => {
                         checked={billType === 'food'}
                         onChange={(e) => {
                           setBillType(e.target.value);
+                          setSelectedVenue('');
                           setRentData(null);
                           setBillData(null);
                           setGuestMealData(null);
                           setMeetingFoodData(null);
                           setDepartmentData(null);
+                          setTotalAmount(0);
+                          setEmployeePayable(0);
+                          setDepartmentPayable(0);
                         }}
                         className="sr-only"
                       />
@@ -835,18 +870,22 @@ const BillGenerator = () => {
                         checked={billType === 'rent'}
                         onChange={(e) => {
                           setBillType(e.target.value);
+                          setSelectedVenue('');
                           setRentData(null);
                           setBillData(null);
                           setGuestMealData(null);
                           setMeetingFoodData(null);
                           setDepartmentData(null);
+                          setTotalAmount(0);
+                          setEmployeePayable(0);
+                          setDepartmentPayable(0);
                         }}
                         className="sr-only"
                       />
                       <span className="flex flex-1">
                         <span className="flex flex-col">
                           <span className={`block text-sm font-medium ${billType === 'rent' ? 'text-green-900' : 'text-gray-900'}`}>
-                            Auditorium Rent
+                            Venue Rent
                           </span>
                           <span className={`mt-1 flex items-center text-sm ${billType === 'rent' ? 'text-green-600' : 'text-gray-500'}`}>
                             Meeting costs
@@ -869,11 +908,15 @@ const BillGenerator = () => {
                         checked={billType === 'guest'}
                         onChange={(e) => {
                           setBillType(e.target.value);
+                          setSelectedVenue('');
                           setRentData(null);
                           setBillData(null);
                           setGuestMealData(null);
                           setMeetingFoodData(null);
                           setDepartmentData(null);
+                          setTotalAmount(0);
+                          setEmployeePayable(0);
+                          setDepartmentPayable(0);
                         }}
                         className="sr-only"
                       />
@@ -903,18 +946,22 @@ const BillGenerator = () => {
                         checked={billType === 'meeting'}
                         onChange={(e) => {
                           setBillType(e.target.value);
+                          setSelectedVenue('');
                           setRentData(null);
                           setBillData(null);
                           setGuestMealData(null);
                           setMeetingFoodData(null);
                           setDepartmentData(null);
+                          setTotalAmount(0);
+                          setEmployeePayable(0);
+                          setDepartmentPayable(0);
                         }}
                         className="sr-only"
                       />
                       <span className="flex flex-1">
                         <span className="flex flex-col">
                           <span className={`block text-sm font-medium ${billType === 'meeting' ? 'text-green-900' : 'text-gray-900'}`}>
-                            Meeting Food
+                            Meeting Food / Snacks
                           </span>
                           <span className={`mt-1 flex items-center text-sm ${billType === 'meeting' ? 'text-green-600' : 'text-gray-500'}`}>
                             Event catering
@@ -944,6 +991,9 @@ const BillGenerator = () => {
                         // Reset data to prevent stale data from showing
                         setBillData(null);
                         setDepartmentData(null);
+                        setRentData(null);
+                        setGuestMealData(null);
+                        setMeetingFoodData(null);
                         setTotalAmount(0);
                         setEmployeePayable(0);
                         setDepartmentPayable(0);
@@ -957,6 +1007,37 @@ const BillGenerator = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* Venue Selection - Show only for rent bills */}
+                {billType === 'rent' && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Venue</h2>
+                    <div className="max-w-md">
+                      <select
+                        value={selectedVenue}
+                        onChange={(e) => {
+                          setSelectedVenue(e.target.value);
+                          // Reset rent data when venue changes
+                          setRentData(null);
+                          setTotalAmount(0);
+                          setEmployeePayable(0);
+                          setDepartmentPayable(0);
+                        }}
+                        className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                      >
+                        <option value="">Select Venue</option>
+                        {venues.map((venue) => (
+                          <option key={venue} value={venue}>{venue}</option>
+                        ))}
+                      </select>
+                      {selectedVenue && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          Rent Rate: ₹{rentRates[selectedVenue]?.toLocaleString()} per meeting
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -983,7 +1064,7 @@ const BillGenerator = () => {
                     <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                       <h3 className="text-lg font-semibold text-gray-900">
                         {billType === 'food' ? 'Food Bill Details' : 
-                         billType === 'rent' ? 'Auditorium Rent Details' : 
+                         billType === 'rent' ? `Venue Rent Details${selectedVenue ? ` - ${selectedVenue}` : ''}` : 
                          billType === 'meeting' ? 'Meeting Food Details' : 
                          'Guest Meal Details'}
                       </h3>
@@ -1043,7 +1124,7 @@ const BillGenerator = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.meetingCount || 0}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                ₹{Math.round(dept.meetingCount * rentRate).toLocaleString()}
+                                ₹{Math.round(dept.meetingCount * rentRates[selectedVenue] || 0).toLocaleString()}
                               </td>
                             </tr>
                           ))}
@@ -1242,15 +1323,25 @@ const BillGenerator = () => {
                 {/* Rent Rate (show only for rent bills) */}
                 {billType === 'rent' && (
                   <div className="mb-8">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Rent Rate (₹)</h2>
-                    <div className="max-w-md">
-                      <input
-                        type="number"
-                        value={rentRate}
-                        onChange={(e) => setRentRate(parseFloat(e.target.value) || 2000)}
-                        className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
-                        placeholder="Enter rent amount"
-                      />
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Venue Rent Rates (₹ per meeting)</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {venues.map((venue) => (
+                        <div key={venue}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {venue}
+                          </label>
+                          <input
+                            type="number"
+                            value={rentRates[venue]}
+                            onChange={(e) => setRentRates(prev => ({
+                              ...prev,
+                              [venue]: parseFloat(e.target.value) || 0
+                            }))}
+                            className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                            placeholder="Enter rent amount"
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1397,7 +1488,7 @@ const BillGenerator = () => {
                 {/* Generate Button */}
                 <div className="flex justify-end space-x-4">
                   <button
-                    onClick={calculateBills}
+                    onClick={handleGenerateClick}
                     disabled={loading}
                     className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50"
                   >
@@ -1419,7 +1510,7 @@ const BillGenerator = () => {
                             dateRange={dateRange}
                             mealRates={mealRates}
                             meetingFoodRates={meetingFoodRates}
-                            rentRate={rentRate}
+                            rentRate={rentRates[selectedVenue] || 0}
                             departmentShare={departmentShare}
                             totalAmount={totalAmount}
                             departmentPayable={departmentPayable}
@@ -1427,6 +1518,7 @@ const BillGenerator = () => {
                             departmentData={departmentData}
                             selectedDepartment={selectedDepartment}
                             billType={billType}
+                            selectedVenue={selectedVenue}
                           />
                         }
                         fileName={`${billType === 'food' ? 'mess-bill' : billType === 'rent' ? 'rent-bill' : billType === 'meeting' ? 'meeting-food-bill' : 'guest-meal-bill'}-${format(new Date(dateRange.startDate), 'yyyy-MM-dd')}${selectedDepartment ? `-${selectedDepartment}` : ''}.pdf`}
@@ -1449,6 +1541,41 @@ const BillGenerator = () => {
           </div>
         </main>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Confirm Bill Generation
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you have checked the {billType === 'rent' ? 'venue rates' : 'food rates'} and department share before generating the bill?
+              </p>
+              <div className="flex justify-center space-x-3">
+                <button
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={calculateBills}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-200"
+                >
+                  Yes, Generate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

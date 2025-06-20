@@ -111,22 +111,19 @@ const AdminNotifications = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         Notifications
                       </h1>
-                      <p className="text-gray-600 text-lg">
-                        Send push notifications and announcements to all users
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {notifications.length} Notifications
                         </span>
                       </div>
@@ -135,9 +132,9 @@ const AdminNotifications = () => {
                       <button
                         onClick={() => setShowAddForm(true)}
                         disabled={isLoading}
-                        className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       >
-                        <PlusIcon className="h-5 w-5 mr-2" />
+                        <PlusIcon className="h-4 w-4 mr-1.5" />
                         Add Notification
                       </button>
                     )}
@@ -146,7 +143,7 @@ const AdminNotifications = () => {
               </div>
 
               {error && (
-                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>
@@ -155,7 +152,7 @@ const AdminNotifications = () => {
               )}
 
               {success && (
-                <div className="mb-6 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
+                <div className="mb-3 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
                     <div className="text-sm text-green-700 font-medium">{success}</div>
@@ -164,9 +161,9 @@ const AdminNotifications = () => {
               )}
 
               {showAddForm && (
-                <div className="mb-6">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200/50 p-6">
-                    <div className="mb-6">
+                <div className="mb-3">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200/50 p-4 lg:p-5">
+                    <div className="mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">Create New Notification</h3>
                       <p className="text-sm text-gray-600 mt-1">Send push notifications to all registered users</p>
                     </div>

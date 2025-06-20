@@ -20,8 +20,6 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState([]);
-  const [showCustomDepartment, setShowCustomDepartment] = useState(false);
-  const [customDepartment, setCustomDepartment] = useState('');
 
   // Fetch departments
   useEffect(() => {
@@ -29,25 +27,12 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
         setDepartments(response.data.departments);
-        
-        // If editing and department exists, check if it's in the list
-        if (initialData?.department) {
-          const initialDeptName = typeof initialData.department === 'string' ? initialData.department : initialData.department.title;
-          const departmentExists = response.data.departments.some(dept => 
-            (typeof dept === 'string' ? dept : dept.title) === initialDeptName
-          );
-          
-          if (!departmentExists) {
-            setShowCustomDepartment(true);
-            setCustomDepartment(initialDeptName);
-          }
-        }
       } catch (err) {
         console.error('Failed to fetch departments:', err);
       }
     };
     fetchDepartments();
-  }, [initialData]);
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -65,32 +50,9 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name === 'department' && value === 'other') {
-      setShowCustomDepartment(true);
-      setFormData(prev => ({
-        ...prev,
-        department: ''
-      }));
-    } else if (name === 'department') {
-      setShowCustomDepartment(false);
-      setFormData(prev => ({
-        ...prev,
-        department: value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
-  };
-
-  const handleCustomDepartmentChange = (e) => {
-    const value = e.target.value;
-    setCustomDepartment(value);
     setFormData(prev => ({
       ...prev,
-      department: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -185,7 +147,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               <select
                 id="department"
                 name="department"
-                value={showCustomDepartment ? 'other' : formData.department}
+                value={formData.department}
                 onChange={handleChange}
                 required
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
@@ -196,7 +158,6 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
                     {typeof dept === 'string' ? dept : dept.title}
                   </option>
                 ))}
-                <option value="other">Other</option>
               </select>
             </div>
           </div>
@@ -222,28 +183,6 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             </div>
           </div>
         </div>
-
-        {showCustomDepartment && (
-          <div>
-            <label htmlFor="custom-department" className="block text-sm font-medium text-gray-700 mb-1">
-              New Department Name
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <BriefcaseIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
-              </div>
-              <input
-                type="text"
-                id="custom-department"
-                value={customDepartment}
-                onChange={handleCustomDepartmentChange}
-                required
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                placeholder="Enter new department name"
-              />
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center space-x-3">

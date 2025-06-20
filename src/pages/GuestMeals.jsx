@@ -25,8 +25,6 @@ const GuestMeals = () => {
   const [editingMeal, setEditingMeal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, mealId: null });
   const [departments, setDepartments] = useState([]);
-  const [showCustomDepartment, setShowCustomDepartment] = useState(false);
-  const [customDepartment, setCustomDepartment] = useState('');
   const [viewMode, setViewMode] = useState('individual'); // 'individual' or 'summary'
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -48,35 +46,6 @@ const GuestMeals = () => {
     };
     fetchDepartments();
   }, []);
-
-  // Handle editing meal setup
-  useEffect(() => {
-    if (editingMeal && departments.length > 0) {
-      // Check if the meal's department exists in the departments list
-      const mealDeptName = typeof editingMeal.department === 'string' ? editingMeal.department : editingMeal.department?.title || '';
-      const departmentExists = departments.some(dept => 
-        (typeof dept === 'string' ? dept : dept.title) === mealDeptName
-      );
-      
-      if (departmentExists) {
-        // Department exists, use it directly
-        setShowCustomDepartment(false);
-        setCustomDepartment('');
-        setFormData(prev => ({
-          ...prev,
-          department: mealDeptName
-        }));
-      } else {
-        // Department doesn't exist, show custom input
-        setShowCustomDepartment(true);
-        setCustomDepartment(mealDeptName);
-        setFormData(prev => ({
-          ...prev,
-          department: mealDeptName
-        }));
-      }
-    }
-  }, [editingMeal, departments]);
 
   const fetchGuestMeals = async () => {
     try {
@@ -121,8 +90,6 @@ const GuestMeals = () => {
 
       setShowModal(false);
       setEditingMeal(null);
-      setShowCustomDepartment(false);
-      setCustomDepartment('');
       setFormData({
         date: format(new Date(), 'yyyy-MM-dd'),
         department: '',
@@ -159,36 +126,7 @@ const GuestMeals = () => {
       lunchCount: meal.lunchCount || 0,
       dinnerCount: meal.dinnerCount || 0
     });
-    // Reset custom department state - let useEffect handle the logic
-    setShowCustomDepartment(false);
-    setCustomDepartment('');
     setShowModal(true);
-  };
-
-  const handleDepartmentChange = (e) => {
-    const value = e.target.value;
-    if (value === 'other') {
-      setShowCustomDepartment(true);
-      setFormData(prev => ({
-        ...prev,
-        department: ''
-      }));
-    } else {
-      setShowCustomDepartment(false);
-      setFormData(prev => ({
-        ...prev,
-        department: value
-      }));
-    }
-  };
-
-  const handleCustomDepartmentChange = (e) => {
-    const value = e.target.value;
-    setCustomDepartment(value);
-    setFormData(prev => ({
-      ...prev,
-      department: value
-    }));
   };
 
   useEffect(() => {
@@ -213,26 +151,23 @@ const GuestMeals = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         Guest Meals
                       </h1>
-                      <p className="text-gray-600 text-lg">
-                        Track and manage daily guest meal consumption by department
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {overallTotals.totalMeals} Total Meals
                         </span>
                         <span className="flex items-center text-blue-600">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
                           {departmentSummary.length} Departments
                         </span>
                       </div>
@@ -247,13 +182,11 @@ const GuestMeals = () => {
                           lunchCount: 0,
                           dinnerCount: 0
                         });
-                        setShowCustomDepartment(false);
-                        setCustomDepartment('');
                         setShowModal(true);
                       }}
-                      className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
                     >
-                      <PlusIcon className="h-5 w-5 mr-2" />
+                      <PlusIcon className="h-4 w-4 mr-1.5" />
                       Add Guest Meal
                     </button>
                   </div>
@@ -261,7 +194,7 @@ const GuestMeals = () => {
               </div>
 
               {error && (
-                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>
@@ -271,8 +204,8 @@ const GuestMeals = () => {
 
               {/* Add/Edit Form */}
               {showModal && (
-                <div className="mb-4 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-6 flex-shrink-0 max-w-4xl mx-auto">
-                  <div className="mb-4">
+                <div className="mb-3 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-5 flex-shrink-0 max-w-4xl mx-auto">
+                  <div className="mb-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <h2 className="text-lg font-semibold text-gray-900">
@@ -330,8 +263,8 @@ const GuestMeals = () => {
                             </span>
                           </label>
                             <select
-                              value={showCustomDepartment ? 'other' : formData.department}
-                              onChange={handleDepartmentChange}
+                              value={formData.department}
+                              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                               required
                             >
@@ -341,30 +274,8 @@ const GuestMeals = () => {
                                   {typeof dept === 'string' ? dept : dept.title}
                                 </option>
                               ))}
-                              <option value="other">Other</option>
                             </select>
-                          </div>
-
-                        {showCustomDepartment && (
-                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              <span className="flex items-center">
-                                <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                New Department Name
-                              </span>
-                            </label>
-                              <input
-                                type="text"
-                                value={customDepartment}
-                                onChange={handleCustomDepartmentChange}
-                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                                placeholder="Enter new department name"
-                                required
-                              />
-                          </div>
-                        )}
+                        </div>
                       </div>
                     </div>
 

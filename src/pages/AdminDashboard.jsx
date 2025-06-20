@@ -52,7 +52,7 @@ const AdminDashboard = () => {
     localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
   }, [isSidebarOpen]);
 
-  // Filter users based on search query and selected department
+  // Filter and sort users based on search query and selected department
   const filteredUsers = users.filter(user => {
     const departmentName = typeof user.department === 'string' ? user.department : user.department?.title || '';
     const matchesSearch = searchQuery.trim() === '' || 
@@ -64,6 +64,17 @@ const AdminDashboard = () => {
     const matchesDepartment = selectedDepartment === '' || departmentName === selectedDepartment;
 
     return matchesSearch && matchesDepartment;
+  }).sort((a, b) => {
+    // Sort by department name first, then by name within department
+    const deptA = typeof a.department === 'string' ? a.department : a.department?.title || '';
+    const deptB = typeof b.department === 'string' ? b.department : b.department?.title || '';
+    
+    if (deptA !== deptB) {
+      return deptA.localeCompare(deptB);
+    }
+    
+    // If same department, sort by name
+    return (a.name || '').localeCompare(b.name || '');
   });
 
   const handleDelete = async () => {
@@ -92,30 +103,27 @@ const AdminDashboard = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-4 lg:p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         User Management
                       </h1>
-                      <p className="text-gray-600 text-base">
-                        Manage users, verify accounts, and maintain the system directory
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {filteredUsers.filter(u => u.isVerified).length} Verified
                         </span>
                         <span className="flex items-center text-yellow-600">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></div>
                           {filteredUsers.filter(u => !u.isVerified).length} Pending
                         </span>
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {filteredUsers.length} Total
                         </span>
                       </div>
@@ -125,9 +133,9 @@ const AdminDashboard = () => {
                     setEditingUser(null);
                     setShowAddForm(true);
                   }}
-                  className="inline-flex items-center px-4 py-2.5 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
                 >
-                  <PlusIcon className="h-5 w-5 mr-2" />
+                  <PlusIcon className="h-4 w-4 mr-1.5" />
                   Add New User
                 </button>
                   </div>
@@ -135,20 +143,20 @@ const AdminDashboard = () => {
               </div>
 
               {/* Search and Filter Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-xl shadow-md border border-gray-200/50 p-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                 {/* Search Box */}
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
                   </div>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by name, phone, department, or designation..."
-                        className="block w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
                   />
                 </div>
 
@@ -157,7 +165,7 @@ const AdminDashboard = () => {
                   <select
                     value={selectedDepartment}
                     onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="block w-full px-4 py-2.5 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                    className="block w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                   >
                     <option value="">All Departments</option>
                     {departments.map(dept => (
@@ -172,7 +180,7 @@ const AdminDashboard = () => {
               </div>
 
               {error && (
-                <div className="mb-4 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 flex-shrink-0">
+                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>
@@ -181,10 +189,10 @@ const AdminDashboard = () => {
               )}
 
               {showAddForm && (
-                <div className="mb-4 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-6 flex-shrink-0">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900">Add New User</h2>
-                    <p className="text-gray-600 mt-1">Fill in the details to create a new user account</p>
+                <div className="mb-3 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-5 flex-shrink-0">
+                  <div className="mb-3">
+                    <h2 className="text-lg font-semibold text-gray-900">Add New User</h2>
+                    <p className="text-gray-600 text-sm mt-1">Fill in the details to create a new user account</p>
                   </div>
                   <UserForm
                     onSuccess={() => {
@@ -197,8 +205,8 @@ const AdminDashboard = () => {
               )}
 
               {editingUser && (
-                <div className="mb-4 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-6 flex-shrink-0 max-w-4xl mx-auto">
-                  <div className="mb-4">
+                <div className="mb-3 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-5 flex-shrink-0 max-w-4xl mx-auto">
+                  <div className="mb-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <h2 className="text-lg font-semibold text-gray-900">Edit User</h2>
@@ -228,12 +236,12 @@ const AdminDashboard = () => {
 
               {/* Users Table - this will be the scrollable area */}
               <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
-                <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                {/* <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
                   <h3 className="text-base font-semibold text-gray-900">User Directory</h3>
                   <p className="text-xs text-gray-600 mt-0.5">
                     {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found
                   </p>
-                </div>
+                </div> */}
                 <div className="flex-1 overflow-auto">
                   <table className="w-full divide-y divide-gray-200 table-fixed">
                     <thead className="bg-gray-50 sticky top-0">
@@ -280,7 +288,7 @@ const AdminDashboard = () => {
                       ) : (
                         filteredUsers.map((user) => (
                         <React.Fragment key={user._id}>
-                          <tr className="hover:bg-gray-50 transition-colors duration-150">
+                          <tr className="hover:bg-gray-200 transition-colors duration-150">
                             <td className="px-2 py-1.5 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="w-7 h-7 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 flex-shrink-0">
