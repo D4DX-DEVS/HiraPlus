@@ -19,7 +19,7 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
 
   return (
     <>
-      <nav className={`fixed top-0 right-0 z-40 bg-white/80 backdrop-blur-sm h-[60px] transition-all duration-300 border-b border-gray-200/50 ${
+      <nav className={`fixed top-0 right-0 z-40 bg-white/80 backdrop-blur-sm h-[48px] transition-all duration-300 border-b border-gray-200/50 ${
         isSidebarOpen ? 'left-64' : 'left-0 lg:left-20'
       }`}>
         <div className="h-full px-4 lg:px-6">
@@ -28,13 +28,13 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={onToggleSidebar}
-                className="p-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-200"
+                className="p-1.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-200"
                 aria-label="Toggle sidebar"
               >
                 {isSidebarOpen ? (
-                  <XMarkIcon className="h-6 w-6" />
+                  <Bars3Icon className="h-5 w-5" />
                 ) : (
-                  <Bars3Icon className="h-6 w-6" />
+                  <Bars3Icon className="h-5 w-5" />
                 )}
               </button>
             </div>
@@ -43,9 +43,9 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
             <div className="flex-1"></div>
 
             {/* Right section with user info and logout */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* User menu */}
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <div className="hidden md:block text-right">
                   <p className="text-sm font-medium text-gray-900">Admin</p>
                   <p className="text-xs text-gray-600">Administrator</p>
@@ -53,16 +53,16 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
                 
                 {/* User avatar and logout */}
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  <div className="w-7 h-7 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-sm font-medium">
                     A
                   </div>
                   
                   <button
                     onClick={handleLogoutClick}
-                    className="inline-flex items-center px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 shadow-sm"
+                    className="inline-flex items-center p-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 shadow-sm"
+                    title="Logout"
                   >
-                    <ArrowRightOnRectangleIcon className="h-4 w-4 lg:h-4 lg:w-4 lg:mr-2" />
-                    <span className="hidden lg:inline">Logout</span>
+                    <ArrowRightOnRectangleIcon className="h-4 w-4" />
                   </button>
                 </div>
               </div>

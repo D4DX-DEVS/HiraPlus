@@ -117,35 +117,32 @@ const AdminMeals = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         Meal Records
                       </h1>
-                      <p className="text-gray-600 text-lg">
-                        Monitor daily meal consumption and manage food requirements
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {displayMeals.reduce((acc, user) => acc + user.meals.length, 0)} Total Records
                         </span>
                         <span className="flex items-center text-blue-600">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
                           {displayMeals.length} Active Users
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => setShowFilters(!showFilters)}
-                      className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
                     >
-                      <FunnelIcon className="h-5 w-5 mr-2" />
+                      <FunnelIcon className="h-4 w-4 mr-1.5" />
                       {showFilters ? 'Hide Filters' : 'Show Filters'}
                     </button>
                   </div>
@@ -154,37 +151,37 @@ const AdminMeals = () => {
 
               {/* Filter Section */}
               {showFilters && (
-                <div className="mb-6">
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200/50 p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                <div className="mb-3">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-end">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                         <input
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                          className="block w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200 text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                         <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="block w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                          className="block w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200 text-sm"
                         />
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-2">
                         <button
                           onClick={handleFilter}
-                          className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-green-950 text-white font-semibold rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 transition-all duration-200"
+                          className="flex-1 inline-flex items-center justify-center px-3 py-2 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 transition-all duration-200 text-sm"
                         >
                           Apply Filter
                         </button>
                         <button
                           onClick={clearFilters}
-                          className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200"
+                          className="flex-1 inline-flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200 text-sm"
                         >
                           Clear
                         </button>
@@ -195,7 +192,7 @@ const AdminMeals = () => {
               )}
 
               {error && (
-                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>

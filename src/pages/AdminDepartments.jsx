@@ -118,26 +118,23 @@ const AdminDepartments = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         Department Management
                       </h1>
-                      <p className="text-gray-600 text-lg">
-                        Create, manage, and organize institutional departments
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {filteredDepartments.length} Department{filteredDepartments.length !== 1 ? 's' : ''}
                         </span>
                         <span className="flex items-center text-blue-600">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
                           {filteredDepartments.length} Total
                         </span>
                       </div>
@@ -148,9 +145,9 @@ const AdminDepartments = () => {
                         setFormData({ title: '' });
                         setShowModal(true);
                       }}
-                      className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
                     >
-                      <PlusIcon className="h-5 w-5 mr-2" />
+                      <PlusIcon className="h-4 w-4 mr-1.5" />
                       Add Department
                     </button>
                   </div>
@@ -158,25 +155,25 @@ const AdminDepartments = () => {
               </div>
 
               {/* Search Section */}
-              <div className="mb-6">
-                <div className="bg-white rounded-xl shadow-md border border-gray-200/50 p-6">
+              <div className="mb-3">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2">
                   <div className="relative max-w-md">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
                     </div>
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search departments..."
-                      className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
                     />
                   </div>
                 </div>
               </div>
 
               {error && (
-                <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>
@@ -186,8 +183,8 @@ const AdminDepartments = () => {
 
               {/* Add/Edit Form */}
               {showModal && (
-                <div className="mb-4 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-6 flex-shrink-0 max-w-2xl mx-auto">
-                  <div className="mb-4">
+                <div className="mb-3 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-5 flex-shrink-0 max-w-2xl mx-auto">
+                  <div className="mb-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <h2 className="text-lg font-semibold text-gray-900">

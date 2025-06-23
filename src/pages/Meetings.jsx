@@ -28,17 +28,16 @@ const Meetings = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [departments, setDepartments] = useState([]);
-  const [showCustomDepartment, setShowCustomDepartment] = useState(false);
-  const [customDepartment, setCustomDepartment] = useState('');
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     startDatetime: '',
     endDatetime: '',
     hall: 'Auditorium [2nd Floor]',
-    noOfPersons: 1,
+    noOfPersons: '',
     hiraStaff: 0,
-    guests: 1,
+    guests: 0,
     foodRequired: false,
     breakfast: 0,
     morningSnacksCount: 0,
@@ -62,51 +61,12 @@ const Meetings = () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
         setDepartments(response.data.departments);
-        
-        // If editing and department exists, check if it's in the list
-        if (editingMeeting?.department) {
-          const editingDeptName = typeof editingMeeting.department === 'string' ? editingMeeting.department : editingMeeting.department.title;
-          const departmentExists = response.data.departments.some(dept => 
-            (typeof dept === 'string' ? dept : dept.title) === editingDeptName
-          );
-          
-          if (!departmentExists) {
-            setShowCustomDepartment(true);
-            setCustomDepartment(editingDeptName);
-          }
-        }
       } catch (err) {
         console.error('Failed to fetch departments:', err);
       }
     };
     fetchDepartments();
-  }, [editingMeeting]);
-
-  const handleDepartmentChange = (e) => {
-    const value = e.target.value;
-    if (value === 'other') {
-      setShowCustomDepartment(true);
-      setFormData(prev => ({
-        ...prev,
-        department: ''
-      }));
-    } else {
-      setShowCustomDepartment(false);
-      setFormData(prev => ({
-        ...prev,
-        department: value
-      }));
-    }
-  };
-
-  const handleCustomDepartmentChange = (e) => {
-    const value = e.target.value;
-    setCustomDepartment(value);
-    setFormData(prev => ({
-      ...prev,
-      department: value
-    }));
-  };
+  }, []);
 
   const fetchMeetings = async () => {
     try {
@@ -150,7 +110,7 @@ const Meetings = () => {
       setError('Department is required');
       return;
     }
-    if (parseInt(formData.noOfPersons) < 1) {
+    if (!formData.noOfPersons || parseInt(formData.noOfPersons) < 1) {
       setError('Number of participants must be at least 1');
       return;
     }
@@ -192,9 +152,9 @@ const Meetings = () => {
         startDatetime: '',
         endDatetime: '',
         hall: 'Auditorium [2nd Floor]',
-        noOfPersons: 1,
+        noOfPersons: '',
         hiraStaff: 0,
-        guests: 1,
+        guests: 0,
         foodRequired: false,
         breakfast: 0,
         morningSnacksCount: 0,
@@ -307,30 +267,27 @@ const Meetings = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'
         } relative z-0 h-full overflow-auto`}>
-          <div className="h-full pt-[64px] px-4 lg:px-6 pb-4 lg:pb-6">
+          <div className="h-full pt-[52px] px-4 lg:px-6 pb-4 lg:pb-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header Section */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-6 lg:p-8">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2 lg:p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                     <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                         Meeting Management
                       </h1>
-                      <p className="text-gray-600 text-lg">
-                        Schedule meetings, manage bookings, and track approval status
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4 text-sm">
+                      <div className="flex items-center space-x-3 text-xs">
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {filteredMeetings.filter(m => m.status === 'approved').length} Approved
                         </span>
                         <span className="flex items-center text-yellow-600">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></div>
                           {filteredMeetings.filter(m => m.status === 'pending').length} Pending
                         </span>
                         <span className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
                           {filteredMeetings.length} Total
                         </span>
                       </div>
@@ -344,9 +301,9 @@ const Meetings = () => {
                           startDatetime: '',
                           endDatetime: '',
                           hall: 'Auditorium [2nd Floor]',
-                          noOfPersons: 1,
+                          noOfPersons: '',
                           hiraStaff: 0,
-                          guests: 1,
+                          guests: 0,
                           foodRequired: false,
                           breakfast: 0,
                           morningSnacksCount: 0,
@@ -359,9 +316,9 @@ const Meetings = () => {
                         });
                         setShowModal(true);
                       }}
-                      className="inline-flex items-center px-6 py-3 bg-green-950 text-white font-semibold rounded-xl hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
                     >
-                      <PlusIcon className="h-5 w-5 mr-2" />
+                      <PlusIcon className="h-4 w-4 mr-1.5" />
                       Add Meeting
                     </button>
                   </div>
@@ -369,29 +326,29 @@ const Meetings = () => {
               </div>
 
               {/* Search and Filter Section */}
-              <div className="mb-6">
-                <div className="bg-white rounded-xl shadow-md border border-gray-200/50 p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                     {/* Search Box */}
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
                       </div>
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search by title, description, department, or hall..."
-                        className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                        placeholder="Search meetings..."
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
                       />
                     </div>
 
                     {/* Department Filter */}
-                    <div className="flex-1">
+                    <div>
                       <select
                         value={selectedDepartment}
                         onChange={(e) => setSelectedDepartment(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                        className="block w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                       >
                         <option value="">All Departments</option>
                         {departments.map(dept => (
@@ -477,8 +434,8 @@ const Meetings = () => {
                           </label>
                           <select
                             required
-                            value={showCustomDepartment ? 'other' : formData.department}
-                            onChange={handleDepartmentChange}
+                            value={formData.department}
+                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                             disabled={loading}
                           >
@@ -488,30 +445,8 @@ const Meetings = () => {
                                 {typeof dept === 'string' ? dept : dept.title}
                               </option>
                             ))}
-                            <option value="other">Add New Department</option>
                           </select>
                         </div>
-
-                        {showCustomDepartment && (
-                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              <span className="flex items-center">
-                                <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                New Department Name
-                              </span>
-                            </label>
-                            <input
-                              type="text"
-                              value={customDepartment}
-                              onChange={handleCustomDepartmentChange}
-                              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                              placeholder="Enter new department name"
-                              required
-                            />
-                          </div>
-                        )}
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -555,7 +490,7 @@ const Meetings = () => {
                               <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                               </svg>
-                              Hall
+                              Venue
                             </span>
                           </label>
                           <select
@@ -582,18 +517,18 @@ const Meetings = () => {
                           <input
                             type="number"
                             min="1"
-                            value={formData.noOfPersons}
+                            value={formData.noOfPersons || ''}
                             onChange={(e) => {
-                              const total = parseInt(e.target.value) || 1;
+                              const total = parseInt(e.target.value) || '';
                               setFormData(prev => ({
                                 ...prev,
                                 noOfPersons: total,
-                                hiraStaff: Math.floor(total / 2),
-                                guests: Math.ceil(total / 2)
+                                hiraStaff: total ? Math.floor(total / 2) : 0,
+                                guests: total ? Math.ceil(total / 2) : 0
                               }));
                             }}
                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                            placeholder="1"
+                            placeholder="Eg: Total members count"
                             required
                           />
                         </div>
@@ -630,7 +565,7 @@ const Meetings = () => {
                           className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                         />
                         <label htmlFor="foodRequired" className="ml-3 text-lg font-semibold text-gray-900">
-                          Food Required
+                          Food / Snacks Required
                         </label>
                       </div>
 
@@ -761,7 +696,7 @@ const Meetings = () => {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hall</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
