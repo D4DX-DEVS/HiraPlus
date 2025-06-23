@@ -149,6 +149,12 @@ const LandingPage = () => {
                     </Link>
                   </li>
                   <li>
+                    <Link to="/about-us" className="hover:text-white transition-colors duration-200 flex items-center">
+                      <span className="mr-2">→</span>
+                      About Us
+                    </Link>
+                  </li>
+                  <li>
                     <a 
                       href="https://d4dx.co/contacts-us/" 
                       target="_blank" 
