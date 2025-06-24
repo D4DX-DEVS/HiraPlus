@@ -753,6 +753,7 @@ router.get('/today-checked-in', async (req, res) => {
       },
       status: 'CheckedIn' // Only get users who are still checked in
     })
+    .populate('user', 'name department designation')
     .populate({
       path: 'user',
       select: 'name department designation',
@@ -763,71 +764,25 @@ router.get('/today-checked-in', async (req, res) => {
     })
     .sort({ checkedInTime: -1 });
 
-    // Filter out check-ins without valid user data
-    const validCheckIns = todayCheckIns.filter(checkIn => checkIn.user);
-
     // Group check-ins by department for better organization
-    const byDepartment = validCheckIns.reduce((acc, checkIn) => {
-      // Handle both string and object department formats
-      let deptName = 'Unknown Department';
-      
-      if (typeof checkIn.user.department === 'string') {
-        deptName = checkIn.user.department;
-      } else if (checkIn.user.department && checkIn.user.department.title) {
-        deptName = checkIn.user.department.title;
+    const byDepartment = todayCheckIns.reduce((acc, checkIn) => {
+      const dept = checkIn.user.department;
+      if (!acc[dept]) {
+        acc[dept] = [];
       }
-
-      if (!acc[deptName]) {
-        acc[deptName] = [];
-      }
-      
-      acc[deptName].push({
-        id: checkIn.user._id,
+      acc[dept].push({
         name: checkIn.user.name,
         designation: checkIn.user.designation,
-        checkedInTime: checkIn.checkedInTime,
-        department: deptName
+        checkedInTime: checkIn.checkedInTime
       });
       return acc;
     }, {});
 
-    // Sort departments alphabetically and users within each department by check-in time
-    const sortedByDepartment = {};
-    Object.keys(byDepartment)
-      .sort()
-      .forEach(dept => {
-        sortedByDepartment[dept] = byDepartment[dept].sort((a, b) => 
-          new Date(b.checkedInTime) - new Date(a.checkedInTime)
-        );
-      });
-
-    // Create a flat list of all checked-in users with department info
-    const allUsers = validCheckIns.map(checkIn => {
-      let deptName = 'Unknown Department';
-      
-      if (typeof checkIn.user.department === 'string') {
-        deptName = checkIn.user.department;
-      } else if (checkIn.user.department && checkIn.user.department.title) {
-        deptName = checkIn.user.department.title;
-      }
-
-      return {
-        id: checkIn.user._id,
-        name: checkIn.user.name,
-        designation: checkIn.user.designation,
-        department: deptName,
-        checkedInTime: checkIn.checkedInTime,
-        checkInId: checkIn._id
-      };
-    });
-
     res.json({
       success: true,
-      date: today.toISOString().split('T')[0],
-      totalCheckedIn: validCheckIns.length,
-      byDepartment: sortedByDepartment,
-      allUsers: allUsers,
-      departmentCount: Object.keys(sortedByDepartment).length
+      totalCheckedIn: todayCheckIns.length,
+      byDepartment,
+      checkIns: todayCheckIns
     });
   } catch (error) {
     console.error('Fetch today checked-in users error:', error);
