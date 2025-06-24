@@ -37,21 +37,21 @@ const Sidebar = ({ isOpen }) => {
       )}
       
       <div 
-        className={`fixed left-0 top-0 h-screen bg-green-950 transition-all duration-300 ease-in-out z-30 ${
-          isOpen ? 'w-64' : 'w-0 lg:w-20'
-      } overflow-hidden`}
+        className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-green-950 to-green-900 transition-all duration-300 ease-in-out z-30 ${
+          isOpen ? 'w-64' : 'w-0 lg:w-16'
+      } overflow-hidden shadow-2xl`}
     >
-        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-green-700 scrollbar-track-green-900">
+        <div className="h-full flex flex-col">
           {/* Header Section */}
-          <div className={`px-4 py-6 border-b border-green-800/40 ${isOpen ? 'block' : 'hidden lg:block'}`}>
-            <div className="flex items-center space-x-3">
+          <div className={`px-3 py-4 border-b border-green-800/30 ${isOpen ? 'block' : 'hidden lg:block'}`}>
+            <div className="flex items-center space-x-2">
               {/* App Icon */}
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white/5 backdrop-blur-sm border border-green-700/30">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg overflow-hidden bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-green-700/40 hover:scale-105 transition-transform duration-200">
                   <img 
                     src={HiraPlusIcon} 
                     alt="Hira Plus" 
-                    className="w-10 h-10 rounded-lg object-cover"
+                    className="w-8 h-8 rounded-md object-cover"
                   />
                 </div>
               </div>
@@ -59,11 +59,11 @@ const Sidebar = ({ isOpen }) => {
               {/* App Title */}
               {isOpen && (
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl font-bold text-white truncate">
+                  <h1 className="text-lg font-bold text-white truncate">
                     Hira Plus
                   </h1>
-                  <p className="text-sm text-green-300/80 truncate">
-                    Admin Dashboard
+                  <p className="text-xs text-green-300/70 truncate">
+                    Admin Panel
                   </p>
                 </div>
               )}
@@ -71,38 +71,49 @@ const Sidebar = ({ isOpen }) => {
           </div>
 
           {/* Navigation Section */}
-          <nav className="flex-1 px-3 py-6 space-y-2">
-          {navigation.map((item) => (
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-green-700 scrollbar-track-green-900">
+          {navigation.map((item, index) => (
             <NavLink
               key={item.name}
               to={item.href}
               className={({ isActive }) =>
-                  `group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 transform hover:scale-[1.02] ${
+                  `group relative flex items-center px-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:translate-x-1 ${
                   isActive
-                      ? 'bg-green-800/60 text-white shadow-lg border border-green-600/40 backdrop-blur-sm'
-                      : 'text-green-200/90 hover:bg-green-900/60 hover:text-white hover:shadow-md hover:backdrop-blur-sm'
+                      ? 'bg-gradient-to-r from-green-600/80 to-green-700/60 text-white shadow-lg border border-green-500/50 backdrop-blur-sm'
+                      : 'text-green-200/80 hover:bg-gradient-to-r hover:from-green-800/50 hover:to-green-900/40 hover:text-white hover:shadow-md hover:backdrop-blur-sm'
                 }`
               }
                 title={!isOpen ? item.name : ''}
+                style={{
+                  animationDelay: `${index * 50}ms`
+                }}
             >
               {({ isActive }) => (
                 <>
-                  <div className={`flex items-center justify-center flex-shrink-0 ${isOpen ? 'w-6 h-6 mr-3' : 'w-6 h-6 mx-auto'}`}>
+                  {/* Animated border for active state */}
+                  {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-300 to-green-400 rounded-r-full shadow-sm" />
+                  )}
+                  
+                  <div className={`flex items-center justify-center flex-shrink-0 ${isOpen ? 'w-5 h-5 mr-3' : 'w-5 h-5 mx-auto'}`}>
                     <item.icon
-                      className="w-5 h-5 transition-colors"
+                      className={`w-4 h-4 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
                       aria-hidden="true"
                     />
                   </div>
                   
                   {isOpen && (
-                    <span className="truncate">
+                    <span className="truncate font-medium">
                       {item.name}
                     </span>
                   )}
                   
-                  {/* Active indicator */}
+                  {/* Subtle glow effect on hover */}
+                  <div className={`absolute inset-0 rounded-lg bg-gradient-to-r from-green-400/0 to-green-300/0 group-hover:from-green-400/5 group-hover:to-green-300/5 transition-all duration-300 ${isActive ? 'from-green-300/10 to-green-400/10' : ''}`} />
+                  
+                  {/* Active indicator dot */}
                   {isOpen && isActive && (
-                    <div className="ml-auto w-2 h-2 bg-green-300 rounded-full shadow-sm" />
+                    <div className="ml-auto w-1.5 h-1.5 bg-green-300 rounded-full shadow-sm animate-pulse" />
                   )}
                 </>
               )}
@@ -110,14 +121,14 @@ const Sidebar = ({ isOpen }) => {
           ))}
         </nav>
 
-          {/* Footer Section */}
+          {/* Footer Section - Always at bottom */}
           {isOpen && (
-            <div className="px-4 py-4 border-t border-green-800/40 bg-green-950/40 backdrop-blur-sm">
+            <div className="mt-auto px-3 py-3 border-t border-green-800/30 bg-gradient-to-r from-green-950/60 to-green-900/40 backdrop-blur-sm">
               <div className="text-center">
-                <p className="text-xs text-green-400/80">
+                <p className="text-xs text-green-400/70 font-medium">
                   © 2025 Hira Plus
                 </p>
-                <p className="text-xs text-green-500/60 mt-1">
+                <p className="text-xs text-green-500/50 mt-0.5">
                   v1.0.0
                 </p>
               </div>
@@ -126,13 +137,13 @@ const Sidebar = ({ isOpen }) => {
 
           {/* Collapsed state icon with better spacing */}
           {!isOpen && (
-            <div className="hidden lg:block absolute bottom-6 left-0 right-0">
-              <div className="flex justify-center px-2">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white/5 backdrop-blur-sm border border-green-700/30">
+            <div className="hidden lg:block mt-auto mb-4 px-1">
+              <div className="flex justify-center">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg overflow-hidden bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-green-700/40 hover:scale-110 transition-all duration-300 hover:shadow-xl">
                   <img 
                     src={HiraPlusIcon} 
                     alt="Hira Plus" 
-                    className="w-8 h-8 rounded-lg object-cover"
+                    className="w-7 h-7 rounded-md object-cover"
                   />
                 </div>
               </div>

@@ -11,6 +11,7 @@ import BillGenerator from './pages/BillGenerator';
 import GuestMeals from './pages/GuestMeals';
 import Meetings from './pages/Meetings';
 import LandingPage from './pages/LandingPage';
+import AboutUs from './pages/AboutUs';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -27,6 +28,9 @@ function App() {
       <Routes>
         {/* Landing page as root */}
         <Route path="/" element={<LandingPage />} />
+        
+        {/* About Us page */}
+        <Route path="/about-us" element={<AboutUs />} />
         
         {/* Admin routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
