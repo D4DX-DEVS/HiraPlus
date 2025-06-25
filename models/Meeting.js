@@ -33,16 +33,7 @@ const meetingSchema = new mongoose.Schema({
     required: true,
     min: 1
   },
-  hiraStaff: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  guests: {
-    type: Number,
-    required: true,
-    min: 0
-  },
+
   foodRequired: {
     type: Boolean,
     default: false
@@ -113,12 +104,6 @@ meetingSchema.pre('save', function(next) {
   next();
 });
 
-// Add validation for total persons matching sum of hiraStaff and guests
-meetingSchema.pre('save', function(next) {
-  if (this.hiraStaff + this.guests !== this.noOfPersons) {
-    next(new Error('Total number of persons must equal sum of HIRA staff and guests'));
-  }
-  next();
-});
+
 
 module.exports = mongoose.model('Meeting', meetingSchema); 
