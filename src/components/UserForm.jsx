@@ -15,6 +15,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     department: initialData?.department || '',
     designation: initialData?.designation || '',
     isDeptHead: initialData?.isDeptHead || false,
+    isFreeFood: initialData?.isFreeFood || false,
     status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         department: departmentValue,
         designation: initialData.designation || '',
         isDeptHead: initialData.isDeptHead || false,
+        isFreeFood: initialData.isFreeFood || false,
         status: initialData.status || 'active'
       });
     }
@@ -200,6 +202,23 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             </label>
           </div>
 
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="isFreeFood"
+              name="isFreeFood"
+              checked={formData.isFreeFood}
+              onChange={handleChange}
+              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isFreeFood" className="text-sm font-medium text-gray-700 flex items-center">
+              🍽️
+              <span className="ml-2">Free Food</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
@@ -212,6 +231,8 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               <option value="inactive">Inactive</option>
             </select>
           </div>
+
+          <div></div>
         </div>
 
         <div className="flex justify-end space-x-3 pt-4">

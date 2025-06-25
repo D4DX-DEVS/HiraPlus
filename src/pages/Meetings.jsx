@@ -736,8 +736,8 @@ const Meetings = () => {
                         ) : (
                           filteredMeetings.map((meeting, index) => (
                             <tr key={meeting._id} className="hover:bg-gray-200 transition-colors duration-150">
-                              <td className="px-2 py-1.5 whitespace-nowrap">
-                                <div className="text-xs font-medium text-gray-900 truncate" title={meeting.title}>
+                              <td className="px-2 py-2">
+                                <div className="text-xs font-medium text-gray-900 leading-relaxed break-words">
                                   {meeting.title}
                                 </div>
                               </td>
