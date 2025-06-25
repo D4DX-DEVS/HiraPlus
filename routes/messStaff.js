@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const Meal = require('../models/Meal');
 const User = require('../models/User');
 const GuestMeal = require('../models/GuestMeal');
+const Meeting = require('../models/Meeting');
 const messStaffAuth = require('../middleware/messStaffAuth');
 
 // Mess Staff Login
@@ -186,7 +187,16 @@ router.get('/guest-meals/today', messStaffAuth, async (req, res) => {
         $gte: today,
         $lt: tomorrow
       }
-    }).populate('addedBy', 'name department');
+    })
+    .populate('department', 'title')
+    .populate({
+      path: 'addedBy',
+      select: 'name department',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
 
     // Calculate total counts
     const totalCounts = {
@@ -213,7 +223,15 @@ router.get('/guest-meals/today', messStaffAuth, async (req, res) => {
 router.get('/guest-meals', messStaffAuth, async (req, res) => {
   try {
     const guestMeals = await GuestMeal.find()
-      .populate('addedBy', 'name department')
+      .populate('department', 'title')
+      .populate({
+        path: 'addedBy',
+        select: 'name department',
+        populate: {
+          path: 'department',
+          select: 'title'
+        }
+      })
       .sort({ date: -1 });
 
     // Group by date and calculate department-wise counts
@@ -233,8 +251,8 @@ router.get('/guest-meals', messStaffAuth, async (req, res) => {
       }
 
       // Add department counts
-      if (!acc[dateStr].departments[meal.department]) {
-        acc[dateStr].departments[meal.department] = {
+      if (!acc[dateStr].departments[meal.department.title]) {
+        acc[dateStr].departments[meal.department.title] = {
           breakfast: meal.breakfastCount || 0,
           lunch: meal.lunchCount || 0,
           dinner: meal.dinnerCount || 0,
@@ -262,6 +280,138 @@ router.get('/guest-meals', messStaffAuth, async (req, res) => {
   } catch (error) {
     console.error('Get all guest meals error:', error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all departments (Public route)
+router.get('/departments', async (req, res) => {
+  try {
+    const Department = require('../models/Department');
+    
+    const departments = await Department.find()
+      .select('title')
+      .sort({ title: 1 });
+
+    res.json({
+      success: true,
+      departments: departments.map(dept => dept.title),
+      total: departments.length
+    });
+  } catch (error) {
+    console.error('Fetch departments error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get meeting food requirements for a date range
+router.get('/meeting-food-requirements', messStaffAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both startDate and endDate are required'
+      });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Find meetings within date range that require food
+    const meetings = await Meeting.find({
+      startDatetime: { $gte: start, $lte: end },
+      foodRequired: true,
+      status: 'approved'  // Only include approved meetings
+    })
+    .populate('department', 'title')
+    .sort({ startDatetime: 1 });
+
+    // Group meetings by date and calculate food requirements
+    const foodRequirements = meetings.reduce((acc, meeting) => {
+      const dateStr = meeting.startDatetime.toISOString().split('T')[0];
+      
+      if (!acc[dateStr]) {
+        acc[dateStr] = {
+          date: meeting.startDatetime,
+          totalCounts: {
+            breakfast: 0,
+            midmorningSnacks: 0,
+            lunch: 0,
+            eveningsnacks: 0,
+            dinner: 0
+          },
+          meetings: []
+        };
+      }
+
+      // Add meeting details
+      acc[dateStr].meetings.push({
+        id: meeting._id,
+        title: meeting.title,
+        department: meeting.department.title,
+        startTime: meeting.startDatetime,
+        endTime: meeting.endDatetime,
+        hall: meeting.hall,
+        noOfPersons: meeting.noOfPersons,
+        foodCounts: {
+          breakfast: meeting.breakfast || 0,
+          morningSnacksCount: meeting.morningSnacksCount || 0,
+          morningTeaCount: meeting.morningTeaCount || 0,
+          lunch: meeting.lunch || 0,
+          eveningSnacksCount: meeting.eveningSnacksCount || 0,
+          eveningTeaCount: meeting.eveningTeaCount || 0,
+          dinner: meeting.dinner || 0
+        },
+        createdBy: meeting.createdBy
+      });
+
+      // Update total counts for the day
+      acc[dateStr].totalCounts.breakfast += meeting.breakfast || 0;
+      acc[dateStr].totalCounts.midmorningSnacks += meeting.midmorningSnacks || 0;
+      acc[dateStr].totalCounts.lunch += meeting.lunch || 0;
+      acc[dateStr].totalCounts.eveningsnacks += meeting.eveningsnacks || 0;
+      acc[dateStr].totalCounts.dinner += meeting.dinner || 0;
+
+      return acc;
+    }, {});
+
+    // Calculate overall totals
+    const overallTotals = Object.values(foodRequirements).reduce((totals, day) => {
+      totals.breakfast += day.totalCounts.breakfast;
+      totals.midmorningSnacks += day.totalCounts.midmorningSnacks;
+      totals.lunch += day.totalCounts.lunch;
+      totals.eveningsnacks += day.totalCounts.eveningsnacks;
+      totals.dinner += day.totalCounts.dinner;
+      return totals;
+    }, {
+      breakfast: 0,
+      midmorningSnacks: 0,
+      lunch: 0,
+      eveningsnacks: 0,
+      dinner: 0
+    });
+
+    res.json({
+      success: true,
+      dateRange: {
+        from: start,
+        to: end
+      },
+      overallTotals,
+      dailyRequirements: foodRequirements
+    });
+  } catch (error) {
+    console.error('Get meeting food requirements error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 

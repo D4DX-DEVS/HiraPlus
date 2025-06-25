@@ -19,9 +19,9 @@ const userSchema = new mongoose.Schema({
     }
   },
   department: {
-    type: String,
-    required: true,
-    trim: true
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: true
   },
   designation: {
     type: String,
@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema({
     default: false
   },
   isDeptHead: {
+    type: Boolean,
+    default: false
+  },
+  isFreeFood: {
     type: Boolean,
     default: false
   },

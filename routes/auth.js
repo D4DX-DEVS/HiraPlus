@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const GuestMeal = require('../models/GuestMeal');
+const CheckIn = require('../models/CheckIn');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const deptHeadAuth = require('../middleware/deptHeadAuth');
@@ -55,7 +56,9 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood
       }
     };
   } catch (error) {
@@ -256,7 +259,8 @@ router.post('/verify-otp', async (req, res) => {
         department: user.department,
         designation: user.designation,
         isVerified: user.isVerified,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood
       }
     });
   } catch (error) {
@@ -306,7 +310,8 @@ router.get('/me', async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         status: user.status,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood
       }
     });
   } catch (error) {
@@ -356,7 +361,8 @@ router.get('/users', async (req, res) => {
   try {
     // Get all users, excluding sensitive information
     const users = await User.find()
-      .select('name phoneNumber department designation -_id')
+      .populate('department', 'title')
+      .select('name phoneNumber department designation')
       .sort({ name: 1 });
 
     res.json({
@@ -537,9 +543,9 @@ router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
 // Get all meetings (for users)
 router.get('/meetings', async (req, res) => {
   try {
-    const meetings = await Meeting.find({ status: 'approved' })
-      .populate('department', 'name')
-      .populate('createdBy', 'name')
+    const meetings = await Meeting.find()
+      .populate('department', 'title')
+      .populate('createdBy', 'name department')
       .sort({ startDatetime: -1 });
 
     res.json({
@@ -585,13 +591,14 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
       lunch: lunch || 0,
       eveningsnacks: eveningsnacks || 0,
       dinner: dinner || 0,
-      department: req.user._id, // Department head's user ID
+      department: req.user.department, // Use the department name instead of ID
       status: 'pending', // Default status for department head
-      createdBy: req.user._id
+      createdBy: req.user.name // Keep the user ID for reference
     });
 
     await meeting.save();
-    await meeting.populate('department', 'name');
+    await meeting.populate('department', 'title');
+    await meeting.populate('createdBy', 'name');
 
     res.status(201).json({
       success: true,
@@ -610,9 +617,9 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
 // Department Head: Get department meetings
 router.get('/dept-meetings', deptHeadAuth, async (req, res) => {
   try {
-    const meetings = await Meeting.find({ department: req.user._id })
-      .populate('department', 'name')
-      .populate('createdBy', 'name')
+    const meetings = await Meeting.find({ department: req.user.department })
+      .populate('department', 'title')
+      .populate('createdBy', 'name department')
       .sort({ startDatetime: -1 });
 
     res.json({
@@ -639,7 +646,7 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
 
     const meeting = await Meeting.findOne({
       _id: req.params.meetingId,
-      department: req.user._id,
+      department: req.user.department,  // Fixed: Use department name instead of user ID
       status: 'pending' // Can only edit pending meetings
     });
 
@@ -665,7 +672,7 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
     if (typeof dinner !== 'undefined') meeting.dinner = dinner;
 
     await meeting.save();
-    await meeting.populate('department', 'name');
+    await meeting.populate('department', 'title');
     await meeting.populate('createdBy', 'name');
 
     res.json({
@@ -687,7 +694,7 @@ router.delete('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
   try {
     const meeting = await Meeting.findOneAndDelete({
       _id: req.params.meetingId,
-      department: req.user._id,
+      department: req.user.department,  // Use department name instead of user ID
       status: 'pending' // Can only delete pending meetings
     });
     
@@ -704,6 +711,153 @@ router.delete('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete meeting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get all departments (Public route)
+router.get('/departments', async (req, res) => {
+  try {
+    const Department = require('../models/Department');
+    
+    const departments = await Department.find()
+      .select('title')
+      .sort({ title: 1 });
+
+    res.json({
+      success: true,
+      departments: departments.map(dept => dept.title),
+      total: departments.length
+    });
+  } catch (error) {
+    console.error('Fetch departments error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get today's checked-in users (Public route)
+router.get('/today-checked-in', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Find all users who checked in today
+    const todayCheckIns = await CheckIn.find({
+      date: {
+        $gte: today,
+        $lt: tomorrow
+      }
+    })
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
+    .sort({ checkedInTime: -1 });
+
+    // Find all users who checked in before today but haven't checked out
+    const previousCheckIns = await CheckIn.find({
+      date: { $lt: today },
+      status: 'CheckedIn'
+    })
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
+    .sort({ checkedInTime: -1 });
+
+    // Combine both results
+    const allCheckIns = [...previousCheckIns, ...todayCheckIns];
+
+    // Filter out check-ins without valid user data
+    const validCheckIns = allCheckIns.filter(checkIn => checkIn.user);
+
+    // Group check-ins by department for better organization
+    const byDepartment = validCheckIns.reduce((acc, checkIn) => {
+      // Handle both string and object department formats
+      let deptName = 'Unknown Department';
+      
+      if (typeof checkIn.user.department === 'string') {
+        deptName = checkIn.user.department;
+      } else if (checkIn.user.department && checkIn.user.department.title) {
+        deptName = checkIn.user.department.title;
+      }
+
+      if (!acc[deptName]) {
+        acc[deptName] = [];
+      }
+      
+      acc[deptName].push({
+        id: checkIn.user._id,
+        name: checkIn.user.name,
+        designation: checkIn.user.designation,
+        checkedInTime: checkIn.checkedInTime,
+        department: deptName,
+        checkInDate: checkIn.date
+      });
+      return acc;
+    }, {});
+
+    // Sort departments alphabetically and users within each department by check-in time
+    const sortedByDepartment = {};
+    Object.keys(byDepartment)
+      .sort()
+      .forEach(dept => {
+        sortedByDepartment[dept] = byDepartment[dept].sort((a, b) => 
+          new Date(b.checkedInTime) - new Date(a.checkedInTime)
+        );
+      });
+
+    // Create a flat list of all checked-in users with department info
+    const allUsers = validCheckIns.map(checkIn => {
+      let deptName = 'Unknown Department';
+      
+      if (typeof checkIn.user.department === 'string') {
+        deptName = checkIn.user.department;
+      } else if (checkIn.user.department && checkIn.user.department.title) {
+        deptName = checkIn.user.department.title;
+      }
+
+      return {
+        id: checkIn.user._id,
+        name: checkIn.user.name,
+        designation: checkIn.user.designation,
+        department: deptName,
+        checkedInTime: checkIn.checkedInTime,
+        checkInId: checkIn._id,
+        checkInDate: checkIn.date
+      };
+    });
+
+    res.json({
+      success: true,
+      date: today.toISOString().split('T')[0],
+      totalCheckedIn: validCheckIns.length,
+      byDepartment: sortedByDepartment,
+      allUsers: allUsers,
+      departmentCount: Object.keys(sortedByDepartment).length,
+      summary: {
+        todayCheckIns: todayCheckIns.length,
+        previousDaysStillCheckedIn: previousCheckIns.length
+      }
+    });
+  } catch (error) {
+    console.error('Fetch today checked-in users error:', error);
     res.status(500).json({
       success: false,
       message: error.message
