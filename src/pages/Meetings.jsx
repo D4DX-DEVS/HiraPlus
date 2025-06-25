@@ -509,7 +509,7 @@ const Meetings = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             <span className="flex items-center">
                               <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                               </svg>
                               Total Participants
                             </span>
@@ -691,17 +691,33 @@ const Meetings = () => {
                     </p>
                   </div>
                   <div className="flex-1 overflow-auto">
-                    <table className="w-full divide-y divide-gray-200">
+                    <table className="w-full divide-y divide-gray-200 table-fixed">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '20%'}}>
+                            Title
+                          </th>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '12%'}}>
+                            Dept
+                          </th>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '15%'}}>
+                            Venue
+                          </th>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '8%'}}>
+                            Count
+                          </th>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '15%'}}>
+                            Start Time
+                          </th>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '15%'}}>
+                            End Time
+                          </th>
+                          <th className="px-1 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '10%'}}>
+                            Status
+                          </th>
+                          <th className="px-1 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '5%'}}>
+                            Actions
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -719,51 +735,63 @@ const Meetings = () => {
                           </tr>
                         ) : (
                           filteredMeetings.map((meeting, index) => (
-                            <tr key={meeting._id} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.title}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {typeof meeting.department === 'string' ? meeting.department : meeting.department?.title || 'N/A'}
+                            <tr key={meeting._id} className="hover:bg-gray-200 transition-colors duration-150">
+                              <td className="px-2 py-1.5 whitespace-nowrap">
+                                <div className="text-xs font-medium text-gray-900 truncate" title={meeting.title}>
+                                  {meeting.title}
+                                </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.hall}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{meeting.noOfPersons}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {format(new Date(meeting.startDatetime), 'MMM d, yyyy HH:mm')}
+                              <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                                <div className="truncate" title={typeof meeting.department === 'string' ? meeting.department : meeting.department?.title || 'N/A'}>
+                                  {typeof meeting.department === 'string' ? meeting.department : meeting.department?.title || 'N/A'}
+                                </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {format(new Date(meeting.endDatetime), 'MMM d, yyyy HH:mm')}
+                              <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                                <div className="truncate" title={meeting.hall}>
+                                  {meeting.hall}
+                                </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                              <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900 text-center">
+                                {meeting.noOfPersons}
+                              </td>
+                              <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                                <div className="truncate" title={format(new Date(meeting.startDatetime), 'MMM d, yyyy h:mm a')}>
+                                  {format(new Date(meeting.startDatetime), 'MMM d, h:mm a')}
+                                </div>
+                              </td>
+                              <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                                <div className="truncate" title={format(new Date(meeting.endDatetime), 'MMM d, yyyy h:mm a')}>
+                                  {format(new Date(meeting.endDatetime), 'MMM d, h:mm a')}
+                                </div>
+                              </td>
+                              <td className="px-1 py-1.5 whitespace-nowrap text-center">
                                 <button
                                   onClick={() => setStatusConfirm({ show: true, meeting })}
-                                  className={`px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
                                     meeting.status === 'approved' 
                                       ? 'bg-green-100 text-green-800 hover:bg-green-200' 
                                       : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                                   }`}
+                                  title={meeting.status}
                                 >
-                                  {meeting.status === 'approved' ? (
-                                    <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                  ) : (
-                                    <ClockIcon className="h-4 w-4 mr-1" />
-                                  )}
-                                  {meeting.status}
+                                  {meeting.status === 'approved' ? '✓' : '⏳'}
                                 </button>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex justify-end space-x-2">
+                              <td className="px-1 py-1.5 whitespace-nowrap text-center">
+                                <div className="flex justify-center space-x-1">
                                   <button
                                     onClick={() => handleEdit(meeting)}
-                                    className="text-green-600 hover:text-green-900 transition-colors p-1.5 hover:bg-green-50 rounded-full"
-                                    title="Edit"
+                                    className="text-green-600 hover:text-green-900 transition-colors p-0.5 hover:bg-green-50 rounded"
+                                    title="Edit Meeting"
                                   >
-                                    <PencilIcon className="h-4 w-4" />
+                                    <PencilIcon className="h-3.5 w-3.5" />
                                   </button>
                                   <button
                                     onClick={() => setDeleteConfirm({ show: true, meetingId: meeting._id })}
-                                    className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-                                    title="Delete"
+                                    className="text-red-600 hover:text-red-900 transition-colors p-0.5 hover:bg-red-50 rounded"
+                                    title="Delete Meeting"
                                   >
-                                    <TrashIcon className="h-4 w-4" />
+                                    <TrashIcon className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
                               </td>
