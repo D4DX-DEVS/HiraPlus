@@ -1626,7 +1626,7 @@ router.post('/meetings', adminAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, hiraStaff, guests, foodRequired, breakfast,
+      hall, noOfPersons, foodRequired, breakfast,
       morningSnacksCount, morningTeaCount, lunch,
       eveningSnacksCount, eveningTeaCount, dinner,
       department
@@ -1641,31 +1641,21 @@ router.post('/meetings', adminAuth, async (req, res) => {
     }
 
     // Validate numeric fields (allow 0 but not undefined/null)
-    if (typeof noOfPersons === 'undefined' || typeof hiraStaff === 'undefined' || typeof guests === 'undefined') {
+    if (typeof noOfPersons === 'undefined') {
       return res.status(400).json({
         success: false,
-        message: 'Please provide noOfPersons, hiraStaff, and guests'
+        message: 'Please provide noOfPersons'
       });
     }
 
     // Convert to numbers
     const numPersons = parseInt(noOfPersons);
-    const numHiraStaff = parseInt(hiraStaff);
-    const numGuests = parseInt(guests);
 
     // Validate minimum values
     if (numPersons < 1) {
       return res.status(400).json({
         success: false,
         message: 'Number of persons must be at least 1'
-      });
-    }
-
-    // Validate that total persons equals sum of hiraStaff and guests
-    if (numHiraStaff + numGuests !== numPersons) {
-      return res.status(400).json({
-        success: false,
-        message: 'Total number of persons must equal sum of HIRA staff and guests'
       });
     }
 
@@ -1691,8 +1681,6 @@ router.post('/meetings', adminAuth, async (req, res) => {
       endDatetime: new Date(endDatetime),
       hall,
       noOfPersons: numPersons,
-      hiraStaff: numHiraStaff,
-      guests: numGuests,
       foodRequired: foodRequired || false,
       breakfast: parseInt(breakfast) || 0,
       morningSnacksCount: parseInt(morningSnacksCount) || 0,
@@ -1750,7 +1738,7 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, hiraStaff, guests, foodRequired, breakfast,
+      hall, noOfPersons, foodRequired, breakfast,
       morningSnacksCount, morningTeaCount, lunch,
       eveningSnacksCount, eveningTeaCount, dinner,
       department, status
@@ -1791,8 +1779,6 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
     
     // Handle numeric fields with proper parsing
     if (typeof noOfPersons !== 'undefined') meeting.noOfPersons = parseInt(noOfPersons);
-    if (typeof hiraStaff !== 'undefined') meeting.hiraStaff = parseInt(hiraStaff);
-    if (typeof guests !== 'undefined') meeting.guests = parseInt(guests);
     if (typeof breakfast !== 'undefined') meeting.breakfast = parseInt(breakfast);
     if (typeof morningSnacksCount !== 'undefined') meeting.morningSnacksCount = parseInt(morningSnacksCount);
     if (typeof morningTeaCount !== 'undefined') meeting.morningTeaCount = parseInt(morningTeaCount);
@@ -1804,18 +1790,6 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
     // Handle boolean fields
     if (typeof foodRequired !== 'undefined') meeting.foodRequired = foodRequired;
     if (status && ['approved', 'pending'].includes(status)) meeting.status = status;
-
-    // Validate that total persons equals sum of hiraStaff and guests
-    const totalHiraStaff = meeting.hiraStaff;
-    const totalGuests = meeting.guests;
-    const totalPersons = meeting.noOfPersons;
-    
-    if (totalHiraStaff + totalGuests !== totalPersons) {
-      return res.status(400).json({
-        success: false,
-        message: 'Total number of persons must equal sum of HIRA staff and guests'
-      });
-    }
 
     await meeting.save();
 
