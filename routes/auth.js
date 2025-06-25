@@ -756,6 +756,7 @@ router.get('/today-checked-in', async (req, res) => {
         $lt: tomorrow
       }
     })
+    .populate('user', 'name department designation')
     .populate({
       path: 'user',
       select: 'name department designation',
@@ -788,22 +789,12 @@ router.get('/today-checked-in', async (req, res) => {
     const validCheckIns = allCheckIns.filter(checkIn => checkIn.user);
 
     // Group check-ins by department for better organization
-    const byDepartment = validCheckIns.reduce((acc, checkIn) => {
-      // Handle both string and object department formats
-      let deptName = 'Unknown Department';
-      
-      if (typeof checkIn.user.department === 'string') {
-        deptName = checkIn.user.department;
-      } else if (checkIn.user.department && checkIn.user.department.title) {
-        deptName = checkIn.user.department.title;
+    const byDepartment = todayCheckIns.reduce((acc, checkIn) => {
+      const dept = checkIn.user.department;
+      if (!acc[dept]) {
+        acc[dept] = [];
       }
-
-      if (!acc[deptName]) {
-        acc[deptName] = [];
-      }
-      
-      acc[deptName].push({
-        id: checkIn.user._id,
+      acc[dept].push({
         name: checkIn.user.name,
         designation: checkIn.user.designation,
         checkedInTime: checkIn.checkedInTime,
