@@ -38,7 +38,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead, status } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -90,7 +90,8 @@ router.post('/users', adminAuth, async (req, res) => {
       department: departmentDoc._id,
       designation,
       isDeptHead: isDeptHead || false,
-      status: status || 'active'
+      status: status || 'active',
+      isFreeFood: isFreeFood || false
     });
     await user.save();
 
@@ -106,7 +107,8 @@ router.post('/users', adminAuth, async (req, res) => {
         department: user.department,
         designation: user.designation,
         isDeptHead: user.isDeptHead,
-        status: user.status
+        status: user.status,
+        isFreeFood: user.isFreeFood
       }
     });
   } catch (error) {
@@ -120,7 +122,7 @@ router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation isVerified isDeptHead status createdAt')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -133,7 +135,8 @@ router.get('/users', adminAuth, async (req, res) => {
       isVerified: user.isVerified,
       isDeptHead: user.isDeptHead,
       status: user.status || 'active',
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      isFreeFood: user.isFreeFood
     }));
 
     res.json(mappedUsers);
@@ -159,7 +162,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead, status } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -215,6 +218,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (designation) user.designation = designation.trim();
     if (typeof isDeptHead !== 'undefined') user.isDeptHead = isDeptHead;
     if (status && ['active', 'inactive'].includes(status)) user.status = status;
+    if (typeof isFreeFood !== 'undefined') user.isFreeFood = isFreeFood;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -239,7 +243,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         designation: user.designation,
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
-        status: user.status
+        status: user.status,
+        isFreeFood: user.isFreeFood
       }
     });
   } catch (error) {
@@ -259,7 +264,9 @@ router.get('/users/meals', adminAuth, async (req, res) => {
       isVerified: 1, 
       name: 1, 
       department: 1, 
-      designation: 1 
+      designation: 1,
+      isDeptHead: 1,
+      isFreeFood: 1
     }).populate('department', 'title');
     
     // Prepare date filter for meals
@@ -285,6 +292,8 @@ router.get('/users/meals', adminAuth, async (req, res) => {
         department: user.department || '',
         designation: user.designation || '',
         isVerified: user.isVerified,
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood,
         meals: meals
       };
     }));
@@ -729,7 +738,8 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
       designation: user.designation,
       isVerified: user.isVerified,
       createdAt: user.createdAt,
-      updatedAt: user.updatedAt
+      updatedAt: user.updatedAt,
+      isFreeFood: user.isFreeFood
     });
   } catch (error) {
     if (error.name === 'CastError') {
@@ -885,6 +895,8 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
           phoneNumber: user.phoneNumber || '',
           department: user.department ? user.department.title : '',
           designation: user.designation || '',
+          isDeptHead: user.isDeptHead || false,
+          isFreeFood: user.isFreeFood || false,
           breakfastCount: 0,
           lunchCount: 0,
           dinnerCount: 0,
@@ -1407,6 +1419,8 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
           phoneNumber: user.phoneNumber || '',
           department: user.department ? user.department.title : '',
           designation: user.designation || '',
+          isDeptHead: user.isDeptHead || false,
+          isFreeFood: user.isFreeFood || false,
           breakfastCount: 0,
           lunchCount: 0,
           dinnerCount: 0,

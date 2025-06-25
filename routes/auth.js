@@ -56,7 +56,9 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood
       }
     };
   } catch (error) {
@@ -257,7 +259,8 @@ router.post('/verify-otp', async (req, res) => {
         department: user.department,
         designation: user.designation,
         isVerified: user.isVerified,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood
       }
     });
   } catch (error) {
@@ -307,7 +310,8 @@ router.get('/me', async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         status: user.status,
-        isDeptHead: user.isDeptHead
+        isDeptHead: user.isDeptHead,
+        isFreeFood: user.isFreeFood
       }
     });
   } catch (error) {
@@ -358,7 +362,7 @@ router.get('/users', async (req, res) => {
     // Get all users, excluding sensitive information
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation -_id')
+      .select('name phoneNumber department designation')
       .sort({ name: 1 });
 
     res.json({
@@ -745,13 +749,12 @@ router.get('/today-checked-in', async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Find all check-ins from today
+    // Find all users who checked in today
     const todayCheckIns = await CheckIn.find({
       date: {
         $gte: today,
         $lt: tomorrow
-      },
-      status: 'CheckedIn' // Only get users who are still checked in
+      }
     })
     .populate({
       path: 'user',
@@ -763,8 +766,26 @@ router.get('/today-checked-in', async (req, res) => {
     })
     .sort({ checkedInTime: -1 });
 
+    // Find all users who checked in before today but haven't checked out
+    const previousCheckIns = await CheckIn.find({
+      date: { $lt: today },
+      status: 'CheckedIn'
+    })
+    .populate({
+      path: 'user',
+      select: 'name department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    })
+    .sort({ checkedInTime: -1 });
+
+    // Combine both results
+    const allCheckIns = [...previousCheckIns, ...todayCheckIns];
+
     // Filter out check-ins without valid user data
-    const validCheckIns = todayCheckIns.filter(checkIn => checkIn.user);
+    const validCheckIns = allCheckIns.filter(checkIn => checkIn.user);
 
     // Group check-ins by department for better organization
     const byDepartment = validCheckIns.reduce((acc, checkIn) => {
@@ -786,7 +807,8 @@ router.get('/today-checked-in', async (req, res) => {
         name: checkIn.user.name,
         designation: checkIn.user.designation,
         checkedInTime: checkIn.checkedInTime,
-        department: deptName
+        department: deptName,
+        checkInDate: checkIn.date
       });
       return acc;
     }, {});
@@ -817,7 +839,8 @@ router.get('/today-checked-in', async (req, res) => {
         designation: checkIn.user.designation,
         department: deptName,
         checkedInTime: checkIn.checkedInTime,
-        checkInId: checkIn._id
+        checkInId: checkIn._id,
+        checkInDate: checkIn.date
       };
     });
 
@@ -827,7 +850,11 @@ router.get('/today-checked-in', async (req, res) => {
       totalCheckedIn: validCheckIns.length,
       byDepartment: sortedByDepartment,
       allUsers: allUsers,
-      departmentCount: Object.keys(sortedByDepartment).length
+      departmentCount: Object.keys(sortedByDepartment).length,
+      summary: {
+        todayCheckIns: todayCheckIns.length,
+        previousDaysStillCheckedIn: previousCheckIns.length
+      }
     });
   } catch (error) {
     console.error('Fetch today checked-in users error:', error);
