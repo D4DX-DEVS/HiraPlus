@@ -29,10 +29,18 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
     // Find or create dummy user
     let user = await User.findOne({ phoneNumber });
     if (!user) {
+      // First, find or create a test department
+      const Department = require('../models/Department');
+      let testDepartment = await Department.findOne({ title: 'Testing' });
+      if (!testDepartment) {
+        testDepartment = new Department({ title: 'Testing' });
+        await testDepartment.save();
+      }
+
       user = new User({ 
         phoneNumber,
         name: "Test User",
-        department: "Testing",
+        department: testDepartment._id,  // Use ObjectId instead of string
         designation: "Tester",
         isVerified: true 
       });
