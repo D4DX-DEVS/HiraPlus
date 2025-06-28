@@ -5,6 +5,7 @@ const Meal = require('../models/Meal');
 const User = require('../models/User');
 const GuestMeal = require('../models/GuestMeal');
 const Meeting = require('../models/Meeting');
+const Menu = require('../models/Menu');
 const messStaffAuth = require('../middleware/messStaffAuth');
 
 // Mess Staff Login
@@ -26,6 +27,169 @@ router.post('/login', async (req, res) => {
     res.json({ token });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Add today's menu (Only accessible by mess staff)
+router.post('/menu/today', messStaffAuth, async (req, res) => {
+  try {
+    const { breakfast, lunch, dinner } = req.body;
+    
+    // Validate required fields
+    if (!breakfast || !lunch || !dinner) {
+      return res.status(400).json({ 
+        message: 'All meal items are required (breakfast, lunch, dinner)' 
+      });
+    }
+
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if menu already exists for today
+    const existingMenu = await Menu.findOne({ date: today });
+    
+    if (existingMenu) {
+      return res.status(400).json({ 
+        message: 'Menu for today already exists. Use the update function to modify it.' 
+      });
+    }
+
+    // Create new menu for today
+    const menu = new Menu({
+      date: today,
+      breakfast: breakfast.trim(),
+      lunch: lunch.trim(),
+      dinner: dinner.trim(),
+      addedBy: 'Mess Staff'
+    });
+
+    await menu.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Today\'s menu added successfully',
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt
+      }
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Menu for today already exists' 
+      });
+    }
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Update today's menu (Only accessible by mess staff)
+router.put('/menu/today', messStaffAuth, async (req, res) => {
+  try {
+    const { breakfast, lunch, dinner } = req.body;
+    
+    // Validate that at least one field is provided
+    if (!breakfast && !lunch && !dinner) {
+      return res.status(400).json({ 
+        message: 'At least one meal item must be provided' 
+      });
+    }
+
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find or create menu for today
+    let menu = await Menu.findOne({ date: today });
+    
+    if (!menu) {
+      // If no menu exists for today, create a new one
+      if (!breakfast || !lunch || !dinner) {
+        return res.status(400).json({ 
+          message: 'All meal items are required when creating a new menu (breakfast, lunch, dinner)' 
+        });
+      }
+      
+      menu = new Menu({
+        date: today,
+        breakfast: breakfast.trim(),
+        lunch: lunch.trim(),
+        dinner: dinner.trim(),
+        addedBy: 'Mess Staff'
+      });
+    } else {
+      // Update existing menu
+      if (breakfast) menu.breakfast = breakfast.trim();
+      if (lunch) menu.lunch = lunch.trim();
+      if (dinner) menu.dinner = dinner.trim();
+    }
+
+    await menu.save();
+
+    res.json({
+      success: true,
+      message: 'Today\'s menu updated successfully',
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        updatedAt: menu.updatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Get today's menu (Public route - accessible to all)
+router.get('/menu/today', async (req, res) => {
+  try {
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const menu = await Menu.findOne({ date: today });
+    
+    if (!menu) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menu found for today' 
+      });
+    }
+
+    res.json({
+      success: true,
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 });
 
@@ -279,6 +443,114 @@ router.get('/guest-meals', messStaffAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Get all guest meals error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add meal for a user
+router.post('/users/:userId/meals', messStaffAuth, async (req, res) => {
+  try {
+    const { date, breakfast, lunch, dinner } = req.body;
+    
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
+    }
+
+    // Check if user exists
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if meal already exists for this user and date
+    const existingMeal = await Meal.findOne({
+      userId: req.params.userId,
+      date: new Date(date)
+    });
+
+    if (existingMeal) {
+      return res.status(400).json({ 
+        message: 'Meal record already exists for this date. Use edit function to update it.' 
+      });
+    }
+
+    // Create new meal
+    const meal = new Meal({
+      userId: req.params.userId,
+      date: new Date(date),
+      breakfast: breakfast || false,
+      lunch: lunch || false,
+      dinner: dinner || false
+    });
+
+    await meal.save();
+    res.status(201).json({ 
+      message: 'Meal added successfully',
+      meal
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Edit meal by userId and date
+router.put('/users/:userId/meals', messStaffAuth, async (req, res) => {
+  try {
+    const { date, breakfast, lunch, dinner } = req.body;
+    
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
+    }
+
+    // Find or create meal for the specified date
+    let meal = await Meal.findOne({
+      userId: req.params.userId,
+      date: new Date(date)
+    });
+
+    if (!meal) {
+      meal = new Meal({
+        userId: req.params.userId,
+        date: new Date(date)
+      });
+    }
+
+    // Update only the provided fields
+    if (breakfast !== undefined) meal.breakfast = breakfast;
+    if (lunch !== undefined) meal.lunch = lunch;
+    if (dinner !== undefined) meal.dinner = dinner;
+
+    await meal.save();
+    res.json({ 
+      message: 'Meal updated successfully',
+      meal
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Edit meal by mealId (keeping for backward compatibility)
+router.put('/meals/:mealId', messStaffAuth, async (req, res) => {
+  try {
+    const { breakfast, lunch, dinner } = req.body;
+    
+    const meal = await Meal.findById(req.params.mealId);
+    if (!meal) {
+      return res.status(404).json({ message: 'Meal not found' });
+    }
+
+    // Update only the provided fields
+    if (breakfast !== undefined) meal.breakfast = breakfast;
+    if (lunch !== undefined) meal.lunch = lunch;
+    if (dinner !== undefined) meal.dinner = dinner;
+
+    await meal.save();
+    res.json({ 
+      message: 'Meal updated successfully',
+      meal
+    });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });

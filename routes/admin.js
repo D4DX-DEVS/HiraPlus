@@ -12,6 +12,18 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const Meeting = require('../models/Meeting');
 const { sendPushNotification } = require('../utils/oneSignalService');
+const Menu = require('../models/Menu');
+
+// Helper function to find department by ID or title
+const findDepartment = async (department) => {
+  if (mongoose.Types.ObjectId.isValid(department)) {
+    return await Department.findById(department);
+  } else if (typeof department === 'string') {
+    return await Department.findOne({ title: department.trim() });
+  } else {
+    throw new Error('Invalid department format. Please provide a valid department ID or name.');
+  }
+};
 
 // Admin Login
 router.post('/login', async (req, res) => {
@@ -69,8 +81,12 @@ router.post('/users', adminAuth, async (req, res) => {
     let departmentDoc;
     if (mongoose.Types.ObjectId.isValid(department)) {
       departmentDoc = await Department.findById(department);
-    } else {
+    } else if (typeof department === 'string') {
       departmentDoc = await Department.findOne({ title: department.trim() });
+    } else {
+      return res.status(400).json({ 
+        message: 'Invalid department format. Please provide a valid department ID or name.' 
+      });
     }
 
     if (!departmentDoc) {
@@ -228,8 +244,12 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
       let departmentDoc;
       if (mongoose.Types.ObjectId.isValid(department)) {
         departmentDoc = await Department.findById(department);
-      } else {
+      } else if (typeof department === 'string') {
         departmentDoc = await Department.findOne({ title: department.trim() });
+      } else {
+        return res.status(400).json({ 
+          message: 'Invalid department format. Please provide a valid department ID or name.' 
+        });
       }
 
       if (!departmentDoc) {
@@ -1827,8 +1847,13 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
       let departmentDoc;
       if (mongoose.Types.ObjectId.isValid(department)) {
         departmentDoc = await Department.findById(department);
-      } else {
+      } else if (typeof department === 'string') {
         departmentDoc = await Department.findOne({ title: department.trim() });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department format. Please provide a valid department ID or name.'
+        });
       }
 
       if (!departmentDoc) {
@@ -2387,5 +2412,44 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
     });
   }
 });
+
+
+// Get today's menu (Public route - accessible to all)
+router.get('/menu/today', async (req, res) => {
+  try {
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const menu = await Menu.findOne({ date: today });
+    
+    if (!menu) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menu found for today' 
+      });
+    }
+
+    res.json({
+      success: true,
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 
 module.exports = router; 
