@@ -217,10 +217,11 @@ const Meetings = () => {
       const meeting = statusConfirm.meeting;
       const newStatus = meeting.status === 'pending' ? 'approved' : 'pending';
       
+      // Only send the status field for status updates
       await axios({
         method: 'put',
         url: `${import.meta.env.VITE_API_URL}/admin/meetings/${meeting._id}`,
-        data: { ...meeting, status: newStatus },
+        data: { status: newStatus },
         headers: { Authorization: `Bearer ${token}` }
       });
 
