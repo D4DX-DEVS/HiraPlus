@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -9,6 +9,8 @@ import ConfirmDialog from '../components/ConfirmDialog';
 const AdminBanners = () => {
   const [banners, setBanners] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingBanner, setEditingBanner] = useState(null);
   const [error, setError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
@@ -16,7 +18,9 @@ const AdminBanners = () => {
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, bannerId: null });
   const [newBanner, setNewBanner] = useState({ title: '', bannerImage: null });
+  const [editBanner, setEditBanner] = useState({ title: '', bannerImage: null });
   const [previewImage, setPreviewImage] = useState(null);
+  const [editPreviewImage, setEditPreviewImage] = useState(null);
 
   const fetchBanners = async () => {
     try {
@@ -57,6 +61,22 @@ const AdminBanners = () => {
     }
   };
 
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setEditBanner({ ...editBanner, bannerImage: file });
+      setEditPreviewImage(URL.createObjectURL(file));
+    }
+  };
+
+  const handleEdit = (banner) => {
+    setEditingBanner(banner);
+    setEditBanner({ title: banner.title, bannerImage: null });
+    setEditPreviewImage(null);
+    setShowEditForm(true);
+    setShowAddForm(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -78,6 +98,33 @@ const AdminBanners = () => {
       fetchBanners();
     } catch (err) {
       setError('Failed to create banner');
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('adminToken');
+      const formData = new FormData();
+      formData.append('title', editBanner.title);
+      if (editBanner.bannerImage) {
+        formData.append('bannerImage', editBanner.bannerImage);
+      }
+
+      await axios.put(`${import.meta.env.VITE_API_URL}/banner/${editingBanner._id}`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setEditBanner({ title: '', bannerImage: null });
+      setEditPreviewImage(null);
+      setShowEditForm(false);
+      setEditingBanner(null);
+      fetchBanners();
+    } catch (err) {
+      setError('Failed to update banner');
     }
   };
 
@@ -111,7 +158,7 @@ const AdminBanners = () => {
                         </span>
                       </div>
                     </div>
-                    {!showAddForm && (
+                    {!showAddForm && !showEditForm && (
                       <button
                         onClick={() => setShowAddForm(true)}
                         className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
@@ -207,6 +254,90 @@ const AdminBanners = () => {
                 </div>
               )}
 
+              {showEditForm && editingBanner && (
+                <div className="mb-3">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200/50 p-4 lg:p-5">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Edit Banner</h3>
+                      <p className="text-sm text-gray-600 mt-1">Update banner information and image</p>
+                    </div>
+                    <form onSubmit={handleEditSubmit} className="space-y-6">
+                      <div>
+                        <label htmlFor="editTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                          Title
+                        </label>
+                        <input
+                          type="text"
+                          id="editTitle"
+                          value={editBanner.title}
+                          onChange={(e) => setEditBanner({ ...editBanner, title: e.target.value })}
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                          placeholder="Enter banner title"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="editBannerImage" className="block text-sm font-medium text-gray-700 mb-2">
+                          Banner Image (optional - leave empty to keep current image)
+                        </label>
+                        <input
+                          type="file"
+                          id="editBannerImage"
+                          accept="image/*"
+                          onChange={handleEditImageChange}
+                          className="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-3 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-green-50 file:text-green-700
+                            hover:file:bg-green-100 transition-all duration-200"
+                        />
+                        <div className="mt-4 flex gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600 mb-2">Current Image:</p>
+                            <img
+                              src={editingBanner.bannerImage}
+                              alt="Current"
+                              className="h-40 w-auto object-contain rounded-lg border border-gray-200 shadow-sm"
+                            />
+                          </div>
+                          {editPreviewImage && (
+                            <div>
+                              <p className="text-sm text-gray-600 mb-2">New Image Preview:</p>
+                              <img
+                                src={editPreviewImage}
+                                alt="Preview"
+                                className="h-40 w-auto object-contain rounded-lg border border-gray-200 shadow-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowEditForm(false);
+                            setEditBanner({ title: '', bannerImage: null });
+                            setEditPreviewImage(null);
+                            setEditingBanner(null);
+                          }}
+                          className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-6 py-3 bg-green-950 text-white font-semibold rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 transition-all duration-200"
+                        >
+                          Update Banner
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {/* Banners List */}
               <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
                 <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
@@ -248,13 +379,22 @@ const AdminBanners = () => {
                                 </p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => setDeleteConfirm({ show: true, bannerId: banner._id })}
-                              className="text-red-600 hover:text-red-900 transition-colors p-1 hover:bg-red-50 rounded flex-shrink-0"
-                              title="Delete Banner"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleEdit(banner)}
+                                className="text-blue-600 hover:text-blue-900 transition-colors p-1 hover:bg-blue-50 rounded flex-shrink-0"
+                                title="Edit Banner"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm({ show: true, bannerId: banner._id })}
+                                className="text-red-600 hover:text-red-900 transition-colors p-1 hover:bg-red-50 rounded flex-shrink-0"
+                                title="Delete Banner"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}

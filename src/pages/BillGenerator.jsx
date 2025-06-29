@@ -276,10 +276,24 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
 
                     {filteredDepartments.map((dept) => {
                       if (!dept) return null;
+                      
+                      // Calculate actual totals from billable users only
+                      let actualBreakfast = 0, actualLunch = 0, actualDinner = 0, actualTotal = 0;
+                      if (billData?.departments) {
+                        const matchingDept = billData.departments.find(d => d.department === dept.department);
+                        if (matchingDept) {
+                          const billableUsers = matchingDept.users.filter(user => !user.isFreeFood);
+                          actualBreakfast = billableUsers.reduce((sum, user) => sum + (user.breakfastCount || 0), 0);
+                          actualLunch = billableUsers.reduce((sum, user) => sum + (user.lunchCount || 0), 0);
+                          actualDinner = billableUsers.reduce((sum, user) => sum + (user.dinnerCount || 0), 0);
+                          actualTotal = actualBreakfast + actualLunch + actualDinner;
+                        }
+                      }
+                      
                       const deptTotal = (
-                        (dept.breakfastCount || 0) * (mealRates?.breakfast || 0) +
-                        (dept.lunchCount || 0) * (mealRates?.lunch || 0) +
-                        (dept.dinnerCount || 0) * (mealRates?.dinner || 0)
+                        actualBreakfast * (mealRates?.breakfast || 0) +
+                        actualLunch * (mealRates?.lunch || 0) +
+                        actualDinner * (mealRates?.dinner || 0)
                       );
                       const deptShare = (deptTotal * (departmentShare || 0)) / 100;
                       const empShare = deptTotal - deptShare;
@@ -287,10 +301,10 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
                       return (
                         <View key={dept.department} style={styles.tableRow}>
                           <Text style={[styles.tableCell, { flex: 2 }]}>{dept.department || ''}</Text>
-                          <Text style={styles.tableCellRight}>{dept.breakfastCount || 0}</Text>
-                          <Text style={styles.tableCellRight}>{dept.lunchCount || 0}</Text>
-                          <Text style={styles.tableCellRight}>{dept.dinnerCount || 0}</Text>
-                          <Text style={styles.tableCellRight}>{dept.totalMeals || 0}</Text>
+                          <Text style={styles.tableCellRight}>{actualBreakfast}</Text>
+                          <Text style={styles.tableCellRight}>{actualLunch}</Text>
+                          <Text style={styles.tableCellRight}>{actualDinner}</Text>
+                          <Text style={styles.tableCellRight}>{actualTotal}</Text>
                           <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptTotal)}</Text>
                           <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(deptShare)}</Text>
                           <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Math.round(empShare)}</Text>
@@ -322,6 +336,7 @@ const BillPDF = ({ billData, rentData, guestMealData, meetingFoodData, dateRange
                       .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
                       .map(dept => dept.users.map(user => ({ ...user, parentDepartment: dept.department })))
                       .flat()
+                      .filter(user => !user.isFreeFood) // Exclude users with free food
                       .map((user, index) => {
                         const breakfastAmount = (user.breakfastCount || 0) * mealRates.breakfast;
                         const lunchAmount = (user.lunchCount || 0) * mealRates.lunch;
@@ -691,16 +706,24 @@ const BillGenerator = () => {
         if (deptResponse.data && deptResponse.data.departments) {
           setDepartmentData(deptResponse.data);
 
-          // Calculate total amount from department data
-          const total = deptResponse.data.departments
-            .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-            .reduce((acc, dept) => {
-              return acc + (
-                dept.breakfastCount * mealRates.breakfast +
-                dept.lunchCount * mealRates.lunch +
-                dept.dinnerCount * mealRates.dinner
-              );
-            }, 0);
+          // Calculate total amount excluding free food users
+          let total = 0;
+          if (userResponse.data && userResponse.data.departments) {
+            total = userResponse.data.departments
+              .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
+              .reduce((acc, dept) => {
+                const deptTotal = dept.users
+                  .filter(user => !user.isFreeFood) // Exclude free food users
+                  .reduce((userAcc, user) => {
+                    return userAcc + (
+                      (user.breakfastCount || 0) * mealRates.breakfast +
+                      (user.lunchCount || 0) * mealRates.lunch +
+                      (user.dinnerCount || 0) * mealRates.dinner
+                    );
+                  }, 0);
+                return acc + deptTotal;
+              }, 0);
+          }
 
           // Calculate department and employee shares
           const deptShare = (total * departmentShare) / 100;
@@ -1108,17 +1131,32 @@ const BillGenerator = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {billType === 'food' && departmentData?.departments?.map((dept) => (
-                            <tr key={dept.department} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.breakfastCount || 0}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.lunchCount || 0}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.dinnerCount || 0}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                ₹{Math.round((dept.breakfastCount * mealRates.breakfast) + (dept.lunchCount * mealRates.lunch) + (dept.dinnerCount * mealRates.dinner)).toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
+                          {billType === 'food' && departmentData?.departments?.map((dept) => {
+                            // Calculate actual billable amounts from user data
+                            let actualBreakfast = 0, actualLunch = 0, actualDinner = 0;
+                            if (billData?.departments) {
+                              const matchingDept = billData.departments.find(d => d.department === dept.department);
+                              if (matchingDept) {
+                                const billableUsers = matchingDept.users.filter(user => !user.isFreeFood);
+                                actualBreakfast = billableUsers.reduce((sum, user) => sum + (user.breakfastCount || 0), 0);
+                                actualLunch = billableUsers.reduce((sum, user) => sum + (user.lunchCount || 0), 0);
+                                actualDinner = billableUsers.reduce((sum, user) => sum + (user.dinnerCount || 0), 0);
+                              }
+                            }
+                            const totalAmount = (actualBreakfast * mealRates.breakfast) + (actualLunch * mealRates.lunch) + (actualDinner * mealRates.dinner);
+                            
+                            return (
+                              <tr key={dept.department} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualBreakfast}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualLunch}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualDinner}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                                  ₹{Math.round(totalAmount).toLocaleString()}
+                                </td>
+                              </tr>
+                            );
+                          })}
                           {billType === 'rent' && rentData?.departments?.map((dept) => (
                             <tr key={dept.department} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
@@ -1217,6 +1255,7 @@ const BillGenerator = () => {
                             .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
                             .map(dept => dept.users.map(user => ({ ...user, parentDepartment: dept.department })))
                             .flat()
+                            .filter(user => !user.isFreeFood) // Exclude users with free food
                             .map((user, index) => {
                               const breakfastAmount = (user.breakfastCount || 0) * mealRates.breakfast;
                               const lunchAmount = (user.lunchCount || 0) * mealRates.lunch;
@@ -1276,7 +1315,7 @@ const BillGenerator = () => {
                           <td className="px-6 py-4 text-sm font-bold text-gray-900" colSpan="6">
                             TOTAL ({billData.departments
                               .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
-                              .reduce((acc, dept) => acc + dept.users.length, 0)} employees)
+                              .reduce((acc, dept) => acc + dept.users.filter(user => !user.isFreeFood).length, 0)} employees)
                           </td>
                           <td className="px-6 py-4 text-sm font-bold text-blue-600">
                             ₹{Math.round(totalAmount).toLocaleString()}

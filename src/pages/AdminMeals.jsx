@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, FunnelIcon, PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -19,6 +19,20 @@ const AdminMeals = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null, mealId: null });
+  
+  // Add meal state
+  const [showAddMeal, setShowAddMeal] = useState(false);
+  const [usersList, setUsersList] = useState([]);
+  const [addMealForm, setAddMealForm] = useState({
+    userId: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
+    breakfast: false,
+    lunch: false,
+    dinner: false
+  });
+  const [userSearch, setUserSearch] = useState('');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const fetchAllMeals = async () => {
     try {
@@ -46,14 +60,41 @@ const AdminMeals = () => {
     }
   };
 
+  const fetchUsersList = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/list`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsersList(response.data);
+    } catch (err) {
+      setError('Failed to fetch users list');
+    }
+  };
+
   useEffect(() => {
     fetchAllMeals();
+    fetchUsersList();
   }, []);
 
   // Save sidebar state to localStorage
   useEffect(() => {
     localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
   }, [isSidebarOpen]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserDropdown && !event.target.closest('.user-dropdown-container')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserDropdown]);
 
   const handleDelete = async () => {
     try {
@@ -102,6 +143,49 @@ const AdminMeals = () => {
     setShowFilters(false);
   };
 
+  const handleAddMeal = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('adminToken');
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/admin/users/${addMealForm.userId}/meals`,
+        {
+          date: addMealForm.date,
+          breakfast: addMealForm.breakfast,
+          lunch: addMealForm.lunch,
+          dinner: addMealForm.dinner
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setShowAddMeal(false);
+      setAddMealForm({
+        userId: '',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        breakfast: false,
+        lunch: false,
+        dinner: false
+      });
+      setSelectedUser(null);
+      setUserSearch('');
+      fetchAllMeals();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add meal');
+    }
+  };
+
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+    setAddMealForm({ ...addMealForm, userId: user._id });
+    setUserSearch(user.displayName);
+    setShowUserDropdown(false);
+  };
+
+  const filteredUsers = usersList.filter(user =>
+    user.displayName.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
   const displayMeals = filteredMeals || meals;
 
   return (
@@ -138,6 +222,14 @@ const AdminMeals = () => {
                         </span>
                       </div>
                     </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowAddMeal(true)}
+                        className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-1.5" />
+                        Add Meal
+                      </button>
                     <button
                       onClick={() => setShowFilters(!showFilters)}
                       className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
@@ -145,6 +237,7 @@ const AdminMeals = () => {
                       <FunnelIcon className="h-4 w-4 mr-1.5" />
                       {showFilters ? 'Hide Filters' : 'Show Filters'}
                     </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -197,6 +290,160 @@ const AdminMeals = () => {
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     <div className="text-sm text-red-700 font-medium">{error}</div>
                   </div>
+                </div>
+              )}
+
+              {/* Add Meal Modal */}
+              {showAddMeal && (
+                <div className="mb-3 bg-white shadow-lg rounded-xl border border-gray-200/50 p-4 lg:p-5 flex-shrink-0 max-w-2xl mx-auto">
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Add User Meal</h2>
+                        <p className="text-sm text-gray-600 mt-1">Create a new meal record for a user</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowAddMeal(false);
+                          setAddMealForm({
+                            userId: '',
+                            date: format(new Date(), 'yyyy-MM-dd'),
+                            breakfast: false,
+                            lunch: false,
+                            dinner: false
+                          });
+                          setSelectedUser(null);
+                          setUserSearch('');
+                        }}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Close"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleAddMeal} className="space-y-4">
+                    {/* User Selection */}
+                    <div className="relative user-dropdown-container">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select User
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={userSearch}
+                          onChange={(e) => {
+                            setUserSearch(e.target.value);
+                            setShowUserDropdown(true);
+                          }}
+                          onFocus={() => setShowUserDropdown(true)}
+                          className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-10"
+                          placeholder="Search users by name, phone, or department..."
+                          required
+                        />
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        
+                        {showUserDropdown && filteredUsers.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {filteredUsers.slice(0, 10).map((user) => (
+                              <div
+                                key={user._id}
+                                onClick={() => handleUserSelect(user)}
+                                className="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                <div className="text-xs text-gray-500">
+                                  {user.phoneNumber} • {user.department} • {user.designation}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Date Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={addMealForm.date}
+                        onChange={(e) => setAddMealForm({ ...addMealForm, date: e.target.value })}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required
+                      />
+                    </div>
+
+                    {/* Meal Selections */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Meal Types
+                      </label>
+                      <div className="space-y-3">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={addMealForm.breakfast}
+                            onChange={(e) => setAddMealForm({ ...addMealForm, breakfast: e.target.checked })}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Breakfast</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={addMealForm.lunch}
+                            onChange={(e) => setAddMealForm({ ...addMealForm, lunch: e.target.checked })}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Lunch</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={addMealForm.dinner}
+                            onChange={(e) => setAddMealForm({ ...addMealForm, dinner: e.target.checked })}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Dinner</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddMeal(false);
+                          setAddMealForm({
+                            userId: '',
+                            date: format(new Date(), 'yyyy-MM-dd'),
+                            breakfast: false,
+                            lunch: false,
+                            dinner: false
+                          });
+                          setSelectedUser(null);
+                          setUserSearch('');
+                        }}
+                        className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!addMealForm.userId}
+                        className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Add Meal
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
 
