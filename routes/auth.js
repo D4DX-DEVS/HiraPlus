@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const deptHeadAuth = require('../middleware/deptHeadAuth');
 const Meeting = require('../models/Meeting');
+const Menu = require('../models/Menu');
 
 // Store OTPs in memory (in production, use Redis or similar)
 const otpStore = new Map();
@@ -29,10 +30,18 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
     // Find or create dummy user
     let user = await User.findOne({ phoneNumber });
     if (!user) {
+      // First, find or create a test department
+      const Department = require('../models/Department');
+      let testDepartment = await Department.findOne({ title: 'Testing' });
+      if (!testDepartment) {
+        testDepartment = new Department({ title: 'Testing' });
+        await testDepartment.save();
+      }
+
       user = new User({ 
         phoneNumber,
         name: "Test User",
-        department: "Testing",
+        department: testDepartment._id,  // Use ObjectId instead of string
         designation: "Tester",
         isVerified: true 
       });
@@ -855,5 +864,44 @@ router.get('/today-checked-in', async (req, res) => {
     });
   }
 });
+
+
+// Get today's menu (Public route - accessible to all)
+router.get('/menu/today', async (req, res) => {
+  try {
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const menu = await Menu.findOne({ date: today });
+    
+    if (!menu) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menu found for today' 
+      });
+    }
+
+    res.json({
+      success: true,
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 
 module.exports = router; 
