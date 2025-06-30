@@ -51,8 +51,7 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
     // Generate JWT token
     const token = jwt.sign(
       { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
     );
 
     return { 
@@ -253,8 +252,7 @@ router.post('/verify-otp', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
     );
 
     res.json({ 

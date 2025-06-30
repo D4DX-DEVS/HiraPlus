@@ -20,8 +20,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { isMessStaff: true },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
     );
 
     res.json({ token });
