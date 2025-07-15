@@ -30,58 +30,87 @@ router.post('/login', async (req, res) => {
 });
 
 // Add today's menu (Only accessible by mess staff)
-router.post('/menu/today', messStaffAuth, async (req, res) => {
+router.post('/menu/week', messStaffAuth, async (req, res) => {
   try {
-    const { breakfast, lunch, dinner } = req.body;
+    const { weekMenu } = req.body;
     
     // Validate required fields
-    if (!breakfast || !lunch || !dinner) {
+    if (!weekMenu || typeof weekMenu !== 'object') {
       return res.status(400).json({ 
-        message: 'All meal items are required (breakfast, lunch, dinner)' 
+        message: 'weekMenu object is required with daily menu data' 
       });
     }
 
-    // Get today's date (start of day)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Check if menu already exists for today
-    const existingMenu = await Menu.findOne({ date: today });
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     
-    if (existingMenu) {
+    // Validate that all days are provided with complete meal data
+    for (const day of days) {
+      if (!weekMenu[day] || !weekMenu[day].breakfast || !weekMenu[day].lunch || !weekMenu[day].dinner) {
+        return res.status(400).json({ 
+          message: `All meal items are required for ${day} (breakfast, lunch, dinner)` 
+        });
+      }
+    }
+
+    // Get the start of current week (Monday)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Check if any menu already exists for this week
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const existingMenus = await Menu.find({ 
+      date: { $gte: startOfWeek, $lte: endOfWeek } 
+    });
+    
+    if (existingMenus.length > 0) {
       return res.status(400).json({ 
-        message: 'Menu for today already exists. Use the update function to modify it.' 
+        message: 'Menu for this week already exists. Use the update function to modify it.' 
       });
     }
 
-    // Create new menu for today
-    const menu = new Menu({
-      date: today,
-      breakfast: breakfast.trim(),
-      lunch: lunch.trim(),
-      dinner: dinner.trim(),
-      addedBy: 'Mess Staff'
-    });
+    // Create menus for all days of the week
+    const createdMenus = [];
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(startOfWeek);
+      dayDate.setDate(startOfWeek.getDate() + i);
+      
+      const dayName = days[i];
+      const menu = new Menu({
+        date: dayDate,
+        breakfast: weekMenu[dayName].breakfast.trim(),
+        lunch: weekMenu[dayName].lunch.trim(),
+        dinner: weekMenu[dayName].dinner.trim(),
+        addedBy: 'Mess Staff'
+      });
 
-    await menu.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Today\'s menu added successfully',
-      menu: {
+      await menu.save();
+      createdMenus.push({
         id: menu._id,
         date: menu.date,
+        day: dayName,
         breakfast: menu.breakfast,
         lunch: menu.lunch,
         dinner: menu.dinner,
         addedBy: menu.addedBy,
         createdAt: menu.createdAt
-      }
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'This week\'s menu added successfully',
+      weekMenu: createdMenus
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Menu for today already exists' 
+        message: 'Menu for this week already exists' 
       });
     }
     res.status(500).json({ 
@@ -91,60 +120,191 @@ router.post('/menu/today', messStaffAuth, async (req, res) => {
   }
 });
 
-// Update today's menu (Only accessible by mess staff)
-router.put('/menu/today', messStaffAuth, async (req, res) => {
+// Update this week's menu (Only accessible by mess staff)
+router.put('/menu/week', messStaffAuth, async (req, res) => {
   try {
-    const { breakfast, lunch, dinner } = req.body;
+    const { weekMenu } = req.body;
     
-    // Validate that at least one field is provided
-    if (!breakfast && !lunch && !dinner) {
+    // Validate that weekMenu is provided
+    if (!weekMenu || typeof weekMenu !== 'object') {
       return res.status(400).json({ 
-        message: 'At least one meal item must be provided' 
+        message: 'weekMenu object must be provided with at least one day\'s menu data' 
       });
     }
 
-    // Get today's date (start of day)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Find or create menu for today
-    let menu = await Menu.findOne({ date: today });
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     
-    if (!menu) {
-      // If no menu exists for today, create a new one
-      if (!breakfast || !lunch || !dinner) {
-        return res.status(400).json({ 
-          message: 'All meal items are required when creating a new menu (breakfast, lunch, dinner)' 
-        });
+    // Get the start of current week (Monday)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Get existing menus for this week
+    const existingMenus = await Menu.find({ 
+      date: { $gte: startOfWeek, $lte: endOfWeek } 
+    }).sort({ date: 1 });
+
+    const updatedMenus = [];
+
+    // Process each day in the weekMenu update
+    for (const [dayName, dayData] of Object.entries(weekMenu)) {
+      if (!days.includes(dayName.toLowerCase())) {
+        continue; // Skip invalid day names
       }
+
+      const dayIndex = days.indexOf(dayName.toLowerCase());
+      const dayDate = new Date(startOfWeek);
+      dayDate.setDate(startOfWeek.getDate() + dayIndex);
+
+      // Find existing menu for this day
+      let menu = existingMenus.find(m => 
+        m.date.toDateString() === dayDate.toDateString()
+      );
+
+      if (!menu) {
+        // Create new menu if it doesn't exist
+        if (!dayData.breakfast || !dayData.lunch || !dayData.dinner) {
+          return res.status(400).json({ 
+            message: `All meal items are required for ${dayName} when creating a new menu (breakfast, lunch, dinner)` 
+          });
+        }
+        
+        menu = new Menu({
+          date: dayDate,
+          breakfast: dayData.breakfast.trim(),
+          lunch: dayData.lunch.trim(),
+          dinner: dayData.dinner.trim(),
+          addedBy: 'Mess Staff'
+        });
+      } else {
+        // Update existing menu
+        if (dayData.breakfast) menu.breakfast = dayData.breakfast.trim();
+        if (dayData.lunch) menu.lunch = dayData.lunch.trim();
+        if (dayData.dinner) menu.dinner = dayData.dinner.trim();
+      }
+
+      await menu.save();
       
-      menu = new Menu({
-        date: today,
-        breakfast: breakfast.trim(),
-        lunch: lunch.trim(),
-        dinner: dinner.trim(),
-        addedBy: 'Mess Staff'
-      });
-    } else {
-      // Update existing menu
-      if (breakfast) menu.breakfast = breakfast.trim();
-      if (lunch) menu.lunch = lunch.trim();
-      if (dinner) menu.dinner = dinner.trim();
-    }
-
-    await menu.save();
-
-    res.json({
-      success: true,
-      message: 'Today\'s menu updated successfully',
-      menu: {
+      updatedMenus.push({
         id: menu._id,
         date: menu.date,
+        day: dayName.toLowerCase(),
         breakfast: menu.breakfast,
         lunch: menu.lunch,
         dinner: menu.dinner,
         addedBy: menu.addedBy,
         updatedAt: menu.updatedAt
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'This week\'s menu updated successfully',
+      weekMenu: updatedMenus
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Delete specific days' menu (Only accessible by mess staff)
+router.delete('/menu/week', messStaffAuth, async (req, res) => {
+  try {
+    const { days } = req.body;
+    
+    // Validate that days array is provided
+    if (!days || !Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ 
+        message: 'days array is required with at least one day name' 
+      });
+    }
+
+    const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    
+    // Validate day names
+    const invalidDays = days.filter(day => !validDays.includes(day.toLowerCase()));
+    if (invalidDays.length > 0) {
+      return res.status(400).json({ 
+        message: `Invalid day names: ${invalidDays.join(', ')}. Valid days are: ${validDays.join(', ')}` 
+      });
+    }
+
+    // Get the start of current week (Monday)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Calculate dates for the specified days
+    const datesToDelete = [];
+    const deletedDays = [];
+
+    for (const dayName of days) {
+      const dayIndex = validDays.indexOf(dayName.toLowerCase());
+      const dayDate = new Date(startOfWeek);
+      dayDate.setDate(startOfWeek.getDate() + dayIndex);
+      datesToDelete.push(dayDate);
+    }
+
+    // Find existing menus for the specified days
+    const existingMenus = await Menu.find({ 
+      date: { 
+        $in: datesToDelete
+      } 
+    });
+
+    if (existingMenus.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menu entries found for the specified days' 
+      });
+    }
+
+    // Delete the menu entries
+    const deleteResult = await Menu.deleteMany({ 
+      date: { 
+        $in: datesToDelete
+      } 
+    });
+
+    // Prepare response with deleted menu details
+    existingMenus.forEach(menu => {
+      const dayIndex = Math.floor((menu.date - startOfWeek) / (1000 * 60 * 60 * 24));
+      if (dayIndex >= 0 && dayIndex < 7) {
+        deletedDays.push({
+          day: validDays[dayIndex],
+          date: menu.date,
+          breakfast: menu.breakfast,
+          lunch: menu.lunch,
+          dinner: menu.dinner,
+          addedBy: menu.addedBy,
+          createdAt: menu.createdAt
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully deleted menu entries for ${deleteResult.deletedCount} day(s)`,
+      deletedDays: deletedDays,
+      deletedCount: deleteResult.deletedCount,
+      weekPeriod: {
+        start: startOfWeek,
+        end: endOfWeek
       }
     });
   } catch (error) {
@@ -155,33 +315,58 @@ router.put('/menu/today', messStaffAuth, async (req, res) => {
   }
 });
 
-// Get today's menu (Public route - accessible to all)
-router.get('/menu/today', async (req, res) => {
+// Get this week's menu (Public route - accessible to all)
+router.get('/menu/week', async (req, res) => {
   try {
-    // Get today's date (start of day)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get the start of current week (Monday)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
 
-    const menu = await Menu.findOne({ date: today });
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const menus = await Menu.find({ 
+      date: { $gte: startOfWeek, $lte: endOfWeek } 
+    }).sort({ date: 1 });
     
-    if (!menu) {
+    if (menus.length === 0) {
       return res.status(404).json({ 
         success: false,
-        message: 'No menu found for today' 
+        message: 'No menu found for this week' 
       });
     }
 
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const weekMenu = {};
+
+    // Organize menus by day
+    menus.forEach(menu => {
+      const dayIndex = Math.floor((menu.date - startOfWeek) / (1000 * 60 * 60 * 24));
+      if (dayIndex >= 0 && dayIndex < 7) {
+        const dayName = days[dayIndex];
+        weekMenu[dayName] = {
+          id: menu._id,
+          date: menu.date,
+          breakfast: menu.breakfast,
+          lunch: menu.lunch,
+          dinner: menu.dinner,
+          addedBy: menu.addedBy,
+          createdAt: menu.createdAt,
+          updatedAt: menu.updatedAt
+        };
+      }
+    });
+
     res.json({
       success: true,
-      menu: {
-        id: menu._id,
-        date: menu.date,
-        breakfast: menu.breakfast,
-        lunch: menu.lunch,
-        dinner: menu.dinner,
-        addedBy: menu.addedBy,
-        createdAt: menu.createdAt,
-        updatedAt: menu.updatedAt
+      weekMenu,
+      weekPeriod: {
+        start: startOfWeek,
+        end: endOfWeek
       }
     });
   } catch (error) {

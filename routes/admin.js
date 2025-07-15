@@ -6,6 +6,7 @@ const Meal = require('../models/Meal');
 const Notification = require('../models/Notification');
 const Message = require('../models/Message');
 const GuestMeal = require('../models/GuestMeal');
+const CustomList = require('../models/CustomList');
 const jwt = require('jsonwebtoken');
 const adminAuth = require('../middleware/adminAuth');
 const axios = require('axios');
@@ -2447,6 +2448,252 @@ router.get('/menu/today', async (req, res) => {
       success: false,
       message: error.message 
     });
+  }
+});
+
+// CUSTOM LIST CRUD OPERATIONS
+
+// Create a new custom list
+router.post('/custom-lists', adminAuth, async (req, res) => {
+  try {
+    const { title, users, description } = req.body;
+
+    // Validate required fields
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+
+    // Check if users array is provided and contains valid user IDs
+    if (users && users.length > 0) {
+      const userIds = users.filter(id => mongoose.Types.ObjectId.isValid(id));
+      if (userIds.length !== users.length) {
+        return res.status(400).json({ message: 'All user IDs must be valid' });
+      }
+
+      // Check if all users exist
+      const existingUsers = await User.find({ _id: { $in: userIds } });
+      if (existingUsers.length !== userIds.length) {
+        return res.status(400).json({ message: 'Some users do not exist' });
+      }
+    }
+
+    const customList = new CustomList({
+      title: title.trim(),
+      users: users || [],
+      description: description ? description.trim() : ''
+    });
+
+    await customList.save();
+    
+    // Populate users for response
+    await customList.populate('users', 'name phoneNumber department designation');
+
+    res.status(201).json({
+      message: 'Custom list created successfully',
+      customList
+    });
+  } catch (error) {
+    console.error('Custom list creation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all custom lists
+router.get('/custom-lists', adminAuth, async (req, res) => {
+  try {
+    const customLists = await CustomList.find()
+      .populate('users', 'name phoneNumber department designation')
+      .sort({ createdAt: -1 });
+
+    res.json(customLists);
+  } catch (error) {
+    console.error('Fetch custom lists error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get a single custom list by ID
+router.get('/custom-lists/:id', adminAuth, async (req, res) => {
+  try {
+    const customList = await CustomList.findById(req.params.id)
+      .populate({
+        path: 'users',
+        select: 'name phoneNumber department designation',
+        populate: {
+          path: 'department',
+          select: 'title'
+        }
+      });
+
+    if (!customList) {
+      return res.status(404).json({ message: 'Custom list not found' });
+    }
+
+    res.json(customList);
+  } catch (error) {
+    console.error('Fetch custom list error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update a custom list
+router.put('/custom-lists/:id', adminAuth, async (req, res) => {
+  try {
+    const { title, users, description } = req.body;
+
+    // Validate required fields
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+
+    // Check if users array is provided and contains valid user IDs
+    if (users && users.length > 0) {
+      const userIds = users.filter(id => mongoose.Types.ObjectId.isValid(id));
+      if (userIds.length !== users.length) {
+        return res.status(400).json({ message: 'All user IDs must be valid' });
+      }
+
+      // Check if all users exist
+      const existingUsers = await User.find({ _id: { $in: userIds } });
+      if (existingUsers.length !== userIds.length) {
+        return res.status(400).json({ message: 'Some users do not exist' });
+      }
+    }
+
+    const customList = await CustomList.findByIdAndUpdate(
+      req.params.id,
+      {
+        title: title.trim(),
+        users: users || [],
+        description: description ? description.trim() : ''
+      },
+      { new: true }
+    ).populate({
+      path: 'users',
+      select: 'name phoneNumber department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
+
+    if (!customList) {
+      return res.status(404).json({ message: 'Custom list not found' });
+    }
+
+    res.json({
+      message: 'Custom list updated successfully',
+      customList
+    });
+  } catch (error) {
+    console.error('Custom list update error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Delete a custom list
+router.delete('/custom-lists/:id', adminAuth, async (req, res) => {
+  try {
+    const customList = await CustomList.findByIdAndDelete(req.params.id);
+
+    if (!customList) {
+      return res.status(404).json({ message: 'Custom list not found' });
+    }
+
+    res.json({ message: 'Custom list deleted successfully' });
+  } catch (error) {
+    console.error('Custom list deletion error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add users to a custom list
+router.post('/custom-lists/:id/users', adminAuth, async (req, res) => {
+  try {
+    const { userIds } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'User IDs array is required' });
+    }
+
+    // Validate user IDs
+    const validUserIds = userIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validUserIds.length !== userIds.length) {
+      return res.status(400).json({ message: 'All user IDs must be valid' });
+    }
+
+    // Check if all users exist
+    const existingUsers = await User.find({ _id: { $in: validUserIds } });
+    if (existingUsers.length !== validUserIds.length) {
+      return res.status(400).json({ message: 'Some users do not exist' });
+    }
+
+    const customList = await CustomList.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { users: { $each: validUserIds } } },
+      { new: true }
+    ).populate({
+      path: 'users',
+      select: 'name phoneNumber department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
+
+    if (!customList) {
+      return res.status(404).json({ message: 'Custom list not found' });
+    }
+
+    res.json({
+      message: 'Users added to custom list successfully',
+      customList
+    });
+  } catch (error) {
+    console.error('Add users to custom list error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Remove users from a custom list
+router.delete('/custom-lists/:id/users', adminAuth, async (req, res) => {
+  try {
+    const { userIds } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'User IDs array is required' });
+    }
+
+    // Validate user IDs
+    const validUserIds = userIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validUserIds.length !== userIds.length) {
+      return res.status(400).json({ message: 'All user IDs must be valid' });
+    }
+
+    const customList = await CustomList.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { users: { $in: validUserIds } } },
+      { new: true }
+    ).populate({
+      path: 'users',
+      select: 'name phoneNumber department designation',
+      populate: {
+        path: 'department',
+        select: 'title'
+      }
+    });
+
+    if (!customList) {
+      return res.status(404).json({ message: 'Custom list not found' });
+    }
+
+    res.json({
+      message: 'Users removed from custom list successfully',
+      customList
+    });
+  } catch (error) {
+    console.error('Remove users from custom list error:', error);
+    res.status(500).json({ message: error.message });
   }
 });
 
