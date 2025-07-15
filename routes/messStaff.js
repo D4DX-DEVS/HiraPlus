@@ -29,15 +29,22 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Add today's menu (Only accessible by mess staff)
+// Add weekly menu (Only accessible by mess staff)
 router.post('/menu/week', messStaffAuth, async (req, res) => {
   try {
-    const { weekMenu } = req.body;
+    const { weekMenu, weekType = 'current' } = req.body;
     
     // Validate required fields
     if (!weekMenu || typeof weekMenu !== 'object') {
       return res.status(400).json({ 
         message: 'weekMenu object is required with daily menu data' 
+      });
+    }
+
+    // Validate weekType
+    if (!['current', 'next'].includes(weekType)) {
+      return res.status(400).json({ 
+        message: 'weekType must be either "current" or "next"' 
       });
     }
 
@@ -52,11 +59,17 @@ router.post('/menu/week', messStaffAuth, async (req, res) => {
       }
     }
 
-    // Get the start of current week (Monday)
+    // Get the start of specified week (Monday)
     const now = new Date();
     const currentDay = now.getDay();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    
+    // If weekType is 'next', add 7 days to get next week
+    if (weekType === 'next') {
+      startOfWeek.setDate(startOfWeek.getDate() + 7);
+    }
+    
     startOfWeek.setHours(0, 0, 0, 0);
 
     // Check if any menu already exists for this week
@@ -70,7 +83,7 @@ router.post('/menu/week', messStaffAuth, async (req, res) => {
     
     if (existingMenus.length > 0) {
       return res.status(400).json({ 
-        message: 'Menu for this week already exists. Use the update function to modify it.' 
+        message: `Menu for ${weekType} week already exists. Use the update function to modify it.` 
       });
     }
 
@@ -104,8 +117,13 @@ router.post('/menu/week', messStaffAuth, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'This week\'s menu added successfully',
-      weekMenu: createdMenus
+      message: `${weekType.charAt(0).toUpperCase() + weekType.slice(1)} week's menu added successfully`,
+      weekMenu: createdMenus,
+      weekType,
+      weekPeriod: {
+        start: startOfWeek,
+        end: endOfWeek
+      }
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -216,6 +234,94 @@ router.put('/menu/week', messStaffAuth, async (req, res) => {
   }
 });
 
+// Update menu by ID (Only accessible by mess staff)
+router.put('/menu/:id', messStaffAuth, async (req, res) => {
+  try {
+    const { breakfast, lunch, dinner } = req.body;
+    
+    // Find the menu by ID
+    const menu = await Menu.findById(req.params.id);
+    if (!menu) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Menu not found' 
+      });
+    }
+
+    // Prepare update data - only update provided fields
+    const updateData = {};
+    if (breakfast !== undefined) updateData.breakfast = breakfast.trim();
+    if (lunch !== undefined) updateData.lunch = lunch.trim();
+    if (dinner !== undefined) updateData.dinner = dinner.trim();
+
+    // Update the menu
+    const updatedMenu = await Menu.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Menu updated successfully',
+      menu: {
+        id: updatedMenu._id,
+        date: updatedMenu.date,
+        breakfast: updatedMenu.breakfast,
+        lunch: updatedMenu.lunch,
+        dinner: updatedMenu.dinner,
+        addedBy: updatedMenu.addedBy,
+        createdAt: updatedMenu.createdAt,
+        updatedAt: updatedMenu.updatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Delete menu by ID (Only accessible by mess staff)
+router.delete('/menu/:id', messStaffAuth, async (req, res) => {
+  try {
+    // Find the menu by ID
+    const menu = await Menu.findById(req.params.id);
+    if (!menu) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Menu not found' 
+      });
+    }
+
+    // Store menu details before deletion for response
+    const deletedMenuDetails = {
+      id: menu._id,
+      date: menu.date,
+      breakfast: menu.breakfast,
+      lunch: menu.lunch,
+      dinner: menu.dinner,
+      addedBy: menu.addedBy,
+      createdAt: menu.createdAt
+    };
+
+    // Delete the menu
+    await Menu.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: 'Menu deleted successfully',
+      deletedMenu: deletedMenuDetails
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 // Delete specific days' menu (Only accessible by mess staff)
 router.delete('/menu/week', messStaffAuth, async (req, res) => {
   try {
@@ -315,14 +421,30 @@ router.delete('/menu/week', messStaffAuth, async (req, res) => {
   }
 });
 
-// Get this week's menu (Public route - accessible to all)
+// Get weekly menu (Public route - accessible to all)
 router.get('/menu/week', async (req, res) => {
   try {
-    // Get the start of current week (Monday)
+    const { weekType = 'current' } = req.query;
+    
+    // Validate weekType
+    if (!['current', 'next'].includes(weekType)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'weekType must be either "current" or "next"' 
+      });
+    }
+
+    // Get the start of specified week (Monday)
     const now = new Date();
     const currentDay = now.getDay();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    
+    // If weekType is 'next', add 7 days to get next week
+    if (weekType === 'next') {
+      startOfWeek.setDate(startOfWeek.getDate() + 7);
+    }
+    
     startOfWeek.setHours(0, 0, 0, 0);
 
     const endOfWeek = new Date(startOfWeek);
@@ -336,7 +458,7 @@ router.get('/menu/week', async (req, res) => {
     if (menus.length === 0) {
       return res.status(404).json({ 
         success: false,
-        message: 'No menu found for this week' 
+        message: `No menu found for ${weekType} week` 
       });
     }
 
@@ -364,6 +486,7 @@ router.get('/menu/week', async (req, res) => {
     res.json({
       success: true,
       weekMenu,
+      weekType,
       weekPeriod: {
         start: startOfWeek,
         end: endOfWeek
@@ -697,31 +820,6 @@ router.put('/users/:userId/meals', messStaffAuth, async (req, res) => {
         userId: req.params.userId,
         date: new Date(date)
       });
-    }
-
-    // Update only the provided fields
-    if (breakfast !== undefined) meal.breakfast = breakfast;
-    if (lunch !== undefined) meal.lunch = lunch;
-    if (dinner !== undefined) meal.dinner = dinner;
-
-    await meal.save();
-    res.json({ 
-      message: 'Meal updated successfully',
-      meal
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Edit meal by mealId (keeping for backward compatibility)
-router.put('/meals/:mealId', messStaffAuth, async (req, res) => {
-  try {
-    const { breakfast, lunch, dinner } = req.body;
-    
-    const meal = await Meal.findById(req.params.mealId);
-    if (!meal) {
-      return res.status(404).json({ message: 'Meal not found' });
     }
 
     // Update only the provided fields
