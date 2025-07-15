@@ -43,7 +43,7 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
         name: "Test User",
         department: testDepartment._id,  // Use ObjectId instead of string
         designation: "Tester",
-        isVerified: true 
+        isVerified: true
       });
       await user.save();
     }
