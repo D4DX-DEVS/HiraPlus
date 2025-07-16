@@ -456,12 +456,15 @@ router.post('/menu/date', messStaffAuth, async (req, res) => {
       });
     }
 
-    const menuDate = new Date(date);
-    menuDate.setHours(0, 0, 0, 0);
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
 
     // Check if menu already exists for this date
     const existingMenu = await Menu.findOne({ 
-      date: menuDate
+      date: { $gte: startDate, $lte: endDate }
     });
     
     if (existingMenu) {
@@ -470,6 +473,10 @@ router.post('/menu/date', messStaffAuth, async (req, res) => {
         message: 'Menu for this date already exists. Use the update function to modify it.' 
       });
     }
+
+    // Create the menu with normalized date
+    const menuDate = new Date(date);
+    menuDate.setHours(0, 0, 0, 0);
 
     // Create new menu
     const menu = new Menu({
@@ -521,12 +528,15 @@ router.put('/menu/date', messStaffAuth, async (req, res) => {
       });
     }
 
-    const menuDate = new Date(date);
-    menuDate.setHours(0, 0, 0, 0);
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
 
-    // Find existing menu for this date
+    // Find existing menu for this date using date range
     let menu = await Menu.findOne({ 
-      date: menuDate
+      date: { $gte: startDate, $lte: endDate }
     });
 
     if (!menu) {
@@ -537,6 +547,10 @@ router.put('/menu/date', messStaffAuth, async (req, res) => {
           message: 'All meal items are required when creating a new menu (breakfast, lunch, dinner)' 
         });
       }
+      
+      // Create the menu with normalized date
+      const menuDate = new Date(date);
+      menuDate.setHours(0, 0, 0, 0);
       
       menu = new Menu({
         date: menuDate,
@@ -556,11 +570,11 @@ router.put('/menu/date', messStaffAuth, async (req, res) => {
 
     // Get day name for response
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = days[menuDate.getDay()];
+    const dayName = days[menu.date.getDay()];
 
     res.json({
       success: true,
-      message: 'Menu updated successfully for ' + menuDate.toDateString(),
+      message: 'Menu updated successfully for ' + menu.date.toDateString(),
       menu: {
         id: menu._id,
         date: menu.date,
@@ -594,12 +608,15 @@ router.delete('/menu/date', messStaffAuth, async (req, res) => {
       });
     }
 
-    const menuDate = new Date(date);
-    menuDate.setHours(0, 0, 0, 0);
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
 
-    // Find the menu for this date
+    // Find the menu for this date using date range
     const menu = await Menu.findOne({ 
-      date: menuDate
+      date: { $gte: startDate, $lte: endDate }
     });
     
     if (!menu) {
@@ -611,7 +628,7 @@ router.delete('/menu/date', messStaffAuth, async (req, res) => {
 
     // Store menu details before deletion for response
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = days[menuDate.getDay()];
+    const dayName = days[menu.date.getDay()];
     
     const deletedMenuDetails = {
       id: menu._id,
@@ -624,14 +641,12 @@ router.delete('/menu/date', messStaffAuth, async (req, res) => {
       createdAt: menu.createdAt
     };
 
-    // Delete the menu
-    await Menu.findOneAndDelete({ 
-      date: menuDate
-    });
+    // Delete the menu using the found menu's ID
+    await Menu.findByIdAndDelete(menu._id);
 
     res.json({
       success: true,
-      message: 'Menu deleted successfully for ' + menuDate.toDateString(),
+      message: 'Menu deleted successfully for ' + menu.date.toDateString(),
       deletedMenu: deletedMenuDetails
     });
   } catch (error) {
