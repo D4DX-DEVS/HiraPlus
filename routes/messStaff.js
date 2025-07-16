@@ -642,41 +642,33 @@ router.delete('/menu/date', messStaffAuth, async (req, res) => {
   }
 });
 
-// Get menu for specific date (Public route - accessible to all)
+// Get all menus from today onwards (Public route - accessible to all)
 router.get('/menu/date', async (req, res) => {
   try {
-    const { date } = req.query;
-    
-    // Validate required fields
-    if (!date) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Date query parameter is required' 
-      });
-    }
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const menuDate = new Date(date);
-    menuDate.setHours(0, 0, 0, 0);
-
-    // Find menu for this date
-    const menu = await Menu.findOne({ 
-      date: menuDate
-    });
+    // Find all menus from today onwards, sorted by date
+    const menus = await Menu.find({ 
+      date: { $gte: today }
+    }).sort({ date: 1 });
     
-    if (!menu) {
+    if (menus.length === 0) {
       return res.status(404).json({ 
         success: false,
-        message: 'No menu found for this date' 
+        message: 'No menus found from today onwards' 
       });
     }
 
-    // Get day name for response
+    // Get day names for response
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = days[menuDate.getDay()];
-
-    res.json({
-      success: true,
-      menu: {
+    
+    const formattedMenus = menus.map(menu => {
+      const menuDate = new Date(menu.date);
+      const dayName = days[menuDate.getDay()];
+      
+      return {
         id: menu._id,
         date: menu.date,
         day: dayName,
@@ -686,6 +678,16 @@ router.get('/menu/date', async (req, res) => {
         addedBy: menu.addedBy,
         createdAt: menu.createdAt,
         updatedAt: menu.updatedAt
+      };
+    });
+
+    res.json({
+      success: true,
+      totalMenus: formattedMenus.length,
+      menus: formattedMenus,
+      dateRange: {
+        from: today,
+        to: menus[menus.length - 1].date
       }
     });
   } catch (error) {
@@ -697,94 +699,94 @@ router.get('/menu/date', async (req, res) => {
 });
 
 // Get weekly menu (Public route - accessible to all)
-router.get('/menu/week', async (req, res) => {
-  try {
-    const { weekType = 'current' } = req.query;
+// router.get('/menu/week', async (req, res) => {
+//   try {
+//     const { weekType = 'current' } = req.query;
     
-    // Validate weekType
-    if (!['current', 'next'].includes(weekType)) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'weekType must be either "current" or "next"' 
-      });
-    }
+//     // Validate weekType
+//     if (!['current', 'next'].includes(weekType)) {
+//       return res.status(400).json({ 
+//         success: false,
+//         message: 'weekType must be either "current" or "next"' 
+//       });
+//     }
 
-    // Get the start of specified week (Monday)
-    const now = new Date();
-    const currentDay = now.getDay();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+//     // Get the start of specified week (Monday)
+//     const now = new Date();
+//     const currentDay = now.getDay();
+//     const startOfWeek = new Date(now);
+//     startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     
-    // If weekType is 'next', add 7 days to get next week
-    if (weekType === 'next') {
-      startOfWeek.setDate(startOfWeek.getDate() + 7);
-    }
+//     // If weekType is 'next', add 7 days to get next week
+//     if (weekType === 'next') {
+//       startOfWeek.setDate(startOfWeek.getDate() + 7);
+//     }
     
-    startOfWeek.setHours(0, 0, 0, 0);
+//     startOfWeek.setHours(0, 0, 0, 0);
 
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
+//     const endOfWeek = new Date(startOfWeek);
+//     endOfWeek.setDate(startOfWeek.getDate() + 6);
+//     endOfWeek.setHours(23, 59, 59, 999);
 
-    const menus = await Menu.find({ 
-      date: { $gte: startOfWeek, $lte: endOfWeek } 
-    }).sort({ date: 1 });
+//     const menus = await Menu.find({ 
+//       date: { $gte: startOfWeek, $lte: endOfWeek } 
+//     }).sort({ date: 1 });
     
-    if (menus.length === 0) {
-      return res.status(404).json({ 
-        success: false,
-        message: `No menu found for ${weekType} week` 
-      });
-    }
+//     if (menus.length === 0) {
+//       return res.status(404).json({ 
+//         success: false,
+//         message: `No menu found for ${weekType} week` 
+//       });
+//     }
 
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const weekMenu = {};
+//     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+//     const weekMenu = {};
 
-    // Organize menus by day
-    menus.forEach(menu => {
-      // Create a new date object to avoid timezone issues
-      const menuDate = new Date(menu.date);
-      const startDate = new Date(startOfWeek);
+//     // Organize menus by day
+//     menus.forEach(menu => {
+//       // Create a new date object to avoid timezone issues
+//       const menuDate = new Date(menu.date);
+//       const startDate = new Date(startOfWeek);
       
-      // Calculate the day difference more reliably
-      const timeDiff = menuDate.getTime() - startDate.getTime();
-      const dayIndex = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+//       // Calculate the day difference more reliably
+//       const timeDiff = menuDate.getTime() - startDate.getTime();
+//       const dayIndex = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
       
-      // Alternative: Use the actual day of week from the menu date
-      const menuDayOfWeek = menuDate.getDay(); // 0=Sunday, 1=Monday, etc.
-      const adjustedDayIndex = menuDayOfWeek === 0 ? 6 : menuDayOfWeek - 1; // Convert to Monday=0 format
+//       // Alternative: Use the actual day of week from the menu date
+//       const menuDayOfWeek = menuDate.getDay(); // 0=Sunday, 1=Monday, etc.
+//       const adjustedDayIndex = menuDayOfWeek === 0 ? 6 : menuDayOfWeek - 1; // Convert to Monday=0 format
       
-      if (adjustedDayIndex >= 0 && adjustedDayIndex < 7) {
-        const dayName = days[adjustedDayIndex];
-        weekMenu[dayName] = {
-          id: menu._id,
-          date: menu.date,
-          breakfast: menu.breakfast,
-          lunch: menu.lunch,
-          dinner: menu.dinner,
-          addedBy: menu.addedBy,
-          createdAt: menu.createdAt,
-          updatedAt: menu.updatedAt
-        };
-      }
-    });
+//       if (adjustedDayIndex >= 0 && adjustedDayIndex < 7) {
+//         const dayName = days[adjustedDayIndex];
+//         weekMenu[dayName] = {
+//           id: menu._id,
+//           date: menu.date,
+//           breakfast: menu.breakfast,
+//           lunch: menu.lunch,
+//           dinner: menu.dinner,
+//           addedBy: menu.addedBy,
+//           createdAt: menu.createdAt,
+//           updatedAt: menu.updatedAt
+//         };
+//       }
+//     });
 
-    res.json({
-      success: true,
-      weekMenu,
-      weekType,
-      weekPeriod: {
-        start: startOfWeek,
-        end: endOfWeek
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
-  }
-});
+//     res.json({
+//       success: true,
+//       weekMenu,
+//       weekType,
+//       weekPeriod: {
+//         start: startOfWeek,
+//         end: endOfWeek
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({ 
+//       success: false,
+//       message: error.message 
+//     });
+//   }
+// });
 
 // Get all meals for today with counts
 router.get('/meals/today', messStaffAuth, async (req, res) => {
