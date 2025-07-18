@@ -474,6 +474,7 @@ router.post('/guest-meals', deptHeadAuth, async (req, res) => {
     }
 
     await guestMeal.save();
+    await guestMeal.populate('department', 'title');
 
     res.json({
       success: true,
@@ -494,7 +495,9 @@ router.get('/guest-meals', deptHeadAuth, async (req, res) => {
   try {
     const guestMeals = await GuestMeal.find({
       department: req.user.department
-    }).sort({ date: -1 }); // Most recent first
+    })
+    .populate('department', 'title')
+    .sort({ date: -1 }); // Most recent first
 
     res.json({
       success: true,
@@ -544,6 +547,7 @@ router.put('/guest-meals/:id', deptHeadAuth, async (req, res) => {
     if (dinnerCount !== undefined) guestMeal.dinnerCount = dinnerCount;
 
     await guestMeal.save();
+    await guestMeal.populate('department', 'title');
 
     res.json({
       success: true,
@@ -832,7 +836,7 @@ router.get('/departments', async (req, res) => {
 
     res.json({
       success: true,
-      departments: departments.map(dept => dept.title),
+      departments: departments,
       total: departments.length
     });
   } catch (error) {

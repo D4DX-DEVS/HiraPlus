@@ -7,7 +7,7 @@ const adminAuth = require('../middleware/adminAuth');
 router.get('/', async (req, res) => {
   try {
     const departments = await Department.find()
-      .select('title')
+      .select('_id title')
       .sort({ title: 1 });
 
     res.json({
