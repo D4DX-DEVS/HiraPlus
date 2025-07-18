@@ -885,7 +885,12 @@ router.get('/meals', messStaffAuth, async (req, res) => {
     let meals = await Meal.find(query)
       .populate({
         path: 'userId',
-        model: 'User'
+        model: 'User',
+        populate: {
+          path: 'department',
+          model: 'Department',
+          select: 'title'
+        }
       })
       .sort({ date: 1 });
 
@@ -898,7 +903,10 @@ router.get('/meals', messStaffAuth, async (req, res) => {
           _id: mealObj.userId._id,
           name: mealObj.userId.name,
           phoneNumber: mealObj.userId.phoneNumber,
-          department: mealObj.userId.department,
+          department: mealObj.userId.department ? {
+            _id: mealObj.userId.department._id,
+            title: mealObj.userId.department.title
+          } : null,
           designation: mealObj.userId.designation,
           isVerified: mealObj.userId.isVerified
         } : null
