@@ -10,6 +10,48 @@ const deptHeadAuth = require('../middleware/deptHeadAuth');
 const Meeting = require('../models/Meeting');
 const Menu = require('../models/Menu');
 
+// Helper function to check for meeting conflicts
+const checkMeetingConflict = async (startDatetime, endDatetime, hall, excludeMeetingId = null) => {
+  try {
+    // Build query to find conflicting meetings
+    const conflictQuery = {
+      hall: hall,
+      $or: [
+        // Case 1: New meeting starts during an existing meeting
+        {
+          startDatetime: { $lte: startDatetime },
+          endDatetime: { $gt: startDatetime }
+        },
+        // Case 2: New meeting ends during an existing meeting
+        {
+          startDatetime: { $lt: endDatetime },
+          endDatetime: { $gte: endDatetime }
+        },
+        // Case 3: New meeting completely contains an existing meeting
+        {
+          startDatetime: { $gte: startDatetime },
+          endDatetime: { $lte: endDatetime }
+        }
+      ]
+    };
+
+    // Exclude the current meeting if editing
+    if (excludeMeetingId) {
+      conflictQuery._id = { $ne: excludeMeetingId };
+    }
+
+    const conflictingMeetings = await Meeting.find(conflictQuery)
+      .populate('department', 'title')
+      .populate('createdBy', 'name')
+      .sort({ startDatetime: 1 });
+
+    return conflictingMeetings;
+  } catch (error) {
+    console.error('Error checking meeting conflicts:', error);
+    throw error;
+  }
+};
+
 // Store OTPs in memory (in production, use Redis or similar)
 const otpStore = new Map();
 
@@ -532,7 +574,7 @@ router.delete('/guest-meals/:id', deptHeadAuth, async (req, res) => {
       });
     }
 
-    await guestMeal.remove();
+    await guestMeal.deleteOne();
 
     res.json({
       success: true,
@@ -582,6 +624,30 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
+      });
+    }
+
+    // Check for meeting conflicts
+    const conflictingMeetings = await checkMeetingConflict(
+      new Date(startDatetime),
+      new Date(endDatetime),
+      hall
+    );
+
+    if (conflictingMeetings.length > 0) {
+      const conflictDetails = conflictingMeetings.map(meeting => ({
+        title: meeting.title,
+        department: meeting.department?.title || 'Unknown Department',
+        startTime: meeting.startDatetime,
+        endTime: meeting.endDatetime,
+        createdBy: typeof meeting.createdBy === 'object' ? meeting.createdBy?.name : meeting.createdBy
+      }));
+
+      return res.status(409).json({
+        success: false,
+        message: 'Meeting conflict detected! The selected venue is already booked for the specified time.',
+        conflicts: conflictDetails,
+        details: `Venue "${hall}" is already booked by ${conflictDetails.length} other meeting(s) during the requested time period.`
       });
     }
 
@@ -661,6 +727,36 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Meeting not found or cannot be edited'
+      });
+    }
+
+    // Prepare updated values for conflict checking
+    const updatedStartDatetime = startDatetime ? new Date(startDatetime) : meeting.startDatetime;
+    const updatedEndDatetime = endDatetime ? new Date(endDatetime) : meeting.endDatetime;
+    const updatedHall = hall || meeting.hall;
+
+    // Check for meeting conflicts (exclude current meeting)
+    const conflictingMeetings = await checkMeetingConflict(
+      updatedStartDatetime,
+      updatedEndDatetime,
+      updatedHall,
+      req.params.meetingId
+    );
+
+    if (conflictingMeetings.length > 0) {
+      const conflictDetails = conflictingMeetings.map(conflictMeeting => ({
+        title: conflictMeeting.title,
+        department: conflictMeeting.department?.title || 'Unknown Department',
+        startTime: conflictMeeting.startDatetime,
+        endTime: conflictMeeting.endDatetime,
+        createdBy: typeof conflictMeeting.createdBy === 'object' ? conflictMeeting.createdBy?.name : conflictMeeting.createdBy
+      }));
+
+      return res.status(409).json({
+        success: false,
+        message: 'Meeting conflict detected! The selected venue is already booked for the specified time.',
+        conflicts: conflictDetails,
+        details: `Venue "${updatedHall}" is already booked by ${conflictDetails.length} other meeting(s) during the requested time period.`
       });
     }
 
