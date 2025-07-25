@@ -92,7 +92,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -149,7 +149,8 @@ router.post('/users', adminAuth, async (req, res) => {
       designation,
       isDeptHead: isDeptHead || false,
       status: status || 'active',
-      isFreeFood: isFreeFood || false
+      isFreeFood: isFreeFood || false,
+      isIntern: isIntern || false
     });
     await user.save();
 
@@ -166,7 +167,8 @@ router.post('/users', adminAuth, async (req, res) => {
         designation: user.designation,
         isDeptHead: user.isDeptHead,
         status: user.status,
-        isFreeFood: user.isFreeFood
+        isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern
       }
     });
   } catch (error) {
@@ -180,7 +182,7 @@ router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -194,7 +196,8 @@ router.get('/users', adminAuth, async (req, res) => {
       isDeptHead: user.isDeptHead,
       status: user.status || 'active',
       createdAt: user.createdAt,
-      isFreeFood: user.isFreeFood
+      isFreeFood: user.isFreeFood,
+      isIntern: user.isIntern
     }));
 
     res.json(mappedUsers);
@@ -209,7 +212,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
   try {
     const users = await User.find({ status: 'active' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation')
+      .select('name phoneNumber department designation isIntern')
       .sort({ name: 1 });
 
     const usersList = users.map(user => ({
@@ -218,6 +221,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
       phoneNumber: user.phoneNumber,
       department: user.department ? user.department.title : '',
       designation: user.designation || '',
+      isIntern: user.isIntern,
       displayName: `${user.name || 'Unknown'} (${user.phoneNumber}) - ${user.department ? user.department.title : 'N/A'}`
     }));
 
@@ -244,7 +248,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -305,6 +309,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (typeof isDeptHead !== 'undefined') user.isDeptHead = isDeptHead;
     if (status && ['active', 'inactive'].includes(status)) user.status = status;
     if (typeof isFreeFood !== 'undefined') user.isFreeFood = isFreeFood;
+    if (typeof isIntern !== 'undefined') user.isIntern = isIntern;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -330,7 +335,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
         status: user.status,
-        isFreeFood: user.isFreeFood
+        isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern
       }
     });
   } catch (error) {
@@ -352,7 +358,8 @@ router.get('/users/meals', adminAuth, async (req, res) => {
       department: 1, 
       designation: 1,
       isDeptHead: 1,
-      isFreeFood: 1
+      isFreeFood: 1,
+      isIntern: 1
     }).populate('department', 'title');
     
     // Prepare date filter for meals
@@ -380,6 +387,7 @@ router.get('/users/meals', adminAuth, async (req, res) => {
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
         isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern,
         meals: meals
       };
     }));
@@ -871,7 +879,8 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
       isVerified: user.isVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      isFreeFood: user.isFreeFood
+      isFreeFood: user.isFreeFood,
+      isIntern: user.isIntern
     });
   } catch (error) {
     if (error.name === 'CastError') {
@@ -882,7 +891,7 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
   }
 });
 
-// Admin: Get user-wise meal counts for a date range
+// Admin: Get user-wise meal counts for a date range (includes isIntern)
 router.get('/meal-counts', adminAuth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -968,7 +977,8 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
               phoneNumber: '$user.phoneNumber',
               department: '$userDepartment.title',
               designation: '$user.designation',
-              isFreeFood: '$user.isFreeFood',
+              isFreeFood: { $ifNull: ['$user.isFreeFood', false] },
+              isIntern: { $ifNull: ['$user.isIntern', false] },
               breakfastCount: '$breakfastCount',
               lunchCount: '$lunchCount',
               dinnerCount: '$dinnerCount',
@@ -1030,6 +1040,7 @@ router.get('/meal-counts', adminAuth, async (req, res) => {
           designation: user.designation || '',
           isDeptHead: user.isDeptHead || false,
           isFreeFood: user.isFreeFood || false,
+          isIntern: user.isIntern || false,
           breakfastCount: 0,
           lunchCount: 0,
           dinnerCount: 0,
@@ -1493,7 +1504,8 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
               phoneNumber: '$user.phoneNumber',
               department: '$userDepartment.title',
               designation: '$user.designation',
-              isFreeFood: '$user.isFreeFood',
+              isFreeFood: { $ifNull: ['$user.isFreeFood', false] },
+              isIntern: { $ifNull: ['$user.isIntern', false] },
               breakfastCount: '$breakfastCount',
               lunchCount: '$lunchCount',
               dinnerCount: '$dinnerCount',
@@ -1555,6 +1567,7 @@ router.get('/department-user-meals', adminAuth, async (req, res) => {
           designation: user.designation || '',
           isDeptHead: user.isDeptHead || false,
           isFreeFood: user.isFreeFood || false,
+          isIntern: user.isIntern || false,
           breakfastCount: 0,
           lunchCount: 0,
           dinnerCount: 0,
@@ -1758,17 +1771,17 @@ router.post('/meetings', adminAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, foodRequired, breakfast,
+      hall, noOfPersons, rent, foodRequired, breakfast,
       morningSnacksCount, morningTeaCount, lunch,
       eveningSnacksCount, eveningTeaCount, dinner,
       department
     } = req.body;
 
     // Validate required fields
-    if (!title || !description || !startDatetime || !endDatetime || !hall || !department) {
+    if (!title || !description || !startDatetime || !endDatetime || !hall || !department || typeof rent === 'undefined') {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: title, description, startDatetime, endDatetime, hall, and department'
+        message: 'Please provide all required fields: title, description, startDatetime, endDatetime, hall, department, and rent amount'
       });
     }
 
@@ -1780,8 +1793,17 @@ router.post('/meetings', adminAuth, async (req, res) => {
       });
     }
 
+    // Validate rent is a non-negative number
+    if (rent < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rent amount must be 0 or greater'
+      });
+    }
+
     // Convert to numbers
     const numPersons = parseInt(noOfPersons);
+    const rentAmount = parseInt(rent) || 0;
 
     // Validate minimum values
     if (numPersons < 1) {
@@ -1836,6 +1858,7 @@ router.post('/meetings', adminAuth, async (req, res) => {
       startDatetime: new Date(startDatetime),
       endDatetime: new Date(endDatetime),
       hall,
+      rent: rentAmount,
       noOfPersons: numPersons,
       foodRequired: foodRequired || false,
       breakfast: parseInt(breakfast) || 0,
@@ -1894,7 +1917,7 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, foodRequired, breakfast,
+      hall, noOfPersons, rent, foodRequired, breakfast,
       morningSnacksCount, morningTeaCount, lunch,
       eveningSnacksCount, eveningTeaCount, dinner,
       department, status
@@ -1961,6 +1984,14 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
       });
     }
 
+    // Validate rent if provided
+    if (typeof rent !== 'undefined' && rent < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rent amount must be 0 or greater'
+      });
+    }
+
     // Update fields if provided
     if (title) meeting.title = title.trim();
     if (description) meeting.description = description.trim();
@@ -1969,6 +2000,7 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
     if (hall) meeting.hall = hall;
     
     // Handle numeric fields with proper parsing
+    if (typeof rent !== 'undefined') meeting.rent = parseInt(rent) || 0;
     if (typeof noOfPersons !== 'undefined') meeting.noOfPersons = parseInt(noOfPersons);
     if (typeof breakfast !== 'undefined') meeting.breakfast = parseInt(breakfast);
     if (typeof morningSnacksCount !== 'undefined') meeting.morningSnacksCount = parseInt(morningSnacksCount);
@@ -2233,7 +2265,7 @@ router.get('/department-rent-bills', adminAuth, async (req, res) => {
       }
     }
 
-    // Fetch meetings and group by department with department name lookup
+    // Fetch meetings and group by department with department name lookup, summing dynamic rent amounts
     const meetings = await Meeting.aggregate([
       { $match: matchCondition },
       {
@@ -2251,14 +2283,16 @@ router.get('/department-rent-bills', adminAuth, async (req, res) => {
         $group: {
           _id: '$department',
           departmentTitle: { $first: '$departmentInfo.title' },
-          meetingCount: { $sum: 1 }
+          meetingCount: { $sum: 1 },
+          totalRent: { $sum: '$rent' }
         }
       },
       {
         $project: {
           _id: 0,
           department: { $ifNull: ['$departmentTitle', 'Unknown'] },
-          meetingCount: 1
+          meetingCount: 1,
+          totalRent: 1
         }
       },
       { $sort: { department: 1 } }
@@ -2513,11 +2547,25 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
 // Get today's menu (Public route - accessible to all)
 router.get('/menu/today', async (req, res) => {
   try {
+    // Add cache-busting headers
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     // Get today's date (start of day)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    console.log('Admin menu today - Today:', today);
+
     const menu = await Menu.findOne({ date: today });
+    
+    console.log('Admin menu today - Menu found:', !!menu);
+    if (menu) {
+      console.log('Admin menu today - Menu ID:', menu._id);
+    }
     
     if (!menu) {
       return res.status(404).json({ 
@@ -2540,6 +2588,7 @@ router.get('/menu/today', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Admin menu today error:', error);
     res.status(500).json({ 
       success: false,
       message: error.message 
@@ -2793,5 +2842,668 @@ router.delete('/custom-lists/:id/users', adminAuth, async (req, res) => {
   }
 });
 
+// MENU CRUD OPERATIONS
+
+// Add menu for specific date (Admin only)
+router.post('/menu/date', adminAuth, async (req, res) => {
+  try {
+    const { date, breakfast, lunch, dinner } = req.body;
+    
+    // Validate required fields
+    if (!date) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Date is required' 
+      });
+    }
+
+    if (!breakfast || !lunch || !dinner) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'All meal items are required (breakfast, lunch, dinner)' 
+      });
+    }
+
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Check if menu already exists for this date
+    const existingMenu = await Menu.findOne({ 
+      date: { $gte: startDate, $lte: endDate }
+    });
+    
+    if (existingMenu) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Menu for this date already exists. Use the update function to modify it.' 
+      });
+    }
+
+    // Create the menu with normalized date
+    const menuDate = new Date(date);
+    menuDate.setHours(0, 0, 0, 0);
+
+    // Create new menu
+    const menu = new Menu({
+      date: menuDate,
+      breakfast: breakfast.trim(),
+      lunch: lunch.trim(),
+      dinner: dinner.trim(),
+      addedBy: 'Admin'
+    });
+
+    await menu.save();
+
+    // Get day name for response
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[menuDate.getDay()];
+
+    res.status(201).json({
+      success: true,
+      message: 'Menu added successfully for ' + menuDate.toDateString(),
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        day: dayName,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Update menu for specific date (Admin only)
+router.put('/menu/date', adminAuth, async (req, res) => {
+  try {
+    const { date, breakfast, lunch, dinner } = req.body;
+    
+    console.log('Admin menu update - Request body:', { date, breakfast, lunch, dinner });
+    
+    // Validate required fields
+    if (!date) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Date is required' 
+      });
+    }
+
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    console.log('Admin menu update - Date range:', { startDate, endDate });
+
+    // Find existing menu for this date using date range
+    let menu = await Menu.findOne({ 
+      date: { $gte: startDate, $lte: endDate }
+    });
+
+    console.log('Admin menu update - Existing menu found:', !!menu);
+    if (menu) {
+      console.log('Admin menu update - Existing menu ID:', menu._id);
+    }
+
+    if (!menu) {
+      // Create new menu if it doesn't exist
+      if (!breakfast || !lunch || !dinner) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'All meal items are required when creating a new menu (breakfast, lunch, dinner)' 
+        });
+      }
+      
+      // Create the menu with normalized date
+      const menuDate = new Date(date);
+      menuDate.setHours(0, 0, 0, 0);
+      
+      menu = new Menu({
+        date: menuDate,
+        breakfast: breakfast.trim(),
+        lunch: lunch.trim(),
+        dinner: dinner.trim(),
+        addedBy: 'Admin'
+      });
+      
+      console.log('Admin menu update - Creating new menu with date:', menuDate);
+    } else {
+      // Update existing menu - only update provided fields
+      if (breakfast !== undefined) menu.breakfast = breakfast.trim();
+      if (lunch !== undefined) menu.lunch = lunch.trim();
+      if (dinner !== undefined) menu.dinner = dinner.trim();
+      
+      console.log('Admin menu update - Updating existing menu');
+    }
+
+    await menu.save();
+    console.log('Admin menu update - Menu saved successfully');
+
+    // Get day name for response
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[menu.date.getDay()];
+
+    res.json({
+      success: true,
+      message: 'Menu updated successfully for ' + menu.date.toDateString(),
+      menu: {
+        id: menu._id,
+        date: menu.date,
+        day: dayName,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Admin menu update error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Delete menu for specific date (Admin only)
+router.delete('/menu/date', adminAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    
+    console.log('Admin menu delete - Request body:', { date });
+    
+    // Validate required fields
+    if (!date) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Date is required' 
+      });
+    }
+
+    // Create date range for the specified date (start of day to end of day)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    console.log('Admin menu delete - Date range:', { startDate, endDate });
+
+    // Find the menu for this date using date range
+    const menu = await Menu.findOne({ 
+      date: { $gte: startDate, $lte: endDate }
+    });
+    
+    console.log('Admin menu delete - Menu found:', !!menu);
+    if (menu) {
+      console.log('Admin menu delete - Menu ID:', menu._id);
+    }
+    
+    if (!menu) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menu found for this date' 
+      });
+    }
+
+    // Store menu details before deletion for response
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[menu.date.getDay()];
+    
+    const deletedMenuDetails = {
+      id: menu._id,
+      date: menu.date,
+      day: dayName,
+      breakfast: menu.breakfast,
+      lunch: menu.lunch,
+      dinner: menu.dinner,
+      addedBy: menu.addedBy,
+      createdAt: menu.createdAt
+    };
+
+    // Delete the menu using the found menu's ID
+    await Menu.findByIdAndDelete(menu._id);
+    console.log('Admin menu delete - Menu deleted successfully');
+
+    res.json({
+      success: true,
+      message: 'Menu deleted successfully for ' + menu.date.toDateString(),
+      deletedMenu: deletedMenuDetails
+    });
+  } catch (error) {
+    console.error('Admin menu delete error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Get all menus from today onwards (Admin route)
+router.get('/menu/date', adminAuth, async (req, res) => {
+  try {
+    // Add cache-busting headers
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    console.log('Admin menu query - Today:', today);
+
+    // Find all menus from today onwards, sorted by date
+    const menus = await Menu.find({ 
+      date: { $gte: today }
+    }).sort({ date: 1 });
+    
+    console.log('Admin menu query - Found menus:', menus.length);
+    console.log('Admin menu query - Menu dates:', menus.map(m => m.date));
+
+    if (menus.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menus found from today onwards' 
+      });
+    }
+
+    // Get day names for response
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    
+    const formattedMenus = menus.map(menu => {
+      const menuDate = new Date(menu.date);
+      const dayName = days[menuDate.getDay()];
+      
+      return {
+        id: menu._id,
+        date: menu.date,
+        day: dayName,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      };
+    });
+
+    res.json({
+      success: true,
+      totalMenus: formattedMenus.length,
+      menus: formattedMenus,
+      dateRange: {
+        from: today,
+        to: menus[menus.length - 1].date
+      }
+    });
+  } catch (error) {
+    console.error('Admin menu query error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Get all menus with date range filter (Admin route)
+router.get('/menu/all', adminAuth, async (req, res) => {
+  try {
+    // Add cache-busting headers
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
+    const { startDate, endDate } = req.query;
+
+    console.log('Admin menu all - Query params:', { startDate, endDate });
+
+    // Build query
+    let query = {};
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      
+      query.date = { $gte: start, $lte: end };
+      console.log('Admin menu all - Date range query:', { start, end });
+    }
+
+    // Find menus based on query, sorted by date
+    const menus = await Menu.find(query).sort({ date: 1 });
+    
+    console.log('Admin menu all - Found menus:', menus.length);
+    console.log('Admin menu all - Menu dates:', menus.map(m => m.date));
+    
+    if (menus.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No menus found for the specified date range' 
+      });
+    }
+
+    // Get day names for response
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    
+    const formattedMenus = menus.map(menu => {
+      const menuDate = new Date(menu.date);
+      const dayName = days[menuDate.getDay()];
+      
+      return {
+        id: menu._id,
+        date: menu.date,
+        day: dayName,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      };
+    });
+
+    res.json({
+      success: true,
+      totalMenus: formattedMenus.length,
+      menus: formattedMenus,
+      dateRange: startDate && endDate ? {
+        from: new Date(startDate),
+        to: new Date(endDate)
+      } : {
+        from: menus[0].date,
+        to: menus[menus.length - 1].date
+      }
+    });
+  } catch (error) {
+    console.error('Admin menu all error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Debug route to get all menus in database (Admin only)
+router.get('/menu/debug', adminAuth, async (req, res) => {
+  try {
+    const allMenus = await Menu.find({}).sort({ date: 1 });
+    
+    console.log('Admin menu debug - Total menus in DB:', allMenus.length);
+    console.log('Admin menu debug - All menu dates:', allMenus.map(m => m.date));
+    
+    res.json({
+      success: true,
+      totalMenus: allMenus.length,
+      menus: allMenus.map(menu => ({
+        id: menu._id,
+        date: menu.date,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        addedBy: menu.addedBy,
+        createdAt: menu.createdAt,
+        updatedAt: menu.updatedAt
+      }))
+    });
+  } catch (error) {
+    console.error('Admin menu debug error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Get detailed department bills with individual meetings/programs
+router.get('/department-bills-detailed', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        message: 'Both startDate and endDate parameters are required' 
+      });
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Build department filter if provided
+    let departmentFilter = {};
+    if (department) {
+      let departmentDoc;
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        departmentDoc = await Department.findById(department);
+      } else {
+        departmentDoc = await Department.findOne({ title: department.trim() });
+      }
+      if (departmentDoc) {
+        departmentFilter.department = departmentDoc._id;
+      }
+    }
+
+    const departments = [];
+
+    // Get all departments
+    const allDepartments = await Department.find(departmentFilter).sort({ title: 1 });
+
+    for (const dept of allDepartments) {
+      const departmentData = {
+        department: dept.title,
+        meetings: [],
+        guestMeals: [],
+        foodShare: 0,
+        totalRentAmount: 0,
+        totalMeetingFoodAmount: 0,
+        totalGuestMealAmount: 0,
+        totalAmount: 0
+      };
+
+      // 1. Get individual meetings for this department
+      const meetings = await Meeting.find({
+        department: dept._id,
+        status: 'approved',
+        startDatetime: { $gte: start, $lte: end }
+      }).sort({ startDatetime: 1 });
+
+      // Process each meeting
+      for (const meeting of meetings) {
+        const rentAmount = meeting.rent || 0; // Use dynamic rent from meeting record
+        const meetingFoodAmount = (
+          (meeting.breakfast || 0) * 40 + // Using default rates, will be calculated in frontend
+          (meeting.lunch || 0) * 80 +
+          (meeting.dinner || 0) * 40 +
+          (meeting.morningSnacksCount || 0) * 12 +
+          (meeting.morningTeaCount || 0) * 12 +
+          (meeting.eveningSnacksCount || 0) * 12 +
+          (meeting.eveningTeaCount || 0) * 12
+        );
+
+        departmentData.meetings.push({
+          id: meeting._id,
+          title: meeting.title,
+          description: meeting.description,
+          startDatetime: meeting.startDatetime,
+          endDatetime: meeting.endDatetime,
+          hall: meeting.hall,
+          rent: meeting.rent,
+          noOfPersons: meeting.noOfPersons,
+          foodRequired: meeting.foodRequired,
+          foodCounts: {
+            breakfast: meeting.breakfast || 0,
+            lunch: meeting.lunch || 0,
+            dinner: meeting.dinner || 0,
+            morningSnacksCount: meeting.morningSnacksCount || 0,
+            morningTeaCount: meeting.morningTeaCount || 0,
+            eveningSnacksCount: meeting.eveningSnacksCount || 0,
+            eveningTeaCount: meeting.eveningTeaCount || 0
+          },
+          rentAmount: rentAmount,
+          meetingFoodAmount: meetingFoodAmount,
+          totalMeetingAmount: rentAmount + meetingFoodAmount,
+          createdBy: meeting.createdBy
+        });
+
+        departmentData.totalRentAmount += rentAmount;
+        departmentData.totalMeetingFoodAmount += meetingFoodAmount;
+      }
+
+      // 2. Get guest meals for this department
+      const guestMeals = await GuestMeal.find({
+        department: dept._id,
+        date: { $gte: start, $lte: end }
+      }).sort({ date: 1 });
+
+      for (const guestMeal of guestMeals) {
+        const guestMealAmount = (
+          (guestMeal.breakfastCount || 0) * 40 + // Using default rates
+          (guestMeal.lunchCount || 0) * 80 +
+          (guestMeal.dinnerCount || 0) * 40
+        );
+
+        departmentData.guestMeals.push({
+          id: guestMeal._id,
+          date: guestMeal.date,
+          description: guestMeal.description || 'Guest Meal',
+          breakfastCount: guestMeal.breakfastCount || 0,
+          lunchCount: guestMeal.lunchCount || 0,
+          dinnerCount: guestMeal.dinnerCount || 0,
+          amount: guestMealAmount,
+          addedBy: guestMeal.addedBy
+        });
+
+        departmentData.totalGuestMealAmount += guestMealAmount;
+      }
+
+      // 3. Calculate food share (75% department share for regular food)
+      const userResponse = await Meal.aggregate([
+        {
+          $match: {
+            date: { $gte: start, $lte: end }
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'userId',
+            foreignField: '_id',
+            as: 'user'
+          }
+        },
+        {
+          $unwind: '$user'
+        },
+        {
+          $match: {
+            'user.department': dept._id,
+            'user.isFreeFood': { $ne: true }
+          }
+        },
+        {
+          $group: {
+            _id: '$user._id',
+            user: { $first: '$user' },
+            breakfastCount: {
+              $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
+            },
+            lunchCount: {
+              $sum: { $cond: [{ $eq: ['$lunch', true] }, 1, 0] }
+            },
+            dinnerCount: {
+              $sum: { $cond: [{ $eq: ['$dinner', true] }, 1, 0] }
+            }
+          }
+        }
+      ]);
+
+      let foodDeptShare = 0;
+      for (const userMeal of userResponse) {
+        const userTotal = (
+          (userMeal.breakfastCount || 0) * 40 +
+          (userMeal.lunchCount || 0) * 80 +
+          (userMeal.dinnerCount || 0) * 40
+        );
+
+        // Use intern logic: 100% dept share for interns, department-specific % for others
+        const isIntern = userMeal.user.isIntern === true;
+        const deptShare = isIntern ? 100 : getDepartmentShareForDept(dept.title, 75);
+        const userDeptAmount = (userTotal * deptShare) / 100;
+        foodDeptShare += userDeptAmount;
+      }
+
+      departmentData.foodShare = foodDeptShare;
+
+      // Calculate total amount
+      departmentData.totalAmount = 
+        departmentData.foodShare + 
+        departmentData.totalRentAmount + 
+        departmentData.totalMeetingFoodAmount + 
+        departmentData.totalGuestMealAmount;
+
+      // Only include departments that have some activity
+      if (departmentData.meetings.length > 0 || 
+          departmentData.guestMeals.length > 0 || 
+          departmentData.foodShare > 0) {
+        departments.push(departmentData);
+      }
+    }
+
+    res.json({
+      dateRange: { from: start, to: end },
+      departments: departments
+    });
+
+  } catch (error) {
+    console.error('Error fetching detailed department bills:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch detailed department bills',
+      error: error.message 
+    });
+  }
+});
+
+// Helper function to get rent amount by venue
+function getRentAmountByVenue(venue) {
+  const rentRates = {
+    'Auditorium [2nd Floor]': 2000,
+    'Conference Hall [3rd Floor]': 1500,
+    'Meeting Space [1st Floor]': 1000
+  };
+  return rentRates[venue] || 0;
+}
+
+// Helper function to get department share percentage
+function getDepartmentShareForDept(departmentName, defaultShare) {
+  if (!departmentName) return defaultShare;
+  
+  const deptName = departmentName.toLowerCase().trim();
+  
+  // GIO and Solidarity departments: 0% department share (employees pay 100%)
+  if (deptName === 'gio' || deptName === 'solidarity') {
+    return 0;
+  }
+  
+  return defaultShare;
+}
 
 module.exports = router; 
