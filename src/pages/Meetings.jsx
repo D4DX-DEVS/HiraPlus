@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon 
 } from '@heroicons/react/24/outline';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { ListItemSkeleton } from '../components/SkeletonLoaders';
 
 const Meetings = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -35,6 +36,7 @@ const Meetings = () => {
     startDatetime: '',
     endDatetime: '',
     hall: 'Auditorium [2nd Floor]',
+    rent: '',
     noOfPersons: '',
     hiraStaff: 0,
     guests: 0,
@@ -110,6 +112,14 @@ const Meetings = () => {
       setError('Department is required');
       return;
     }
+    if (!formData.rent && formData.rent !== 0) {
+      setError('Rent amount is required');
+      return;
+    }
+    if (parseInt(formData.rent) < 0) {
+      setError('Rent amount must be 0 or greater');
+      return;
+    }
     if (!formData.noOfPersons || parseInt(formData.noOfPersons) < 1) {
       setError('Number of participants must be at least 1');
       return;
@@ -123,6 +133,7 @@ const Meetings = () => {
       // Ensure all numeric fields are properly parsed
       const submitData = {
         ...formData,
+        rent: parseInt(formData.rent) || 0,
         noOfPersons: parseInt(formData.noOfPersons) || 1,
         hiraStaff: Math.floor(parseInt(formData.noOfPersons) / 2) || 0,
         guests: Math.ceil(parseInt(formData.noOfPersons) / 2) || 1,
@@ -152,6 +163,7 @@ const Meetings = () => {
         startDatetime: '',
         endDatetime: '',
         hall: 'Auditorium [2nd Floor]',
+        rent: '',
         noOfPersons: '',
         hiraStaff: 0,
         guests: 0,
@@ -195,6 +207,7 @@ const Meetings = () => {
       startDatetime: format(new Date(meeting.startDatetime), "yyyy-MM-dd'T'HH:mm"),
       endDatetime: format(new Date(meeting.endDatetime), "yyyy-MM-dd'T'HH:mm"),
       hall: meeting.hall || 'Auditorium [2nd Floor]',
+      rent: meeting.rent || 0,
       noOfPersons: meeting.noOfPersons || 0,
       hiraStaff: meeting.hiraStaff || 0,
       guests: meeting.guests || 0,
@@ -510,6 +523,29 @@ const Meetings = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             <span className="flex items-center">
                               <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m-3-9h6m-6 10h6" />
+                              </svg>
+                              Rent Amount (₹)
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.rent}
+                            onChange={(e) => setFormData({ ...formData, rent: e.target.value })}
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                            placeholder="Enter rent amount"
+                            required
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            Set the venue rent cost for this specific meeting
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <span className="flex items-center">
+                              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                               </svg>
                               Total Participants
@@ -707,10 +743,13 @@ const Meetings = () => {
                           <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '8%'}}>
                             Count
                           </th>
-                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '15%'}}>
+                          <th className="px-1 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '8%'}}>
+                            Rent
+                          </th>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '12%'}}>
                             Start Time
                           </th>
-                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '15%'}}>
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '12%'}}>
                             End Time
                           </th>
                           <th className="px-1 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '10%'}}>
@@ -724,7 +763,7 @@ const Meetings = () => {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {filteredMeetings.length === 0 ? (
                           <tr>
-                            <td colSpan="8" className="px-6 py-8 text-center">
+                            <td colSpan="9" className="px-6 py-8 text-center">
                               <div className="text-gray-400">
                                 <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3a4 4 0 118 0v4m-4 8v6m0 0l4-4m-4 4l-4-4m4-16a8 8 0 11-8 8 8 8 0 018-8z" />
@@ -754,6 +793,11 @@ const Meetings = () => {
                               </td>
                               <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900 text-center">
                                 {meeting.noOfPersons}
+                              </td>
+                              <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900 text-center">
+                                <span className="text-green-700 font-medium">
+                                  ₹{(meeting.rent || 0).toLocaleString()}
+                                </span>
                               </td>
                               <td className="px-1 py-1.5 whitespace-nowrap text-xs text-gray-900">
                                 <div className="truncate" title={format(new Date(meeting.startDatetime), 'MMM d, yyyy h:mm a')}>

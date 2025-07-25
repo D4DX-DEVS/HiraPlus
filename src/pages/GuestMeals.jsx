@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { TableSkeleton } from '../components/SkeletonLoaders';
 
 const GuestMeals = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -365,136 +366,158 @@ const GuestMeals = () => {
                 </div>
               )}
 
-              {loading ? (
-                <div className="flex-1 flex items-center justify-center">
-                <div className="text-center py-12">
-                  <div className="text-lg text-gray-600">Loading...</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
-                  <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-base font-semibold text-gray-900">Guest Meals List</h3>
-                        <p className="text-xs text-gray-600 mt-0.5">
-                          {guestMeals.length} guest meal{guestMeals.length !== 1 ? 's' : ''} recorded
-                        </p>
-                      </div>
-                      
-                      {/* View Mode Toggle */}
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-3">
-                          <label className="flex items-center">
-                            <input
-                              type="radio"
-                              name="viewMode"
-                              value="individual"
-                              checked={viewMode === 'individual'}
-                              onChange={(e) => setViewMode(e.target.value)}
-                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">Individual Meals</span>
-                          </label>
-                          
-                          <label className="flex items-center">
-                            <input
-                              type="radio"
-                              name="viewMode"
-                              value="summary"
-                              checked={viewMode === 'summary'}
-                              onChange={(e) => setViewMode(e.target.value)}
-                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">Department Summary</span>
-                          </label>
-                        </div>
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900">Guest Meals List</h3>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {loading ? 'Loading...' : `${guestMeals.length} guest meal${guestMeals.length !== 1 ? 's' : ''} recorded`}
+                      </p>
+                    </div>
+                    
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-3">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="viewMode"
+                            value="individual"
+                            checked={viewMode === 'individual'}
+                            onChange={(e) => setViewMode(e.target.value)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Individual Meals</span>
+                        </label>
+                        
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="viewMode"
+                            value="summary"
+                            checked={viewMode === 'summary'}
+                            onChange={(e) => setViewMode(e.target.value)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Department Summary</span>
+                        </label>
                       </div>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-auto">
-                    {viewMode === 'individual' ? (
-                      <table className="w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0">
+                </div>
+                <div className="flex-1 overflow-auto">
+                  {loading ? (
+                    <table className="w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          {viewMode === 'individual' ? (
+                            <>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added By</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <TableSkeleton rows={6} columns={viewMode === 'individual' ? 7 : 5} />
+                      </tbody>
+                    </table>
+                  ) : viewMode === 'individual' ? (
+                    <table className="w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added By</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {guestMeals.length === 0 ? (
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added By</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <td colSpan="7" className="px-6 py-8 text-center">
+                              <div className="text-gray-400">
+                                <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                <p className="text-base font-medium text-gray-900 mb-1">No guest meals found</p>
+                                <p className="text-sm text-gray-600">Add a new guest meal entry to get started.</p>
+                              </div>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {guestMeals.length === 0 ? (
-                            <tr>
-                              <td colSpan="7" className="px-6 py-8 text-center">
-                                <div className="text-gray-400">
-                                  <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                  </svg>
-                                  <p className="text-base font-medium text-gray-900 mb-1">No guest meals found</p>
-                                  <p className="text-sm text-gray-600">Add a new guest meal entry to get started.</p>
+                        ) : (
+                          guestMeals.map((meal, index) => (
+                            <tr key={meal._id} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {format(new Date(meal.date), 'MMM d, yyyy')}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {typeof meal.department === 'string' ? meal.department : meal.department?.title || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.breakfastCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.lunchCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.dinnerCount || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {typeof meal.addedBy === 'string' ? 
+                                  meal.addedBy : 
+                                  meal.addedBy?.name ? 
+                                    `${meal.addedBy.name} (${typeof meal.addedBy.department === 'string' ? meal.addedBy.department : meal.addedBy.department?.title || 'N/A'})` : 
+                                    'N/A'
+                                }
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex justify-end space-x-2">
+                                  <button
+                                    onClick={() => handleEdit(meal)}
+                                    className="text-green-600 hover:text-green-900 transition-colors p-1.5 hover:bg-green-50 rounded-full"
+                                    title="Edit"
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm({ show: true, mealId: meal._id })}
+                                    className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
+                                    title="Delete"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
-                          ) : (
-                            guestMeals.map((meal, index) => (
-                              <tr key={meal._id} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {format(new Date(meal.date), 'MMM d, yyyy')}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {typeof meal.department === 'string' ? meal.department : meal.department?.title || 'N/A'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.breakfastCount || 0}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.lunchCount || 0}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{meal.dinnerCount || 0}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {typeof meal.addedBy === 'string' ? 
-                                    meal.addedBy : 
-                                    meal.addedBy?.name ? 
-                                      `${meal.addedBy.name} (${typeof meal.addedBy.department === 'string' ? meal.addedBy.department : meal.addedBy.department?.title || 'N/A'})` : 
-                                      'N/A'
-                                  }
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                  <div className="flex justify-end space-x-2">
-                                    <button
-                                      onClick={() => handleEdit(meal)}
-                                      className="text-green-600 hover:text-green-900 transition-colors p-1.5 hover:bg-green-50 rounded-full"
-                                      title="Edit"
-                                    >
-                                      <PencilIcon className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => setDeleteConfirm({ show: true, mealId: meal._id })}
-                                      className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-                                      title="Delete"
-                                    >
-                                      <TrashIcon className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <table className="w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {departmentSummary.length === 0 ? (
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {departmentSummary.length === 0 ? (
                             <tr>
                               <td colSpan="5" className="px-6 py-8 text-center">
                                 <div className="text-gray-400">

@@ -4,6 +4,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDepartments from './pages/AdminDepartments';
 import AdminMeals from './pages/AdminMeals';
+import AdminMenus from './pages/AdminMenus';
 import AdminNotifications from './pages/AdminNotifications';
 import AdminMessages from './pages/AdminMessages';
 import AdminBanners from './pages/AdminBanners';
@@ -55,6 +56,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminMeals />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/menus"
+          element={
+            <ProtectedRoute>
+              <AdminMenus />
             </ProtectedRoute>
           }
         />

@@ -16,11 +16,15 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     designation: initialData?.designation || '',
     isDeptHead: initialData?.isDeptHead || false,
     isFreeFood: initialData?.isFreeFood || false,
+    isIntern: initialData?.isIntern || false,
     status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState([]);
+
+  // Check if the selected department should show isIntern field
+  const shouldShowInternField = formData.department === 'D4DX Innovations LLP';
 
   // Fetch departments
   useEffect(() => {
@@ -45,6 +49,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         designation: initialData.designation || '',
         isDeptHead: initialData.isDeptHead || false,
         isFreeFood: initialData.isFreeFood || false,
+        isIntern: initialData.isIntern || false,
         status: initialData.status || 'active'
       });
     }
@@ -186,7 +191,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid gap-4 ${shouldShowInternField ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
           <div className="flex items-center space-x-3">
             <input
               type="checkbox"
@@ -216,6 +221,23 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               <span className="ml-2">Free Food</span>
             </label>
           </div>
+
+          {shouldShowInternField && (
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="isIntern"
+                name="isIntern"
+                checked={formData.isIntern}
+                onChange={handleChange}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isIntern" className="text-sm font-medium text-gray-700 flex items-center">
+                📚
+                <span className="ml-2">Intern</span>
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -5,9 +5,11 @@ import { PlusIcon, TrashIcon, PaperAirplaneIcon } from '@heroicons/react/24/outl
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { ListItemSkeleton } from '../components/SkeletonLoaders';
 
 const AdminMessages = () => {
   const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -17,10 +19,11 @@ const AdminMessages = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, messageId: null });
   const [sendConfirm, setSendConfirm] = useState({ show: false, messageId: null });
   const [newMessage, setNewMessage] = useState({ title: '', description: '' });
-  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
 
   const fetchMessages = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('adminToken');
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/messages`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -28,6 +31,8 @@ const AdminMessages = () => {
       setMessages(response.data);
     } catch (err) {
       setError('Failed to fetch messages');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,7 +75,7 @@ const AdminMessages = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setFormLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
       await axios.post(`${import.meta.env.VITE_API_URL}/admin/messages`, newMessage, {
@@ -82,7 +87,7 @@ const AdminMessages = () => {
     } catch (err) {
       setError('Failed to create message');
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
@@ -186,10 +191,10 @@ const AdminMessages = () => {
                         </button>
                         <button
                           type="submit"
-                          disabled={loading}
+                          disabled={formLoading}
                           className="px-6 py-3 bg-green-950 text-white font-semibold rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {loading ? 'Saving...' : 'Save Message'}
+                          {formLoading ? 'Saving...' : 'Save Message'}
                         </button>
                       </div>
                     </form>
@@ -206,7 +211,9 @@ const AdminMessages = () => {
                   </p>
                 </div>
                 <div className="flex-1 overflow-auto">
-                  {messages.length === 0 ? (
+                  {loading ? (
+                    <ListItemSkeleton items={6} />
+                  ) : messages.length === 0 ? (
                     <div className="p-8 text-center">
                       <div className="text-gray-400">
                         <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -6,8 +6,73 @@ import UserForm from '../components/UserForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { TrashIcon, PlusIcon, PencilIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
+// Skeleton Loading Component
+const UserTableSkeleton = ({ shouldShowInternColumn = false }) => {
+  const skeletonRows = Array.from({ length: 6 }, (_, i) => i);
+  
+  return (
+    <>
+      {skeletonRows.map((index) => (
+        <tr key={index} className="border-b border-gray-200">
+          {/* Name column with avatar */}
+          <td className="px-2 py-1.5 whitespace-nowrap">
+            <div className="flex items-center">
+              <div className="w-7 h-7 bg-gray-300 rounded-full mr-2 flex-shrink-0 shimmer"></div>
+              <div className="min-w-0">
+                <div className="h-3 bg-gray-300 rounded w-20 shimmer"></div>
+              </div>
+            </div>
+          </td>
+          {/* Phone */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-3 bg-gray-300 rounded w-16 shimmer"></div>
+          </td>
+          {/* Department */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-3 bg-gray-300 rounded w-14 shimmer"></div>
+          </td>
+          {/* Position */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-3 bg-gray-300 rounded w-16 shimmer"></div>
+          </td>
+          {/* Status */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-5 bg-gray-300 rounded-full w-8 shimmer"></div>
+          </td>
+          {/* Role */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-5 bg-gray-300 rounded-full w-10 shimmer"></div>
+          </td>
+          {/* Free Food */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-5 bg-gray-300 rounded-full w-6 shimmer"></div>
+          </td>
+          {/* Intern - conditional */}
+          {shouldShowInternColumn && (
+            <td className="px-1 py-1.5 whitespace-nowrap">
+              <div className="h-5 bg-gray-300 rounded-full w-6 shimmer"></div>
+            </td>
+          )}
+          {/* Active */}
+          <td className="px-1 py-1.5 whitespace-nowrap text-center">
+            <div className="w-2 h-2 bg-gray-300 rounded-full mx-auto shimmer"></div>
+          </td>
+          {/* Actions */}
+          <td className="px-1 py-1.5 whitespace-nowrap text-center">
+            <div className="flex justify-center space-x-1">
+              <div className="w-6 h-6 bg-gray-300 rounded shimmer"></div>
+              <div className="w-6 h-6 bg-gray-300 rounded shimmer"></div>
+            </div>
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+};
+
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [error, setError] = useState('');
@@ -20,6 +85,9 @@ const AdminDashboard = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [departments, setDepartments] = useState([]);
 
+  // Check if the selected department should show isIntern column
+  const shouldShowInternColumn = selectedDepartment === 'D4DX Innovations LLP';
+
   const fetchDepartments = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
@@ -31,6 +99,7 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('adminToken');
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -39,6 +108,8 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error('Fetch error:', err.response?.data);
       setError('Failed to fetch users');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -264,21 +335,28 @@ const AdminDashboard = () => {
                         <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '10%'}}>
                           Role
                         </th>
-                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '9%'}}>
+                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: shouldShowInternColumn ? '7%' : '8%'}}>
                           Free Food
                         </th>
-                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '7%'}}>
+                        {shouldShowInternColumn && (
+                          <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '7%'}}>
+                            Intern
+                          </th>
+                        )}
+                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '6%'}}>
                           Active
                         </th>                      
-                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '8%'}}>
+                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '7%'}}>
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredUsers.length === 0 ? (
+                      {loading ? (
+                        <UserTableSkeleton shouldShowInternColumn={shouldShowInternColumn} />
+                      ) : filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan="9" className="px-6 py-8 text-center">
+                          <td colSpan={shouldShowInternColumn ? "10" : "9"} className="px-6 py-8 text-center">
                             <div className="text-gray-400">
                               <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -340,6 +418,17 @@ const AdminDashboard = () => {
                                 {user.isFreeFood ? '🍽️' : '💰'}
                               </span>
                             </td>
+                            {shouldShowInternColumn && (
+                              <td className="px-1 py-1.5 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                                  user.isIntern
+                                    ? 'bg-orange-100 text-orange-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {user.isIntern ? '📚' : '👔'}
+                                </span>
+                              </td>
+                            )}
                             <td className="px-1 py-1.5 whitespace-nowrap text-center">
                               <span 
                                 className={`inline-block w-2 h-2 rounded-full ${
