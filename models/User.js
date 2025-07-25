@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isIntern: {
+    type: Boolean,
+    default: false,
+    required: false
+  },
   status: {
     type: String,
     enum: ['active', 'inactive'],

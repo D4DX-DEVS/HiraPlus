@@ -26,7 +26,8 @@ const meetingSchema = new mongoose.Schema({
   },
   rent: {
     type: Number,
-    default: 2000
+    required: true,
+    min: 0
   },
   noOfPersons: {
     type: Number,
@@ -103,7 +104,5 @@ meetingSchema.pre('save', function(next) {
   }
   next();
 });
-
-
 
 module.exports = mongoose.model('Meeting', meetingSchema); 

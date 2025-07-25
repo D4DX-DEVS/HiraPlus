@@ -108,7 +108,8 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
         designation: user.designation,
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
-        isFreeFood: user.isFreeFood
+        isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern
       }
     };
   } catch (error) {
@@ -309,7 +310,8 @@ router.post('/verify-otp', async (req, res) => {
         designation: user.designation,
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
-        isFreeFood: user.isFreeFood
+        isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern
       }
     });
   } catch (error) {
@@ -360,7 +362,8 @@ router.get('/me', async (req, res) => {
         updatedAt: user.updatedAt,
         status: user.status,
         isDeptHead: user.isDeptHead,
-        isFreeFood: user.isFreeFood
+        isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern
       }
     });
   } catch (error) {
@@ -411,7 +414,7 @@ router.get('/users', async (req, res) => {
     // Get all users, excluding sensitive information
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation')
+      .select('name phoneNumber department designation isIntern')
       .sort({ name: 1 });
 
     res.json({
@@ -619,15 +622,23 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, foodRequired, breakfast,
+      hall, noOfPersons, rent, foodRequired, breakfast,
       midmorningSnacks, lunch, eveningsnacks, dinner
     } = req.body;
 
     // Validate required fields
-    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons) {
+    if (!title || !description || !startDatetime || !endDatetime || !hall || !noOfPersons || typeof rent === 'undefined') {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields'
+        message: 'Please provide all required fields including rent amount'
+      });
+    }
+
+    // Validate rent is a non-negative number
+    if (rent < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rent amount must be 0 or greater'
       });
     }
 
@@ -661,6 +672,7 @@ router.post('/dept-meetings', deptHeadAuth, async (req, res) => {
       startDatetime: new Date(startDatetime),
       endDatetime: new Date(endDatetime),
       hall,
+      rent: parseInt(rent) || 0,
       noOfPersons,
       foodRequired: foodRequired || false,
       breakfast: breakfast || 0,
@@ -717,7 +729,7 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
   try {
     const {
       title, description, startDatetime, endDatetime,
-      hall, noOfPersons, foodRequired, breakfast,
+      hall, noOfPersons, rent, foodRequired, breakfast,
       midmorningSnacks, lunch, eveningsnacks, dinner
     } = req.body;
 
@@ -764,12 +776,21 @@ router.put('/dept-meetings/:meetingId', deptHeadAuth, async (req, res) => {
       });
     }
 
+    // Validate rent if provided
+    if (typeof rent !== 'undefined' && rent < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rent amount must be 0 or greater'
+      });
+    }
+
     // Update fields if provided
     if (title) meeting.title = title.trim();
     if (description) meeting.description = description.trim();
     if (startDatetime) meeting.startDatetime = new Date(startDatetime);
     if (endDatetime) meeting.endDatetime = new Date(endDatetime);
     if (hall) meeting.hall = hall;
+    if (typeof rent !== 'undefined') meeting.rent = parseInt(rent) || 0;
     if (noOfPersons) meeting.noOfPersons = noOfPersons;
     if (typeof foodRequired !== 'undefined') meeting.foodRequired = foodRequired;
     if (typeof breakfast !== 'undefined') meeting.breakfast = breakfast;
