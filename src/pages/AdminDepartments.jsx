@@ -11,6 +11,7 @@ import {
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { TableSkeleton } from '../components/SkeletonLoaders';
 
 const AdminDepartments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -251,94 +252,88 @@ const AdminDepartments = () => {
               )}
 
               {/* Departments Table */}
-              {loading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center py-12">
-                    <div className="text-lg text-gray-600">Loading...</div>
-                  </div>
+              <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
+                  <h3 className="text-base font-semibold text-gray-900">Department Directory</h3>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {loading ? 'Loading...' : `${filteredDepartments.length} department${filteredDepartments.length !== 1 ? 's' : ''} found`}
+                  </p>
                 </div>
-              ) : (
-                <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
-                  <div className="px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex-shrink-0">
-                    <h3 className="text-base font-semibold text-gray-900">Department Directory</h3>
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      {filteredDepartments.length} department{filteredDepartments.length !== 1 ? 's' : ''} found
-                    </p>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    <table className="w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0">
+                <div className="flex-1 overflow-auto">
+                  <table className="w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department Title</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {loading ? (
+                        <TableSkeleton rows={6} columns={4} />
+                      ) : filteredDepartments.length === 0 ? (
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department Title</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          <td colSpan="4" className="px-6 py-8 text-center">
+                            <div className="text-gray-400">
+                              <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              </svg>
+                              <p className="text-base font-medium text-gray-900 mb-1">No departments found</p>
+                              <p className="text-sm text-gray-600">Try adjusting your search criteria or add a new department.</p>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredDepartments.length === 0 ? (
-                          <tr>
-                            <td colSpan="4" className="px-6 py-8 text-center">
-                              <div className="text-gray-400">
-                                <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                                <p className="text-base font-medium text-gray-900 mb-1">No departments found</p>
-                                <p className="text-sm text-gray-600">Try adjusting your search criteria or add a new department.</p>
+                      ) : (
+                        filteredDepartments.map((department, index) => (
+                          <tr key={department._id || `dept-${index}`} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-sm font-medium mr-3 flex-shrink-0">
+                                  {(department.title || 'U')?.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {department.title || 'Untitled Department'}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {department.createdAt && !isNaN(new Date(department.createdAt)) 
+                                ? format(new Date(department.createdAt), 'MMM d, yyyy')
+                                : 'N/A'
+                              }
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {department.updatedAt && !isNaN(new Date(department.updatedAt))
+                                ? format(new Date(department.updatedAt), 'MMM d, yyyy')
+                                : 'N/A'
+                              }
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex justify-end space-x-2">
+                                <button
+                                  onClick={() => handleEdit(department)}
+                                  className="text-green-600 hover:text-green-900 transition-colors p-1.5 hover:bg-green-50 rounded-full"
+                                  title="Edit"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirm({ show: true, departmentId: department._id })}
+                                  className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
+                                  title="Delete"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
                               </div>
                             </td>
                           </tr>
-                        ) : (
-                          filteredDepartments.map((department, index) => (
-                            <tr key={department._id || `dept-${index}`} className={`hover:bg-gray-50 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center text-white text-sm font-medium mr-3 flex-shrink-0">
-                                    {(department.title || 'U')?.charAt(0).toUpperCase()}
-                                  </div>
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {department.title || 'Untitled Department'}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {department.createdAt && !isNaN(new Date(department.createdAt)) 
-                                  ? format(new Date(department.createdAt), 'MMM d, yyyy')
-                                  : 'N/A'
-                                }
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {department.updatedAt && !isNaN(new Date(department.updatedAt))
-                                  ? format(new Date(department.updatedAt), 'MMM d, yyyy')
-                                  : 'N/A'
-                                }
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex justify-end space-x-2">
-                                  <button
-                                    onClick={() => handleEdit(department)}
-                                    className="text-green-600 hover:text-green-900 transition-colors p-1.5 hover:bg-green-50 rounded-full"
-                                    title="Edit"
-                                  >
-                                    <PencilIcon className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirm({ show: true, departmentId: department._id })}
-                                    className="text-red-600 hover:text-red-900 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-                                    title="Delete"
-                                  >
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </main>

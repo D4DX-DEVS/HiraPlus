@@ -5,9 +5,11 @@ import { PencilIcon, TrashIcon, FunnelIcon, PlusIcon, ChevronDownIcon } from '@h
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { TableSkeleton } from '../components/SkeletonLoaders';
 
 const AdminMeals = () => {
   const [meals, setMeals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filteredMeals, setFilteredMeals] = useState(null);
   const [error, setError] = useState('');
   const [editingMeal, setEditingMeal] = useState(null);
@@ -34,16 +36,52 @@ const AdminMeals = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // Today's meal totals state
+  const [todayTotals, setTodayTotals] = useState({
+    breakfast: 0,
+    lunch: 0,
+    dinner: 0
+  });
+
+  // Function to calculate today's meal totals
+  const calculateTodayTotals = (mealsData) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    let breakfastCount = 0;
+    let lunchCount = 0;
+    let dinnerCount = 0;
+
+    mealsData.forEach(user => {
+      user.meals.forEach(meal => {
+        const mealDate = format(new Date(meal.date), 'yyyy-MM-dd');
+        if (mealDate === today) {
+          if (meal.breakfast) breakfastCount++;
+          if (meal.lunch) lunchCount++;
+          if (meal.dinner) dinnerCount++;
+        }
+      });
+    });
+
+    setTodayTotals({
+      breakfast: breakfastCount,
+      lunch: lunchCount,
+      dinner: dinnerCount
+    });
+  };
+
   const fetchAllMeals = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('adminToken');
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/meals`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMeals(response.data);
       setFilteredMeals(null);
+      calculateTodayTotals(response.data);
     } catch (err) {
       setError('Failed to fetch meals');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,6 +93,8 @@ const AdminMeals = () => {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setFilteredMeals(response.data);
+      // Still calculate today's totals from the original meals data
+      calculateTodayTotals(meals);
     } catch (err) {
       setError('Failed to fetch filtered meals');
     }
@@ -141,6 +181,7 @@ const AdminMeals = () => {
   const clearFilters = () => {
     setFilteredMeals(null);
     setShowFilters(false);
+    calculateTodayTotals(meals);
   };
 
   const handleAddMeal = async (e) => {
@@ -237,6 +278,56 @@ const AdminMeals = () => {
                       <FunnelIcon className="h-4 w-4 mr-1.5" />
                       {showFilters ? 'Hide Filters' : 'Show Filters'}
                     </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Today's Totals Cards */}
+              <div className="mb-3 flex-shrink-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Breakfast Card */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-medium text-gray-600 mb-1">Today's Breakfast</h3>
+                        <p className="text-xl font-bold text-gray-800">{todayTotals.breakfast}</p>
+                      </div>
+                      <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lunch Card */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-medium text-gray-600 mb-1">Today's Lunch</h3>
+                        <p className="text-xl font-bold text-gray-800">{todayTotals.lunch}</p>
+                      </div>
+                      <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dinner Card */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-medium text-gray-600 mb-1">Today's Dinner</h3>
+                        <p className="text-xl font-bold text-gray-800">{todayTotals.dinner}</p>
+                      </div>
+                      <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -480,7 +571,9 @@ const AdminMeals = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {displayMeals.length === 0 ? (
+                      {loading ? (
+                        <TableSkeleton rows={8} columns={6} />
+                      ) : displayMeals.length === 0 ? (
                         <tr>
                           <td colSpan="6" className="px-6 py-8 text-center">
                             <div className="text-gray-400">

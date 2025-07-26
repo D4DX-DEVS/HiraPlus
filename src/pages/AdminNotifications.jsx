@@ -5,6 +5,7 @@ import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { ListItemSkeleton } from '../components/SkeletonLoaders';
 
 const AdminNotifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -241,9 +242,7 @@ const AdminNotifications = () => {
                 </div>
                 <div className="flex-1 overflow-auto">
                   {isLoading && notifications.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <div className="text-gray-400 text-lg mb-2">Loading notifications...</div>
-                    </div>
+                    <ListItemSkeleton items={6} />
                   ) : notifications.length === 0 ? (
                     <div className="p-8 text-center">
                       <div className="text-gray-400">

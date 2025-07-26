@@ -5,9 +5,11 @@ import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { BannerCardSkeleton } from '../components/SkeletonLoaders';
 
 const AdminBanners = () => {
   const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
@@ -24,10 +26,13 @@ const AdminBanners = () => {
 
   const fetchBanners = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/banner`);
       setBanners(response.data);
     } catch (err) {
       setError('Failed to fetch banners');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -347,7 +352,9 @@ const AdminBanners = () => {
                   </p>
                 </div>
                 <div className="flex-1 overflow-auto">
-                  {banners.length === 0 ? (
+                  {loading ? (
+                    <BannerCardSkeleton />
+                  ) : banners.length === 0 ? (
                     <div className="p-8 text-center">
                       <div className="text-gray-400">
                         <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">

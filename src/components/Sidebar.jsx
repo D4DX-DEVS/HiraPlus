@@ -9,7 +9,8 @@ import {
   CalculatorIcon,
   UserGroupIcon,
   ClockIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  BookOpenIcon
 } from '@heroicons/react/24/outline';
 import HiraPlusIcon from '../assets/HiraPlus.jpg';
 
@@ -19,6 +20,7 @@ const Sidebar = ({ isOpen }) => {
     { name: 'Departments', href: '/admin/departments', icon: BuildingOfficeIcon },
     { name: 'Meetings', href: '/admin/meetings', icon: ClockIcon },
     { name: 'Meals', href: '/admin/meals', icon: CalendarIcon },
+    { name: 'Menu Management', href: '/admin/menus', icon: BookOpenIcon },
     { name: 'Guest Meals', href: '/admin/guest-meals', icon: UserGroupIcon },
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
     { name: 'Messages', href: '/admin/messages', icon: ChatBubbleLeftRightIcon },
