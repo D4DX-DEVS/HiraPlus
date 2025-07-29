@@ -9,6 +9,8 @@ const axios = require('axios');
 const deptHeadAuth = require('../middleware/deptHeadAuth');
 const Meeting = require('../models/Meeting');
 const Menu = require('../models/Menu');
+const Travel = require('../models/Travel');
+const Vehicle = require('../models/Vehicle');
 
 // Helper function to check for meeting conflicts
 const checkMeetingConflict = async (startDatetime, endDatetime, hall, excludeMeetingId = null) => {
@@ -1022,5 +1024,62 @@ router.get('/menu/today', async (req, res) => {
   }
 });
 
+
+
+
+
+
+router.post('/travels', async (req, res) => {
+  try {
+    const {
+      user,
+      vehicle,
+      fromLocation,
+      toLocation,
+      startKm,
+      endKm,
+      startTime,
+      endTime,
+      date,
+      description
+    } = req.body;
+
+    // Optional: Validate user and vehicle existence
+    const foundUser = await User.findById(user);
+    if (!foundUser) return res.status(404).json({ error: 'User not found' });
+
+    const foundVehicle = await Vehicle.findById(vehicle);
+    if (!foundVehicle) return res.status(404).json({ error: 'Vehicle not found' });
+
+    const travel = new Travel({
+      user,
+      vehicle,
+      fromLocation,
+      toLocation,
+      startKm,
+      endKm,
+      startTime,
+      endTime,
+      date,
+      description
+    });
+
+    const saved = await travel.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// @route   GET /api/travels/user/:userId
+// @desc    Get all travels of a specific user
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const travels = await Travel.find({ user: req.params.userId }).populate('vehicle');
+    res.json(travels);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router; 

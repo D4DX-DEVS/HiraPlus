@@ -14,6 +14,8 @@ const mongoose = require('mongoose');
 const Meeting = require('../models/Meeting');
 const { sendPushNotification } = require('../utils/oneSignalService');
 const Menu = require('../models/Menu');
+const Vehicle = require('../models/Vehicle');
+const Travel = require('../models/Travel');
 
 // Helper function to check for meeting conflicts
 const checkMeetingConflict = async (startDatetime, endDatetime, hall, excludeMeetingId = null) => {
@@ -3505,5 +3507,42 @@ function getDepartmentShareForDept(departmentName, defaultShare) {
   
   return defaultShare;
 }
+
+
+router.post('/vehicles', adminAuth, async (req, res) => {
+  try {
+    const { vehicleName, vehicleNumber } = req.body;
+
+    // Create new vehicle
+    const vehicle = new Vehicle({
+      vehicleName,
+      vehicleNumber
+    });
+
+    // Save vehicle to database
+    await vehicle.save();
+
+    res.status(201).json({
+      message: 'Vehicle added successfully',
+      vehicle
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error adding vehicle',
+      error: error.message
+    });
+  }
+});
+
+
+
+router.get('/travel/all', adminAuth, async (req, res) => {
+  try {
+    const travels = await Travel.find().populate('user').populate('vehicle');
+    res.json(travels);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router; 
