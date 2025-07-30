@@ -3545,4 +3545,79 @@ router.get('/travel/all', adminAuth, async (req, res) => {
   }
 });
 
+// Get all vehicles
+router.get('/vehicles', adminAuth, async (req, res) => {
+  try {
+    const vehicles = await Vehicle.find().sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      vehicles,
+      total: vehicles.length
+    });
+  } catch (error) {
+    console.error('Fetch vehicles error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Update a vehicle
+router.put('/vehicles/:id', adminAuth, async (req, res) => {
+  try {
+    const { vehicleName, vehicleNumber } = req.body;
+    const vehicleId = req.params.id;
+
+    const vehicle = await Vehicle.findByIdAndUpdate(
+      vehicleId,
+      {
+        vehicleName: vehicleName.trim(),
+        vehicleNumber: vehicleNumber.trim()
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!vehicle) {
+      return res.status(404).json({
+        message: 'Vehicle not found'
+      });
+    }
+
+    res.json({
+      message: 'Vehicle updated successfully',
+      vehicle
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error updating vehicle',
+      error: error.message
+    });
+  }
+});
+
+// Delete a vehicle
+router.delete('/vehicles/:id', adminAuth, async (req, res) => {
+  try {
+    const vehicleId = req.params.id;
+
+    const vehicle = await Vehicle.findByIdAndDelete(vehicleId);
+
+    if (!vehicle) {
+      return res.status(404).json({
+        message: 'Vehicle not found'
+      });
+    }
+
+    res.json({
+      message: 'Vehicle deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error deleting vehicle',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router; 
