@@ -7,7 +7,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { TableSkeleton } from '../components/SkeletonLoaders';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 
 // Helper function to get department share percentage based on department name
 const getDepartmentShareForDept = (departmentName, defaultShare) => {
@@ -24,28 +24,28 @@ const getDepartmentShareForDept = (departmentName, defaultShare) => {
   return defaultShare;
 };
 
-// Define styles for PDF
+// Define styles for PDF with updated styling
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    padding: 40,
+    padding: 30,
   },
   header: {
-    fontSize: 14,
-    marginBottom: 5,
+    fontSize: 12,
+    marginBottom: 3,
     textAlign: 'center',
     fontWeight: 'bold',
-    color: '#333',
+    color: '#059669', // App theme green
   },
   section: {
-    margin: 5,
-    padding: 5,
+    margin: 3,
+    padding: 3,
   },
   table: {
     display: 'table',
     width: 'auto',
-    marginVertical: 5,
+    marginVertical: 3,
   },
   tableRow: {
     flexDirection: 'row',
@@ -53,60 +53,122 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     borderBottomStyle: 'solid',
     alignItems: 'center',
-    minHeight: 35,
-    paddingVertical: 8,
+    minHeight: 25,
+    paddingVertical: 4,
   },
   tableHeader: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F0FDF4', // Light green background
     borderBottomWidth: 2,
-    borderBottomColor: '#D1D5DB',
+    borderBottomColor: '#059669', // App theme green
   },
   tableCell: {
     flex: 1,
-    fontSize: 11,
-    padding: 8,
+    fontSize: 9,
+    padding: 3,
     textAlign: 'left',
   },
   tableCellRight: {
     flex: 1,
-    fontSize: 11,
-    padding: 8,
+    fontSize: 9,
+    padding: 3,
+    textAlign: 'right',
+  },
+  tableCellCompact: {
+    flex: 1,
+    fontSize: 9,
+    padding: 2,
+    textAlign: 'center',
+  },
+  tableCellRightCompact: {
+    flex: 1,
+    fontSize: 9,
+    padding: 2,
     textAlign: 'right',
   },
   summaryCard: {
-    marginVertical: 15,
-    padding: 15,
+    marginVertical: 8,
+    padding: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
+    borderColor: '#059669', // App theme green
+    borderRadius: 6,
+    backgroundColor: '#F0FDF4', // Light green background
   },
   summaryTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#374151',
+    marginBottom: 5,
+    color: '#059669', // App theme green
   },
   summaryValue: {
-    fontSize: 14,
+    fontSize: 10,
     color: '#4B5563',
   },
   dateRange: {
-    fontSize: 12,
-    marginBottom: 5,
+    fontSize: 9,
+    marginBottom: 3,
     color: '#4B5563',
     textAlign: 'center',
   },
   ratesInfo: {
-    fontSize: 14,
+    fontSize: 10,
     color: '#4B5563',
-    marginBottom: 8,
+    marginBottom: 5,
     textAlign: 'center',
   },
   mealCount: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#6B7280',
+    marginTop: 1,
+  },
+  logo: {
+    width: 80,
+    height: 50,
+    marginBottom: 5,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  headerText: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#059669', // App theme green
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 10,
+    color: '#4B5563',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  logoText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#059669',
+    textAlign: 'center',
     marginTop: 2,
+  },
+  totalRow: {
+    borderTopWidth: 2,
+    borderTopColor: '#374151',
+    backgroundColor: '#F3F4F6',
+    fontSize: 9,
+  },
+  totalText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  verticalLine: {
+    borderRightWidth: 1,
+    borderRightColor: '#D1D5DB',
+    borderRightStyle: 'solid',
   },
 });
 
@@ -162,13 +224,22 @@ const BillPDF = ({
 
     // Helper to render header section
     const renderHeader = (title) => (
-      <View style={{ marginBottom: 15, textAlign: 'center' }}>
-        <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 0, textAlign: 'center', color: '#333' }}>
-          {title}
-        </Text>
-        <Text style={{ fontSize: 6, marginBottom: 0, textAlign: 'center', color: '#4B5563' }}>
-          FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
-        </Text>
+      <View style={styles.headerContainer}>
+        <View style={styles.logoContainer}>
+          <Image 
+            src="/src/assets/HiraPlus.jpg" 
+            style={styles.logo}
+          />
+          <Text style={styles.logoText}>Hira Plus</Text>
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>
+            {title}
+          </Text>
+          <Text style={styles.subtitle}>
+            FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+          </Text>
+        </View>
       </View>
     );
 
@@ -195,12 +266,12 @@ const BillPDF = ({
                 <View style={[styles.tableRow, styles.tableHeader]}>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Name</Text>
                   <Text style={[styles.tableCell, { flex: 1.5 }]}>Dept</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1 }]}>B</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1 }]}>L</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1 }]}>D</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Total Meals</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Total Amount</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Dept. Share</Text>
+                  <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>B</Text>
+                  <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>L</Text>
+                  <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>D</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>Total Meals</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>Total Amount</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>Dept. Share</Text>
                   <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Employee Payable</Text>
                 </View>
 
@@ -246,12 +317,12 @@ const BillPDF = ({
                         <Text style={[styles.tableCell, { flex: 1.5 }]}>{
                           user.department || user.parentDepartment || 'N/A'
                         }</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1 }]}>{user.breakfastCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1 }]}>{user.lunchCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1 }]}>{user.dinnerCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{totalMeals}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{totalMealAmount.toFixed(2)}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{deptShareCalc.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>{user.breakfastCount || 0}</Text>
+                        <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>{user.lunchCount || 0}</Text>
+                        <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>{user.dinnerCount || 0}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>{totalMeals}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>{totalMealAmount.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>{deptShareCalc.toFixed(2)}</Text>
                         <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{empPayableCalc.toFixed(2)}</Text>
                       </View>
                     );
@@ -352,16 +423,16 @@ const BillPDF = ({
                   const totalEmpPayable = internEmpShare + regularEmpShare;
 
                   return (
-                    <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({allUsers.length} employees)</Text>
-                      <Text style={[styles.tableCell, { flex: 1.5, fontWeight: 'bold', fontSize: 12 }]}>-</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalMealsCount}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{grandTotal.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalDeptShare.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalEmpPayable.toFixed(2)}</Text>
+                    <View style={[styles.tableRow, styles.totalRow]}>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold' }, styles.totalText]}>TOTAL ({allUsers.length} )</Text>
+                      <Text style={[styles.tableCell, { flex: 1.5, fontWeight: 'bold' }, styles.totalText]}>-</Text>
+                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold' }, styles.totalText]}>{totalBreakfast}</Text>
+                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold' }, styles.totalText]}>{totalLunch}</Text>
+                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold' }, styles.totalText]}>{totalDinner}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText, styles.verticalLine]}>{totalMealsCount}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText, styles.verticalLine]}>{grandTotal.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText, styles.verticalLine]}>{totalDeptShare.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText]}>{totalEmpPayable.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -685,13 +756,22 @@ const SummaryPDF = ({
 
     // Helper to render header section
     const renderHeader = (title) => (
-      <View style={{ marginBottom: 15, textAlign: 'center' }}>
-        <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 0, textAlign: 'center', color: '#333' }}>
-          {title}
-        </Text>
-        <Text style={{ fontSize: 6, marginBottom: 0, textAlign: 'center', color: '#4B5563' }}>
-          FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
-        </Text>
+      <View style={styles.headerContainer}>
+        <View style={styles.logoContainer}>
+          <Image 
+            src="/src/assets/HiraPlus.jpg" 
+            style={styles.logo}
+          />
+          <Text style={styles.logoText}>Hira Plus</Text>
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>
+            {title}
+          </Text>
+          <Text style={styles.subtitle}>
+            FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+          </Text>
+        </View>
       </View>
     );
 
@@ -992,13 +1072,22 @@ const DetailedDepartmentPDF = ({
       : 'DETAILED DEPARTMENT BILLS - ALL DEPARTMENTS';
 
     const renderHeader = (title) => (
-      <View style={{ marginBottom: 15, textAlign: 'center' }}>
-        <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 0, textAlign: 'center', color: '#333' }}>
-          {title}
-        </Text>
-        <Text style={{ fontSize: 6, marginBottom: 0, textAlign: 'center', color: '#4B5563' }}>
-          FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
-        </Text>
+      <View style={styles.headerContainer}>
+        <View style={styles.logoContainer}>
+          <Image 
+            src="/src/assets/HiraPlus.jpg" 
+            style={styles.logo}
+          />
+          <Text style={styles.logoText}>Hira Plus</Text>
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>
+            {title}
+          </Text>
+          <Text style={styles.subtitle}>
+            FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+          </Text>
+        </View>
       </View>
     );
 
@@ -1197,14 +1286,32 @@ const DetailedDepartmentPDF = ({
 // Insert the new InvoicePDF component just before BillGenerator definition
 const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
   if (!invoiceData || !dateRange?.startDate || !dateRange?.endDate) return null;
+  
+  const renderHeader = (title) => (
+    <View style={styles.headerContainer}>
+      <View style={styles.logoContainer}>
+        <Image 
+          src="/src/assets/HiraPlus.jpg" 
+          style={styles.logo}
+        />
+        <Text style={styles.logoText}>Hira Plus</Text>
+      </View>
+      <View style={styles.headerText}>
+        <Text style={styles.title}>
+          {title}
+        </Text>
+        <Text style={styles.subtitle}>
+          FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+        </Text>
+      </View>
+    </View>
+  );
+  
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Invoice Header */}
-        <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', color: '#333' }}>HIRA PLUS</Text>
-          <Text style={{ fontSize: 12, textAlign: 'center', color: '#4B5563' }}>INVOICE</Text>
-        </View>
+        {renderHeader('HIRA PLUS INVOICE')}
+        
         {/* Billing details */}
         <View style={{ marginBottom: 10 }}>
           <Text style={{ fontSize: 10, color: '#4B5563' }}>Department: {selectedDepartment}</Text>
@@ -1212,6 +1319,7 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
             Period: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} - {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
           </Text>
         </View>
+        
         {/* Charge breakdown table */}
         <View style={styles.section}>
           <View style={styles.table}>
@@ -1304,6 +1412,7 @@ const BillGenerator = () => {
   const [departments, setDepartments] = useState([]);
   // Inside BillGenerator component state declarations, add invoiceData
   const [invoiceData, setInvoiceData] = useState(null);
+  const [showAllUsers, setShowAllUsers] = useState(false);
 
   const venues = [
     'Auditorium [2nd Floor]',
@@ -2774,6 +2883,7 @@ const BillGenerator = () => {
                               setTotalAmount(0);
                               setEmployeePayable(0);
                               setDepartmentPayable(0);
+                              setShowAllUsers(false);
                             }}
                             className="block w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                           >
@@ -2827,15 +2937,26 @@ const BillGenerator = () => {
                                 <div className="text-sm text-blue-600">
                                   <strong>{selectedList.users?.length || 0} users:</strong>
                                   <div className="mt-1 flex flex-wrap gap-1">
-                                    {selectedList.users?.slice(0, 5).map(user => (
+                                    {selectedList.users?.slice(0, showAllUsers ? selectedList.users.length : 5).map(user => (
                                       <span key={user._id} className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
                                         {user.name}
                                       </span>
                                     ))}
-                                    {selectedList.users?.length > 5 && (
-                                      <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                    {selectedList.users?.length > 5 && !showAllUsers && (
+                                      <button
+                                        onClick={() => setShowAllUsers(true)}
+                                        className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs hover:bg-blue-200 cursor-pointer transition-colors duration-200"
+                                      >
                                         +{selectedList.users.length - 5} more
-                                      </span>
+                                      </button>
+                                    )}
+                                    {showAllUsers && selectedList.users?.length > 5 && (
+                                      <button
+                                        onClick={() => setShowAllUsers(false)}
+                                        className="inline-block bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs hover:bg-gray-200 cursor-pointer transition-colors duration-200"
+                                      >
+                                        Show less
+                                      </button>
                                     )}
                                   </div>
                                 </div>
@@ -3227,7 +3348,7 @@ const BillGenerator = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualLunch}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualDinner}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                  ..{Math.round(totalAmount).toLocaleString()}
+                                  {Math.round(totalAmount).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                                   {Math.round(deptPayable).toLocaleString()}
@@ -3405,36 +3526,36 @@ const BillGenerator = () => {
                         {billType === 'custom' && ` (Custom list: ${customListData?.title || 'Selected users'})`}
                       </p>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
+                    <div className="w-full">
+                      <table className="w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                               Employee Name
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                               Department
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Breakfast
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              B
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Lunch
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              L
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Dinner
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              D
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Total Meals
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              Total
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Total Amount
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              Amount
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                               Dept. Share
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Employee Payable
+                            <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              Employee
                             </th>
                           </tr>
                         </thead>
@@ -3488,41 +3609,41 @@ const BillGenerator = () => {
 
                               return (
                                 <tr key={`${user.userId}-${index}-${isIntern ? 'intern' : 'regular'}`} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${isIntern ? 'bg-yellow-50 border-l-4 border-orange-400' : ''}`}>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  <td className="px-2 py-4 text-sm font-medium text-gray-900 truncate">
                                     {user.name || 'N/A'}{isIntern ? ' 📚' : ''}
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-4 text-sm text-gray-500 truncate">
                                     {user.department || user.parentDepartment || 'N/A'}
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-4 text-sm text-gray-500 text-center">
                                     <div className="flex flex-col">
-                                      <span>{user.breakfastCount || 0}</span>
-                                      <span className="text-xs text-gray-400">{breakfastAmount.toFixed(2)}</span>
+                                      <span className="text-xs">{user.breakfastCount || 0}</span>
+                                      <span className="text-xs text-gray-400">{breakfastAmount.toFixed(0)}</span>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-4 text-sm text-gray-500 text-center">
                                     <div className="flex flex-col">
-                                      <span>{user.lunchCount || 0}</span>
-                                      <span className="text-xs text-gray-400">{lunchAmount.toFixed(2)}</span>
+                                      <span className="text-xs">{user.lunchCount || 0}</span>
+                                      <span className="text-xs text-gray-400">{lunchAmount.toFixed(0)}</span>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-4 text-sm text-gray-500 text-center">
                                     <div className="flex flex-col">
-                                      <span>{user.dinnerCount || 0}</span>
-                                      <span className="text-xs text-gray-400">{dinnerAmount.toFixed(2)}</span>
+                                      <span className="text-xs">{user.dinnerCount || 0}</span>
+                                      <span className="text-xs text-gray-400">{dinnerAmount.toFixed(0)}</span>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <span className="font-medium">{totalMeals}</span>
+                                  <td className="px-2 py-4 text-sm text-gray-500 text-center">
+                                    <span className="font-medium text-xs">{totalMeals}</span>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
-                                    {totalMealAmount.toFixed(2)}
+                                  <td className="px-2 py-4 text-sm font-semibold text-blue-600 text-center">
+                                    <span className="text-xs">{totalMealAmount.toFixed(0)}</span>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                                    {deptShare.toFixed(2)}
+                                  <td className="px-2 py-4 text-sm font-semibold text-green-600 text-center">
+                                    <span className="text-xs">{deptShare.toFixed(0)}</span>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
-                                    {empPayable.toFixed(2)}
+                                  <td className="px-2 py-4 text-sm font-semibold text-red-600 text-center">
+                                    <span className="text-xs">{empPayable.toFixed(0)}</span>
                                   </td>
                                 </tr>
                               );
@@ -3534,7 +3655,7 @@ const BillGenerator = () => {
                                 {interns.length > 0 && (
                                   <>
                                     <tr className="bg-orange-500">
-                                      <td colSpan="9" className="px-6 py-3 text-center text-white font-bold text-sm">
+                                      <td colSpan="9" className="px-2 py-3 text-center text-white font-bold text-xs">
                                         🎓 INTERNS ({interns.length} students) - 100% Department Share, 0% Employee Share
                                       </td>
                                     </tr>
@@ -3547,7 +3668,7 @@ const BillGenerator = () => {
                                   <>
                                     {interns.length > 0 && (
                                       <tr className="bg-gray-600">
-                                        <td colSpan="9" className="px-6 py-3 text-center text-white font-bold text-sm">
+                                        <td colSpan="9" className="px-2 py-3 text-center text-white font-bold text-xs">
                                           👥 REGULAR EMPLOYEES ({regularEmployees.length} staff) - Department-specific Share Rates
                                         </td>
                                       </tr>
@@ -3564,19 +3685,19 @@ const BillGenerator = () => {
                       {/* Summary Row */}
                       <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                         <tr>
-                          <td className="px-6 py-4 text-sm font-bold text-gray-900" colSpan="6">
+                          <td className="px-2 py-4 text-sm font-bold text-gray-900" colSpan="6">
                             TOTAL ({billData.departments
                               .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
                               .reduce((acc, dept) => acc + dept.users.filter(user => !user.isFreeFood).length, 0)} employees)
                           </td>
-                          <td className="px-6 py-4 text-sm font-bold text-blue-600">
-                            {Math.round(totalAmount).toLocaleString()}
+                          <td className="px-2 py-4 text-sm font-bold text-blue-600 text-center">
+                            <span className="text-xs">{Math.round(totalAmount).toLocaleString()}</span>
                           </td>
-                          <td className="px-6 py-4 text-sm font-bold text-green-600">
-                            {Math.round(departmentPayable).toLocaleString()}
+                          <td className="px-2 py-4 text-sm font-bold text-green-600 text-center">
+                            <span className="text-xs">{Math.round(departmentPayable).toLocaleString()}</span>
                           </td>
-                          <td className="px-6 py-4 text-sm font-bold text-red-600">
-                            {Math.round(employeePayable).toLocaleString()}
+                          <td className="px-2 py-4 text-sm font-bold text-red-600 text-center">
+                            <span className="text-xs">{Math.round(employeePayable).toLocaleString()}</span>
                           </td>
                         </tr>
                       </tfoot>
