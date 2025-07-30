@@ -8,6 +8,7 @@ import Sidebar from '../components/Sidebar';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { TableSkeleton } from '../components/SkeletonLoaders';
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import HiraPlus from '../assets/HiraPlus.jpg';
 
 // Helper function to get department share percentage based on department name
 const getDepartmentShareForDept = (departmentName, defaultShare) => {
@@ -227,7 +228,7 @@ const BillPDF = ({
       <View style={styles.headerContainer}>
         <View style={styles.logoContainer}>
           <Image 
-            src="/src/assets/HiraPlus.jpg" 
+            src={HiraPlus} 
             style={styles.logo}
           />
           <Text style={styles.logoText}>Hira Plus</Text>
@@ -759,7 +760,7 @@ const SummaryPDF = ({
       <View style={styles.headerContainer}>
         <View style={styles.logoContainer}>
           <Image 
-            src="/src/assets/HiraPlus.jpg" 
+            src={HiraPlus} 
             style={styles.logo}
           />
           <Text style={styles.logoText}>Hira Plus</Text>
@@ -1075,7 +1076,7 @@ const DetailedDepartmentPDF = ({
       <View style={styles.headerContainer}>
         <View style={styles.logoContainer}>
           <Image 
-            src="/src/assets/HiraPlus.jpg" 
+            src={HiraPlus} 
             style={styles.logo}
           />
           <Text style={styles.logoText}>Hira Plus</Text>
@@ -1291,7 +1292,7 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
     <View style={styles.headerContainer}>
       <View style={styles.logoContainer}>
         <Image 
-          src="/src/assets/HiraPlus.jpg" 
+          src={HiraPlus} 
           style={styles.logo}
         />
         <Text style={styles.logoText}>Hira Plus</Text>
