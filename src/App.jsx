@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDepartments from './pages/AdminDepartments';
+import AdminVehicles from './pages/AdminVehicles';
+import AdminTravels from './pages/AdminTravels';
 import AdminMeals from './pages/AdminMeals';
 import AdminMenus from './pages/AdminMenus';
 import AdminNotifications from './pages/AdminNotifications';
@@ -48,6 +50,22 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminDepartments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/vehicles"
+          element={
+            <ProtectedRoute>
+              <AdminVehicles />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/travels"
+          element={
+            <ProtectedRoute>
+              <AdminTravels />
             </ProtectedRoute>
           }
         />

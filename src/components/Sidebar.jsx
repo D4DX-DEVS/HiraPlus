@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   UsersIcon,
@@ -10,14 +10,36 @@ import {
   UserGroupIcon,
   ClockIcon,
   BuildingOfficeIcon,
-  BookOpenIcon
+  BookOpenIcon,
+  TruckIcon,
+  MapPinIcon,
+  ChevronDownIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import HiraPlusIcon from '../assets/HiraPlus.jpg';
 
 const Sidebar = ({ isOpen }) => {
+  const [expandedItems, setExpandedItems] = useState({});
+
+  const toggleExpanded = (itemName) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [itemName]: !prev[itemName]
+    }));
+  };
+
   const navigation = [
     { name: 'Users', href: '/admin/dashboard', icon: UsersIcon },
     { name: 'Departments', href: '/admin/departments', icon: BuildingOfficeIcon },
+    { 
+      name: 'Vehicles', 
+      href: '/admin/vehicles', 
+      icon: TruckIcon,
+      subItems: [
+        { name: 'Vehicles', href: '/admin/vehicles', icon: TruckIcon },
+        { name: 'Travels', href: '/admin/travels', icon: MapPinIcon }
+      ]
+    },
     { name: 'Meetings', href: '/admin/meetings', icon: ClockIcon },
     { name: 'Meals', href: '/admin/meals', icon: CalendarIcon },
     { name: 'Menu Management', href: '/admin/menus', icon: BookOpenIcon },
@@ -75,51 +97,128 @@ const Sidebar = ({ isOpen }) => {
           {/* Navigation Section */}
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-green-700 scrollbar-track-green-900">
           {navigation.map((item, index) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              className={({ isActive }) =>
-                  `group relative flex items-center px-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:translate-x-1 ${
-                  isActive
-                      ? 'bg-gradient-to-r from-green-600/80 to-green-700/60 text-white shadow-lg border border-green-500/50 backdrop-blur-sm'
-                      : 'text-green-200/80 hover:bg-gradient-to-r hover:from-green-800/50 hover:to-green-900/40 hover:text-white hover:shadow-md hover:backdrop-blur-sm'
-                }`
-              }
-                title={!isOpen ? item.name : ''}
-                style={{
-                  animationDelay: `${index * 50}ms`
-                }}
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Animated border for active state */}
-                  {isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-300 to-green-400 rounded-r-full shadow-sm" />
+            <div key={item.name}>
+              {/* Main navigation item */}
+              {item.subItems ? (
+                // Item with sub-menu
+                <div>
+                  <button
+                    onClick={() => toggleExpanded(item.name)}
+                    className={`group relative flex items-center w-full px-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:translate-x-1 text-green-200/80 hover:bg-gradient-to-r hover:from-green-800/50 hover:to-green-900/40 hover:text-white hover:shadow-md hover:backdrop-blur-sm`}
+                    title={!isOpen ? item.name : ''}
+                    style={{
+                      animationDelay: `${index * 50}ms`
+                    }}
+                  >
+                    <div className={`flex items-center justify-center flex-shrink-0 ${isOpen ? 'w-5 h-5 mr-3' : 'w-5 h-5 mx-auto'}`}>
+                      <item.icon
+                        className={`w-4 h-4 transition-all duration-300 group-hover:scale-110`}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    
+                    {isOpen && (
+                      <>
+                        <span className="truncate font-medium flex-1 text-left">
+                          {item.name}
+                        </span>
+                        <div className="ml-2">
+                          {expandedItems[item.name] ? (
+                            <ChevronDownIcon className="w-4 h-4" />
+                          ) : (
+                            <ChevronRightIcon className="w-4 h-4" />
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* Sub-menu items */}
+                  {isOpen && expandedItems[item.name] && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {item.subItems.map((subItem) => (
+                        <NavLink
+                          key={subItem.name}
+                          to={subItem.href}
+                          className={({ isActive }) =>
+                            `group relative flex items-center px-2 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${
+                              isActive
+                                ? 'bg-gradient-to-r from-green-600/80 to-green-700/60 text-white shadow-lg border border-green-500/50 backdrop-blur-sm'
+                                : 'text-green-200/70 hover:bg-gradient-to-r hover:from-green-800/30 hover:to-green-900/20 hover:text-white'
+                            }`
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              <div className="flex items-center justify-center flex-shrink-0 w-4 h-4 mr-2">
+                                <subItem.icon
+                                  className={`w-3 h-3 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <span className="truncate">
+                                {subItem.name}
+                              </span>
+                              
+                              {/* Active indicator dot for sub-items */}
+                              {isActive && (
+                                <div className="ml-auto w-1 h-1 bg-green-300 rounded-full shadow-sm animate-pulse" />
+                              )}
+                            </>
+                          )}
+                        </NavLink>
+                      ))}
+                    </div>
                   )}
-                  
-                  <div className={`flex items-center justify-center flex-shrink-0 ${isOpen ? 'w-5 h-5 mr-3' : 'w-5 h-5 mx-auto'}`}>
-                    <item.icon
-                      className={`w-4 h-4 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
-                      aria-hidden="true"
-                    />
-                  </div>
-                  
-                  {isOpen && (
-                    <span className="truncate font-medium">
-                      {item.name}
-                    </span>
+                </div>
+              ) : (
+                // Regular navigation item
+                <NavLink
+                  to={item.href}
+                  className={({ isActive }) =>
+                      `group relative flex items-center px-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:translate-x-1 ${
+                      isActive
+                          ? 'bg-gradient-to-r from-green-600/80 to-green-700/60 text-white shadow-lg border border-green-500/50 backdrop-blur-sm'
+                          : 'text-green-200/80 hover:bg-gradient-to-r hover:from-green-800/50 hover:to-green-900/40 hover:text-white hover:shadow-md hover:backdrop-blur-sm'
+                    }`
+                  }
+                    title={!isOpen ? item.name : ''}
+                    style={{
+                      animationDelay: `${index * 50}ms`
+                    }}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {/* Animated border for active state */}
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-300 to-green-400 rounded-r-full shadow-sm" />
+                      )}
+                      
+                      <div className={`flex items-center justify-center flex-shrink-0 ${isOpen ? 'w-5 h-5 mr-3' : 'w-5 h-5 mx-auto'}`}>
+                        <item.icon
+                          className={`w-4 h-4 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      
+                      {isOpen && (
+                        <span className="truncate font-medium">
+                          {item.name}
+                        </span>
+                      )}
+                      
+                      {/* Subtle glow effect on hover */}
+                      <div className={`absolute inset-0 rounded-lg bg-gradient-to-r from-green-400/0 to-green-300/0 group-hover:from-green-400/5 group-hover:to-green-300/5 transition-all duration-300 ${isActive ? 'from-green-300/10 to-green-400/10' : ''}`} />
+                      
+                      {/* Active indicator dot */}
+                      {isOpen && isActive && (
+                        <div className="ml-auto w-1.5 h-1.5 bg-green-300 rounded-full shadow-sm animate-pulse" />
+                      )}
+                    </>
                   )}
-                  
-                  {/* Subtle glow effect on hover */}
-                  <div className={`absolute inset-0 rounded-lg bg-gradient-to-r from-green-400/0 to-green-300/0 group-hover:from-green-400/5 group-hover:to-green-300/5 transition-all duration-300 ${isActive ? 'from-green-300/10 to-green-400/10' : ''}`} />
-                  
-                  {/* Active indicator dot */}
-                  {isOpen && isActive && (
-                    <div className="ml-auto w-1.5 h-1.5 bg-green-300 rounded-full shadow-sm animate-pulse" />
-                  )}
-                </>
+                </NavLink>
               )}
-            </NavLink>
+            </div>
           ))}
         </nav>
 
