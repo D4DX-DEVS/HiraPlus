@@ -6,7 +6,9 @@ import {
   MapPinIcon,
   ClockIcon,
   TruckIcon,
-  UserIcon
+  UserIcon,
+  FunnelIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
@@ -21,6 +23,15 @@ const AdminTravels = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // New state for sorting and filtering
+  const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [dateFilter, setDateFilter] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [vehicles, setVehicles] = useState([]);
 
   const fetchTravels = async () => {
     try {
@@ -32,6 +43,13 @@ const AdminTravels = () => {
       });
 
       setTravels(response.data || []);
+      
+      // Extract unique vehicles for filter dropdown
+      const uniqueVehicles = [...new Set(response.data
+        .filter(travel => travel.vehicle?.vehicleName)
+        .map(travel => travel.vehicle.vehicleName)
+      )].sort();
+      setVehicles(uniqueVehicles);
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Failed to fetch travels');
       console.error('Error fetching travels:', err);
@@ -66,9 +84,19 @@ const AdminTravels = () => {
     }
   };
 
+  const isDateInRange = (travelDate, startDate, endDate) => {
+    if (!startDate || !endDate) return true;
+    
+    const travel = new Date(travelDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    return travel >= start && travel <= end;
+  };
+
   const filteredTravels = travels.filter(travel => {
     const searchLower = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       travel.fromLocation?.toLowerCase().includes(searchLower) ||
       travel.toLocation?.toLowerCase().includes(searchLower) ||
       travel.user?.name?.toLowerCase().includes(searchLower) ||
@@ -76,7 +104,20 @@ const AdminTravels = () => {
       travel.vehicle?.vehicleNumber?.toLowerCase().includes(searchLower) ||
       travel.description?.toLowerCase().includes(searchLower)
     );
+    
+    const matchesVehicle = !selectedVehicle || travel.vehicle?.vehicleName === selectedVehicle;
+    const matchesDateRange = isDateInRange(travel.date, dateFilter.startDate, dateFilter.endDate);
+    
+    return matchesSearch && matchesVehicle && matchesDateRange;
   });
+
+  const clearFilters = () => {
+    setSelectedVehicle('');
+    setDateFilter({ startDate: '', endDate: '' });
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters = selectedVehicle || dateFilter.startDate || dateFilter.endDate || searchQuery;
 
   useEffect(() => {
     fetchTravels();
@@ -117,35 +158,146 @@ const AdminTravels = () => {
                         </span>
                         <span className="flex items-center text-blue-600">
                           <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
-                          {filteredTravels.length} Total
+                          {travels.length} Total
                         </span>
+                        {hasActiveFilters && (
+                          <span className="flex items-center text-orange-600">
+                            <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></div>
+                            Filtered
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <MapPinIcon className="h-4 w-4" />
-                      <span>View Only</span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          hasActiveFilters 
+                            ? 'bg-orange-100 text-orange-700 border border-orange-200' 
+                            : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                        }`}
+                      >
+                        <FunnelIcon className="h-4 w-4" />
+                        <span>Filters</span>
+                        {hasActiveFilters && (
+                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        )}
+                      </button>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <MapPinIcon className="h-4 w-4" />
+                        <span>View Only</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Search Section */}
-              <div className="mb-3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2">
-                  <div className="relative max-w-md">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+              {/* Filters Section */}
+              {showFilters && (
+                <div className="mb-3 bg-white rounded-lg shadow-sm border border-gray-200/50 p-3">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                    {/* Search */}
+                    <div className="lg:col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Search
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search by location, user, vehicle..."
+                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search travels by location, user, vehicle..."
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
-                    />
+
+                    {/* Vehicle Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Vehicle
+                      </label>
+                      <select
+                        value={selectedVehicle}
+                        onChange={(e) => setSelectedVehicle(e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                      >
+                        <option value="">All Vehicles</option>
+                        {vehicles.map((vehicle) => (
+                          <option key={vehicle} value={vehicle}>
+                            {vehicle}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Date Range */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Date Range
+                      </label>
+                      <div className="flex space-x-2">
+                        <input
+                          type="date"
+                          value={dateFilter.startDate}
+                          onChange={(e) => setDateFilter({...dateFilter, startDate: e.target.value})}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        />
+                        <input
+                          type="date"
+                          value={dateFilter.endDate}
+                          onChange={(e) => setDateFilter({...dateFilter, endDate: e.target.value})}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filter Actions */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+                    <div className="text-xs text-gray-500">
+                      {hasActiveFilters && (
+                        <span>
+                          Showing {filteredTravels.length} of {travels.length} travels
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {hasActiveFilters && (
+                        <button
+                          onClick={clearFilters}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Search Section (when filters are collapsed) */}
+              {!showFilters && (
+                <div className="mb-3">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-2">
+                    <div className="relative max-w-md">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search travels by location, user, vehicle..."
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
@@ -190,11 +342,16 @@ const AdminTravels = () => {
                         {filteredTravels.length === 0 ? (
                           <div className="px-4 py-8 text-center text-gray-500">
                             <MapPinIcon className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                            <p className="text-sm">No travels found</p>
-                            {searchQuery && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                Try adjusting your search criteria
-                              </p>
+                            <p className="text-sm">
+                              {hasActiveFilters ? 'No travels match your filters' : 'No travels found'}
+                            </p>
+                            {hasActiveFilters && (
+                              <button
+                                onClick={clearFilters}
+                                className="text-xs text-green-600 hover:text-green-700 mt-1 underline"
+                              >
+                                Clear filters
+                              </button>
                             )}
                           </div>
                         ) : (
