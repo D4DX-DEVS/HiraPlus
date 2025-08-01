@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     textAlign: 'center',
     fontWeight: 'bold',
-    color: '#059669', // App theme green
+    color: '#000000', // Black for better printing
   },
   section: {
     margin: 3,
@@ -47,78 +47,94 @@ const styles = StyleSheet.create({
     display: 'table',
     width: 'auto',
     marginVertical: 3,
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#000000',
     borderBottomStyle: 'solid',
     alignItems: 'center',
     minHeight: 25,
     paddingVertical: 4,
   },
   tableHeader: {
-    backgroundColor: '#F0FDF4', // Light green background
+    backgroundColor: '#F5F5F5', // Light gray background
     borderBottomWidth: 2,
-    borderBottomColor: '#059669', // App theme green
+    borderBottomColor: '#000000', // Black border
+    fontWeight: 'bold',
   },
   tableCell: {
     flex: 1,
     fontSize: 9,
     padding: 3,
     textAlign: 'left',
+    color: '#000000',
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
   },
   tableCellRight: {
     flex: 1,
     fontSize: 9,
     padding: 3,
     textAlign: 'right',
+    color: '#000000',
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
   },
   tableCellCompact: {
     flex: 1,
     fontSize: 9,
     padding: 2,
     textAlign: 'center',
+    color: '#000000',
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
   },
   tableCellRightCompact: {
     flex: 1,
     fontSize: 9,
     padding: 2,
     textAlign: 'right',
+    color: '#000000',
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
   },
   summaryCard: {
     marginVertical: 8,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#059669', // App theme green
+    borderColor: '#000000', // Black border
     borderRadius: 6,
-    backgroundColor: '#F0FDF4', // Light green background
+    backgroundColor: '#F5F5F5', // Light gray background
   },
   summaryTitle: {
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 5,
-    color: '#059669', // App theme green
+    color: '#000000', // Black text
   },
   summaryValue: {
     fontSize: 10,
-    color: '#4B5563',
+    color: '#000000', // Black text
   },
   dateRange: {
     fontSize: 9,
     marginBottom: 3,
-    color: '#4B5563',
+    color: '#000000', // Black text
     textAlign: 'center',
   },
   ratesInfo: {
     fontSize: 10,
-    color: '#4B5563',
+    color: '#000000', // Black text
     marginBottom: 5,
     textAlign: 'center',
   },
   mealCount: {
     fontSize: 8,
-    color: '#6B7280',
+    color: '#000000', // Black text
     marginTop: 1,
   },
   logo: {
@@ -138,12 +154,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#059669', // App theme green
+    color: '#000000', // Black text
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 10,
-    color: '#4B5563',
+    color: '#000000', // Black text
   },
   logoContainer: {
     alignItems: 'center',
@@ -493,7 +509,7 @@ const BillPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetings}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalAuditorium}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalConference}</Text>
@@ -821,7 +837,7 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} )</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetings}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalAuditorium}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalConference}</Text>
@@ -884,7 +900,7 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
@@ -970,7 +986,7 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
@@ -1031,7 +1047,7 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalFoodShare.toFixed(2)}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalRent.toFixed(2)}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetingFood.toFixed(2)}</Text>
