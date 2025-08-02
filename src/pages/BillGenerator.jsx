@@ -1379,6 +1379,8 @@ const BillGenerator = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [deleteListId, setDeleteListId] = useState(null);
   const [billType, setBillType] = useState('food');
   
   // Custom List Management States
@@ -1389,11 +1391,13 @@ const BillGenerator = () => {
   const [customListForm, setCustomListForm] = useState({
     title: '',
     description: '',
-    users: []
+    users: [],
+    departments: []
   });
   const [availableUsers, setAvailableUsers] = useState([]);
   // Search query for filtering users in Custom List modal
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [customListData, setCustomListData] = useState(null);
   const [selectedVenue, setSelectedVenue] = useState('');
   const [rentData, setRentData] = useState(null);
@@ -1454,6 +1458,54 @@ const BillGenerator = () => {
     }
   };
 
+  // Function to fetch users by department
+  const fetchUsersByDepartment = async (departmentName) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/admin/users/department/${encodeURIComponent(departmentName)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      return response.data;
+    } catch (err) {
+      console.error('Failed to fetch users by department:', err);
+      return [];
+    }
+  };
+
+  // Function to handle department selection
+  const handleDepartmentSelection = async (departmentName, isSelected) => {
+    if (isSelected) {
+      // Add department to selected departments
+      setSelectedDepartments(prev => [...prev, departmentName]);
+      
+      // Fetch users from this department and add them to the form
+      const departmentUsers = await fetchUsersByDepartment(departmentName);
+      const userIds = departmentUsers.map(user => user._id);
+      
+      setCustomListForm(prev => ({
+        ...prev,
+        departments: [...prev.departments, departmentName],
+        users: [...new Set([...prev.users, ...userIds])] // Remove duplicates
+      }));
+    } else {
+      // Remove department from selected departments
+      setSelectedDepartments(prev => prev.filter(dept => dept !== departmentName));
+      
+      // Remove users from this department from the form
+      const departmentUsers = await fetchUsersByDepartment(departmentName);
+      const userIdsToRemove = departmentUsers.map(user => user._id);
+      
+      setCustomListForm(prev => ({
+        ...prev,
+        departments: prev.departments.filter(dept => dept !== departmentName),
+        users: prev.users.filter(userId => !userIdsToRemove.includes(userId))
+      }));
+    }
+  };
+
   const handleCreateCustomList = async () => {
     try {
       const token = localStorage.getItem('adminToken');
@@ -1465,7 +1517,8 @@ const BillGenerator = () => {
         }
       );
       setShowCustomListForm(false);
-      setCustomListForm({ title: '', description: '', users: [] });
+      setCustomListForm({ title: '', description: '', users: [], departments: [] });
+      setSelectedDepartments([]);
       fetchCustomLists();
     } catch (err) {
       console.error('Failed to create custom list:', err);
@@ -1485,7 +1538,8 @@ const BillGenerator = () => {
       );
       setShowCustomListForm(false);
       setEditingCustomList(null);
-      setCustomListForm({ title: '', description: '', users: [] });
+      setCustomListForm({ title: '', description: '', users: [], departments: [] });
+      setSelectedDepartments([]);
       fetchCustomLists();
     } catch (err) {
       console.error('Failed to update custom list:', err);
@@ -1493,25 +1547,31 @@ const BillGenerator = () => {
     }
   };
 
-  const handleDeleteCustomList = async (listId) => {
-    if (!window.confirm('Are you sure you want to delete this custom list?')) {
-      return;
-    }
+  const handleDeleteCustomList = (listId) => {
+    setDeleteListId(listId);
+    setShowDeleteConfirmDialog(true);
+  };
+
+  const confirmDeleteCustomList = async () => {
     try {
       const token = localStorage.getItem('adminToken');
       await axios.delete(
-        `${import.meta.env.VITE_API_URL}/admin/custom-lists/${listId}`,
+        `${import.meta.env.VITE_API_URL}/admin/custom-lists/${deleteListId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
       fetchCustomLists();
-      if (selectedCustomList === listId) {
+      if (selectedCustomList === deleteListId) {
         setSelectedCustomList('');
       }
+      setShowDeleteConfirmDialog(false);
+      setDeleteListId(null);
     } catch (err) {
       console.error('Failed to delete custom list:', err);
       setError('Failed to delete custom list');
+      setShowDeleteConfirmDialog(false);
+      setDeleteListId(null);
     }
   };
 
@@ -1520,8 +1580,10 @@ const BillGenerator = () => {
     setCustomListForm({
       title: list.title,
       description: list.description || '',
-      users: list.users.map(user => user._id)
+      users: list.users.map(user => user._id),
+      departments: list.departments || []
     });
+    setSelectedDepartments(list.departments || []);
     setShowCustomListForm(true);
   };
 
@@ -2914,7 +2976,8 @@ const BillGenerator = () => {
                         </div>
                         <button
                           onClick={() => {
-                            setCustomListForm({ title: '', description: '', users: [] });
+                            setCustomListForm({ title: '', description: '', users: [], departments: [] });
+                            setSelectedDepartments([]);
                             setEditingCustomList(null);
                             setShowCustomListForm(true);
                           }}
@@ -2977,6 +3040,18 @@ const BillGenerator = () => {
                                     )}
                                   </div>
                                 </div>
+                                {selectedList.departments && selectedList.departments.length > 0 && (
+                                  <div className="text-sm text-green-600 mt-2">
+                                    <strong>{selectedList.departments.length} departments:</strong>
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {selectedList.departments.map((department, index) => (
+                                        <span key={index} className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                                          {department}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}
@@ -2996,7 +3071,8 @@ const BillGenerator = () => {
                               onClick={() => {
                                 setShowCustomListForm(false);
                                 setEditingCustomList(null);
-                                setCustomListForm({ title: '', description: '', users: [] });
+                                setCustomListForm({ title: '', description: '', users: [], departments: [] });
+                                setSelectedDepartments([]);
                               }}
                               className="text-gray-400 hover:text-gray-600"
                             >
@@ -3031,7 +3107,28 @@ const BillGenerator = () => {
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Select Users ({customListForm.users.length} selected)</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Select Departments ({selectedDepartments.length} selected)</label>
+                              <div className="border border-gray-300 rounded-lg p-4 max-h-40 overflow-y-auto mb-4">
+                                <div className="space-y-2">
+                                  {departments.map((department) => (
+                                    <label key={department} className="flex items-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedDepartments.includes(department)}
+                                        onChange={(e) => handleDepartmentSelection(department, e.target.checked)}
+                                        className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                      />
+                                      <span className="ml-3 text-sm text-gray-900">
+                                        {department}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Select Individual Users ({customListForm.users.length} selected)</label>
 
                               {/* User search bar */}
                               <input
@@ -3089,7 +3186,8 @@ const BillGenerator = () => {
                               onClick={() => {
                                 setShowCustomListForm(false);
                                 setEditingCustomList(null);
-                                setCustomListForm({ title: '', description: '', users: [] });
+                                setCustomListForm({ title: '', description: '', users: [], departments: [] });
+                                setSelectedDepartments([]);
                               }}
                               className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200"
                             >
@@ -4153,6 +4251,44 @@ const BillGenerator = () => {
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-200"
                 >
                   Yes, Generate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirmDialog && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Confirm Delete
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to delete this custom list? This action cannot be undone.
+              </p>
+              <div className="flex justify-center space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirmDialog(false);
+                    setDeleteListId(null);
+                  }}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteCustomList}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200"
+                >
+                  Yes, Delete
                 </button>
               </div>
             </div>
