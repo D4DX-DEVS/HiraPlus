@@ -234,6 +234,52 @@ router.get('/users/list', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Get users by department
+router.get('/users/department/:departmentName', adminAuth, async (req, res) => {
+  try {
+    const { departmentName } = req.params;
+    
+    // Find the department by title
+    const department = await Department.findOne({ 
+      title: { $regex: new RegExp(`^${departmentName}$`, 'i') }
+    });
+    
+    if (!department) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Department not found' 
+      });
+    }
+
+    // Find all active users in this department
+    const users = await User.find({ 
+      department: department._id,
+      status: 'active' 
+    })
+    .populate('department', 'title')
+    .select('name phoneNumber department designation isIntern')
+    .sort({ name: 1 });
+
+    const usersList = users.map(user => ({
+      _id: user._id,
+      name: user.name || '',
+      phoneNumber: user.phoneNumber,
+      department: user.department ? user.department.title : '',
+      designation: user.designation || '',
+      isIntern: user.isIntern,
+      displayName: `${user.name || 'Unknown'} (${user.phoneNumber}) - ${user.department ? user.department.title : 'N/A'}`
+    }));
+
+    res.json(usersList);
+  } catch (error) {
+    console.error('Fetch users by department error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 // Admin: Delete user
 router.delete('/users/:userId', adminAuth, async (req, res) => {
   try {
@@ -2603,7 +2649,7 @@ router.get('/menu/today', async (req, res) => {
 // Create a new custom list
 router.post('/custom-lists', adminAuth, async (req, res) => {
   try {
-    const { title, users, description } = req.body;
+    const { title, users, departments, description } = req.body;
 
     // Validate required fields
     if (!title || !title.trim()) {
@@ -2624,9 +2670,21 @@ router.post('/custom-lists', adminAuth, async (req, res) => {
       }
     }
 
+    // Validate departments if provided
+    if (departments && departments.length > 0) {
+      // Check if all departments exist
+      const existingDepartments = await Department.find({ 
+        title: { $in: departments.map(dept => new RegExp(`^${dept}$`, 'i')) }
+      });
+      if (existingDepartments.length !== departments.length) {
+        return res.status(400).json({ message: 'Some departments do not exist' });
+      }
+    }
+
     const customList = new CustomList({
       title: title.trim(),
       users: users || [],
+      departments: departments || [],
       description: description ? description.trim() : ''
     });
 
@@ -2686,7 +2744,7 @@ router.get('/custom-lists/:id', adminAuth, async (req, res) => {
 // Update a custom list
 router.put('/custom-lists/:id', adminAuth, async (req, res) => {
   try {
-    const { title, users, description } = req.body;
+    const { title, users, departments, description } = req.body;
 
     // Validate required fields
     if (!title || !title.trim()) {
@@ -2707,11 +2765,23 @@ router.put('/custom-lists/:id', adminAuth, async (req, res) => {
       }
     }
 
+    // Validate departments if provided
+    if (departments && departments.length > 0) {
+      // Check if all departments exist
+      const existingDepartments = await Department.find({ 
+        title: { $in: departments.map(dept => new RegExp(`^${dept}$`, 'i')) }
+      });
+      if (existingDepartments.length !== departments.length) {
+        return res.status(400).json({ message: 'Some departments do not exist' });
+      }
+    }
+
     const customList = await CustomList.findByIdAndUpdate(
       req.params.id,
       {
         title: title.trim(),
         users: users || [],
+        departments: departments || [],
         description: description ? description.trim() : ''
       },
       { new: true }
