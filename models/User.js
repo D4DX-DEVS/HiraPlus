@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema({
     default: false,
     required: false
   },
+  isDriver: {
+    type: Boolean,
+    default: false,
+  },
   status: {
     type: String,
     enum: ['active', 'inactive'],

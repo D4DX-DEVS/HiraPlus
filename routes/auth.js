@@ -1082,4 +1082,28 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
+// Get list of drivers (no authentication required)
+router.get('/drivers', async (req, res) => {
+  try {
+    const drivers = await User.find({ isDriver: true })
+      .populate('department', 'title')
+      .select('name phoneNumber department designation status')
+      .sort({ name: 1 });
+
+    const mappedDrivers = drivers.map(driver => ({
+      _id: driver._id,
+      name: driver.name || '',
+      phoneNumber: driver.phoneNumber,
+      department: driver.department || '',
+      designation: driver.designation || '',
+      status: driver.status || 'active'
+    }));
+
+    res.json(mappedDrivers);
+  } catch (error) {
+    console.error('Error fetching drivers:', error);
+    res.status(500).json({ message: 'Error fetching drivers' });
+  }
+});
+
 module.exports = router; 

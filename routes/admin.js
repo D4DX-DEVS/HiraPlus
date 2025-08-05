@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern, isDriver } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -152,7 +152,8 @@ router.post('/users', adminAuth, async (req, res) => {
       isDeptHead: isDeptHead || false,
       status: status || 'active',
       isFreeFood: isFreeFood || false,
-      isIntern: isIntern || false
+      isIntern: isIntern || false,
+      isDriver: isDriver || false
     });
     await user.save();
 
@@ -170,7 +171,8 @@ router.post('/users', adminAuth, async (req, res) => {
         isDeptHead: user.isDeptHead,
         status: user.status,
         isFreeFood: user.isFreeFood,
-        isIntern: user.isIntern
+        isIntern: user.isIntern,
+        isDriver: user.isDriver
       }
     });
   } catch (error) {
@@ -184,7 +186,7 @@ router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern isDriver')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -199,13 +201,38 @@ router.get('/users', adminAuth, async (req, res) => {
       status: user.status || 'active',
       createdAt: user.createdAt,
       isFreeFood: user.isFreeFood,
-      isIntern: user.isIntern
+      isIntern: user.isIntern,
+      isDriver: user.isDriver
     }));
 
     res.json(mappedUsers);
   } catch (error) {
     console.error('Fetch users error:', error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get list of drivers (no authentication required)
+router.get('/drivers', async (req, res) => {
+  try {
+    const drivers = await User.find({ isDriver: true })
+      .populate('department', 'title')
+      .select('name phoneNumber department designation status')
+      .sort({ name: 1 });
+
+    const mappedDrivers = drivers.map(driver => ({
+      _id: driver._id,
+      name: driver.name || '',
+      phoneNumber: driver.phoneNumber,
+      department: driver.department || '',
+      designation: driver.designation || '',
+      status: driver.status || 'active'
+    }));
+
+    res.json(mappedDrivers);
+  } catch (error) {
+    console.error('Error fetching drivers:', error);
+    res.status(500).json({ message: 'Error fetching drivers' });
   }
 });
 
@@ -234,52 +261,6 @@ router.get('/users/list', adminAuth, async (req, res) => {
   }
 });
 
-// Admin: Get users by department
-router.get('/users/department/:departmentName', adminAuth, async (req, res) => {
-  try {
-    const { departmentName } = req.params;
-    
-    // Find the department by title
-    const department = await Department.findOne({ 
-      title: { $regex: new RegExp(`^${departmentName}$`, 'i') }
-    });
-    
-    if (!department) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Department not found' 
-      });
-    }
-
-    // Find all active users in this department
-    const users = await User.find({ 
-      department: department._id,
-      status: 'active' 
-    })
-    .populate('department', 'title')
-    .select('name phoneNumber department designation isIntern')
-    .sort({ name: 1 });
-
-    const usersList = users.map(user => ({
-      _id: user._id,
-      name: user.name || '',
-      phoneNumber: user.phoneNumber,
-      department: user.department ? user.department.title : '',
-      designation: user.designation || '',
-      isIntern: user.isIntern,
-      displayName: `${user.name || 'Unknown'} (${user.phoneNumber}) - ${user.department ? user.department.title : 'N/A'}`
-    }));
-
-    res.json(usersList);
-  } catch (error) {
-    console.error('Fetch users by department error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
-  }
-});
-
 // Admin: Delete user
 router.delete('/users/:userId', adminAuth, async (req, res) => {
   try {
@@ -296,7 +277,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern, isDriver } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -358,6 +339,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (status && ['active', 'inactive'].includes(status)) user.status = status;
     if (typeof isFreeFood !== 'undefined') user.isFreeFood = isFreeFood;
     if (typeof isIntern !== 'undefined') user.isIntern = isIntern;
+    if (typeof isDriver !== 'undefined') user.isDriver = isDriver;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -384,7 +366,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         isDeptHead: user.isDeptHead,
         status: user.status,
         isFreeFood: user.isFreeFood,
-        isIntern: user.isIntern
+        isIntern: user.isIntern,
+        isDriver: user.isDriver
       }
     });
   } catch (error) {
@@ -2649,7 +2632,7 @@ router.get('/menu/today', async (req, res) => {
 // Create a new custom list
 router.post('/custom-lists', adminAuth, async (req, res) => {
   try {
-    const { title, users, departments, description } = req.body;
+    const { title, users, description } = req.body;
 
     // Validate required fields
     if (!title || !title.trim()) {
@@ -2670,21 +2653,9 @@ router.post('/custom-lists', adminAuth, async (req, res) => {
       }
     }
 
-    // Validate departments if provided
-    if (departments && departments.length > 0) {
-      // Check if all departments exist
-      const existingDepartments = await Department.find({ 
-        title: { $in: departments.map(dept => new RegExp(`^${dept}$`, 'i')) }
-      });
-      if (existingDepartments.length !== departments.length) {
-        return res.status(400).json({ message: 'Some departments do not exist' });
-      }
-    }
-
     const customList = new CustomList({
       title: title.trim(),
       users: users || [],
-      departments: departments || [],
       description: description ? description.trim() : ''
     });
 
@@ -2744,7 +2715,7 @@ router.get('/custom-lists/:id', adminAuth, async (req, res) => {
 // Update a custom list
 router.put('/custom-lists/:id', adminAuth, async (req, res) => {
   try {
-    const { title, users, departments, description } = req.body;
+    const { title, users, description } = req.body;
 
     // Validate required fields
     if (!title || !title.trim()) {
@@ -2765,23 +2736,11 @@ router.put('/custom-lists/:id', adminAuth, async (req, res) => {
       }
     }
 
-    // Validate departments if provided
-    if (departments && departments.length > 0) {
-      // Check if all departments exist
-      const existingDepartments = await Department.find({ 
-        title: { $in: departments.map(dept => new RegExp(`^${dept}$`, 'i')) }
-      });
-      if (existingDepartments.length !== departments.length) {
-        return res.status(400).json({ message: 'Some departments do not exist' });
-      }
-    }
-
     const customList = await CustomList.findByIdAndUpdate(
       req.params.id,
       {
         title: title.trim(),
         users: users || [],
-        departments: departments || [],
         description: description ? description.trim() : ''
       },
       { new: true }
