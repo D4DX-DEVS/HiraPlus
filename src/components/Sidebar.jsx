@@ -14,7 +14,8 @@ import {
   TruckIcon,
   MapPinIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
 import HiraPlusIcon from '../assets/HiraPlus.jpg';
 
@@ -37,7 +38,8 @@ const Sidebar = ({ isOpen }) => {
       icon: TruckIcon,
       subItems: [
         { name: 'Vehicles', href: '/admin/vehicles', icon: TruckIcon },
-        { name: 'Travels', href: '/admin/travels', icon: MapPinIcon }
+        { name: 'Travels', href: '/admin/travels', icon: MapPinIcon },
+        { name: 'Drivers', href: '/admin/drivers', icon: UserIcon }
       ]
     },
     { name: 'Meetings', href: '/admin/meetings', icon: ClockIcon },

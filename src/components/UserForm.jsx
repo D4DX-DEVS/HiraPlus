@@ -17,6 +17,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     isDeptHead: initialData?.isDeptHead || false,
     isFreeFood: initialData?.isFreeFood || false,
     isIntern: initialData?.isIntern || false,
+    isDriver: initialData?.isDriver || false,
     status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
@@ -50,6 +51,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         isDeptHead: initialData.isDeptHead || false,
         isFreeFood: initialData.isFreeFood || false,
         isIntern: initialData.isIntern || false,
+        isDriver: initialData.isDriver || false,
         status: initialData.status || 'active'
       });
     }
@@ -191,7 +193,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
           </div>
         </div>
 
-        <div className={`grid gap-4 ${shouldShowInternField ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+        <div className={`grid gap-4 ${shouldShowInternField ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
           <div className="flex items-center space-x-3">
             <input
               type="checkbox"
@@ -219,6 +221,21 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             <label htmlFor="isFreeFood" className="text-sm font-medium text-gray-700 flex items-center">
               🍽️
               <span className="ml-2">Free Food</span>
+            </label>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="isDriver"
+              name="isDriver"
+              checked={formData.isDriver}
+              onChange={handleChange}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isDriver" className="text-sm font-medium text-gray-700 flex items-center">
+              🚗
+              <span className="ml-2">Driver</span>
             </label>
           </div>
 

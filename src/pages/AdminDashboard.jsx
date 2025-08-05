@@ -47,6 +47,10 @@ const UserTableSkeleton = ({ shouldShowInternColumn = false }) => {
           <td className="px-1 py-1.5 whitespace-nowrap">
             <div className="h-5 bg-gray-300 rounded-full w-6 shimmer"></div>
           </td>
+          {/* Driver */}
+          <td className="px-1 py-1.5 whitespace-nowrap">
+            <div className="h-5 bg-gray-300 rounded-full w-6 shimmer"></div>
+          </td>
           {/* Intern - conditional */}
           {shouldShowInternColumn && (
             <td className="px-1 py-1.5 whitespace-nowrap">
@@ -338,6 +342,9 @@ const AdminDashboard = () => {
                         <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: shouldShowInternColumn ? '7%' : '8%'}}>
                           Free Food
                         </th>
+                        <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '7%'}}>
+                          Driver
+                        </th>
                         {shouldShowInternColumn && (
                           <th className="px-1 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{width: '7%'}}>
                             Intern
@@ -356,7 +363,7 @@ const AdminDashboard = () => {
                         <UserTableSkeleton shouldShowInternColumn={shouldShowInternColumn} />
                       ) : filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={shouldShowInternColumn ? "10" : "9"} className="px-6 py-8 text-center">
+                          <td colSpan={shouldShowInternColumn ? "11" : "10"} className="px-6 py-8 text-center">
                             <div className="text-gray-400">
                               <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -416,6 +423,15 @@ const AdminDashboard = () => {
                                   : 'bg-gray-100 text-gray-800'
                               }`}>
                                 {user.isFreeFood ? '🍽️' : '💰'}
+                              </span>
+                            </td>
+                            <td className="px-1 py-1.5 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                                user.isDriver
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {user.isDriver ? '🚗' : '🚶'}
                               </span>
                             </td>
                             {shouldShowInternColumn && (
