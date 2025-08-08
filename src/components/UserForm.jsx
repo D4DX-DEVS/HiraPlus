@@ -17,6 +17,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     isDeptHead: initialData?.isDeptHead || false,
     isFreeFood: initialData?.isFreeFood || false,
     isIntern: initialData?.isIntern || false,
+    role: initialData?.role || '',
     status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
@@ -50,6 +51,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         isDeptHead: initialData.isDeptHead || false,
         isFreeFood: initialData.isFreeFood || false,
         isIntern: initialData.isIntern || false,
+        role: initialData.role || '',
         status: initialData.status || 'active'
       });
     }
@@ -191,7 +193,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
           </div>
         </div>
 
-        <div className={`grid gap-4 ${shouldShowInternField ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+        <div className={`grid gap-4 ${shouldShowInternField ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
           <div className="flex items-center space-x-3">
             <input
               type="checkbox"
@@ -220,6 +222,24 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               🍽️
               <span className="ml-2">Free Food</span>
             </label>
+          </div>
+
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              Role
+            </label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+            >
+              <option value="">None</option>
+              <option value="member">Member</option>
+              <option value="driver">Driver</option>
+              <option value="accountant">Accountant</option>
+            </select>
           </div>
 
           {shouldShowInternField && (

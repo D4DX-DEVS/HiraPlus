@@ -547,7 +547,7 @@ const GuestMeals = () => {
                     )}
                   </div>
                 </div>
-              )}
+              
             </div>
           </div>
         </main>

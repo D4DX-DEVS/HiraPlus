@@ -5,6 +5,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminDepartments from './pages/AdminDepartments';
 import AdminVehicles from './pages/AdminVehicles';
 import AdminTravels from './pages/AdminTravels';
+import AdminDrivers from './pages/AdminDrivers';
 import AdminMeals from './pages/AdminMeals';
 import AdminMenus from './pages/AdminMenus';
 import AdminNotifications from './pages/AdminNotifications';
@@ -66,6 +67,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminTravels />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/drivers"
+          element={
+            <ProtectedRoute>
+              <AdminDrivers />
             </ProtectedRoute>
           }
         />
