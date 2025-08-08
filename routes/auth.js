@@ -7,6 +7,7 @@ const CheckIn = require('../models/CheckIn');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const deptHeadAuth = require('../middleware/deptHeadAuth');
+const driverAuth = require('../middleware/driverAuth');
 const Meeting = require('../models/Meeting');
 const Menu = require('../models/Menu');
 const Travel = require('../models/Travel');
@@ -1029,10 +1030,9 @@ router.get('/menu/today', async (req, res) => {
 
 
 
-router.post('/travels', async (req, res) => {
+router.post('/travels', driverAuth, async (req, res) => {
   try {
     const {
-      user,
       vehicle,
       fromLocation,
       toLocation,
@@ -1044,15 +1044,11 @@ router.post('/travels', async (req, res) => {
       description
     } = req.body;
 
-    // Optional: Validate user and vehicle existence
-    const foundUser = await User.findById(user);
-    if (!foundUser) return res.status(404).json({ error: 'User not found' });
-
     const foundVehicle = await Vehicle.findById(vehicle);
     if (!foundVehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
     const travel = new Travel({
-      user,
+      user: req.user._id,
       vehicle,
       fromLocation,
       toLocation,
@@ -1064,21 +1060,65 @@ router.post('/travels', async (req, res) => {
       description
     });
 
-    const saved = await travel.save();
-    res.status(201).json(saved);
+    await travel.save();
+    await travel.populate('user', 'name phoneNumber department designation');
+    await travel.populate('vehicle', 'name number type');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Travel record created successfully',
+      travel
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error('Create travel error:', err);
+    res.status(400).json({ 
+      success: false,
+      message: err.message 
+    });
   }
 });
 
-// @route   GET /api/travels/user/:userId
-// @desc    Get all travels of a specific user
-router.get('/user/:userId', async (req, res) => {
+// Driver: Get their own travel records
+router.get('/travels', driverAuth, async (req, res) => {
   try {
-    const travels = await Travel.find({ user: req.params.userId }).populate('vehicle');
-    res.json(travels);
+    const travels = await Travel.find({ user: req.user._id })
+      .populate('vehicle', 'name number type')
+      .sort({ date: -1 });
+    
+    res.json({
+      success: true,
+      travels
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Get driver travels error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+});
+
+// Get list of drivers (no authentication required)
+router.get('/drivers', async (req, res) => {
+  try {
+    const drivers = await User.find({ role: 'driver' })
+      .populate('department', 'title')
+      .select('name phoneNumber department designation status')
+      .sort({ name: 1 });
+
+    const mappedDrivers = drivers.map(driver => ({
+      _id: driver._id,
+      name: driver.name || '',
+      phoneNumber: driver.phoneNumber,
+      department: driver.department || '',
+      designation: driver.designation || '',
+      status: driver.status || 'active'
+    }));
+
+    res.json(mappedDrivers);
+  } catch (error) {
+    console.error('Error fetching drivers:', error);
+    res.status(500).json({ message: 'Error fetching drivers' });
   }
 });
 
