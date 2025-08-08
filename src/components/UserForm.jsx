@@ -17,7 +17,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     isDeptHead: initialData?.isDeptHead || false,
     isFreeFood: initialData?.isFreeFood || false,
     isIntern: initialData?.isIntern || false,
-    isDriver: initialData?.isDriver || false,
+    role: initialData?.role || '',
     status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         isDeptHead: initialData.isDeptHead || false,
         isFreeFood: initialData.isFreeFood || false,
         isIntern: initialData.isIntern || false,
-        isDriver: initialData.isDriver || false,
+        role: initialData.role || '',
         status: initialData.status || 'active'
       });
     }
@@ -224,19 +224,22 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             </label>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="isDriver"
-              name="isDriver"
-              checked={formData.isDriver}
-              onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="isDriver" className="text-sm font-medium text-gray-700 flex items-center">
-              🚗
-              <span className="ml-2">Driver</span>
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              Role
             </label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+            >
+              <option value="">None</option>
+              <option value="member">Member</option>
+              <option value="driver">Driver</option>
+              <option value="accountant">Accountant</option>
+            </select>
           </div>
 
           {shouldShowInternField && (

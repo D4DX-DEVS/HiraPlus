@@ -9,7 +9,8 @@ import {
   UserIcon,
   FunnelIcon,
   CalendarIcon,
-  DocumentArrowDownIcon
+  DocumentArrowDownIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
@@ -261,6 +262,22 @@ const AdminTravels = () => {
   const [vehicles, setVehicles] = useState([]);
   const [users, setUsers] = useState([]);
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [drivers, setDrivers] = useState([]);
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [pdfKey, setPdfKey] = useState(Date.now());
+  const [createFormData, setCreateFormData] = useState({
+    user: '',
+    vehicle: '',
+    fromLocation: '',
+    toLocation: '',
+    startKm: '',
+    endKm: '',
+    startTime: '',
+    endTime: '',
+    date: '',
+    description: ''
+  });
 
   const fetchTravels = async () => {
     try {
@@ -286,6 +303,9 @@ const AdminTravels = () => {
         .map(travel => travel.user.name)
       )].sort();
       setUsers(uniqueUsers);
+      
+      // Update PDF key to force re-render of PDF components
+      setPdfKey(Date.now());
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Failed to fetch travels');
       console.error('Error fetching travels:', err);
@@ -357,8 +377,85 @@ const AdminTravels = () => {
 
   const hasActiveFilters = selectedVehicle || selectedUser || dateFilter.startDate || dateFilter.endDate || searchQuery;
 
+  const fetchDrivers = async () => {
+    try {
+      console.log('Fetching drivers...');
+      // Use the same route as AdminDrivers.jsx (no auth required)
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/drivers`);
+      console.log('Drivers response:', response.data);
+      setDrivers(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch drivers:', err);
+      console.error('Error details:', err.response?.data);
+    }
+  };
+
+  const fetchVehicles = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/vehicles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAvailableVehicles(response.data.vehicles || []);
+    } catch (err) {
+      console.error('Failed to fetch vehicles:', err);
+    }
+  };
+
+  const handleCreateFormChange = (e) => {
+    const { name, value } = e.target;
+    setCreateFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCreateTravel = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/admin/travel`, createFormData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Reset form and close
+      setCreateFormData({
+        user: '',
+        vehicle: '',
+        fromLocation: '',
+        toLocation: '',
+        startKm: '',
+        endKm: '',
+        startTime: '',
+        endTime: '',
+        date: '',
+        description: ''
+      });
+      setShowCreateForm(false);
+      
+      // Refresh travels list and wait for it to complete
+      await fetchTravels();
+      
+      // Force a small delay to ensure state is updated
+      setTimeout(() => {
+        console.log('Travels after creation:', travels.length);
+      }, 100);
+      
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create travel record');
+      console.error('Create travel error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchTravels();
+    fetchDrivers();
+    fetchVehicles();
   }, []);
 
   // Save sidebar state to localStorage
@@ -406,34 +503,41 @@ const AdminTravels = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {filteredTravels.length > 0 && (
-                        <PDFErrorBoundary>
-                          <PDFDownloadLink
-                            document={
-                              <TravelPDF
-                                travels={filteredTravels}
-                                selectedVehicle={selectedVehicle}
-                                selectedUser={selectedUser}
-                                dateRange={dateFilter}
-                              />
-                            }
-                            fileName={`travel-records-${format(new Date(), 'yyyy-MM-dd')}.pdf`}
-                            className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors"
-                          >
-                            {({ loading, error }) => {
-                              if (loading) return 'Preparing PDF...';
-                              if (error) return 'Error generating PDF';
-                              return (
-                                <>
-                                  <DocumentArrowDownIcon className="h-4 w-4" />
-                                  <span>Download PDF</span>
-                                </>
-                              );
-                            }}
-                          </PDFDownloadLink>
-                        </PDFErrorBoundary>
-                      )}
+                                         <div className="flex items-center space-x-2">
+                       <button
+                         onClick={() => setShowCreateForm(!showCreateForm)}
+                         className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                       >
+                         <PlusIcon className="h-4 w-4 mr-1.5" />
+                         Create Travel
+                       </button>
+                       {filteredTravels.length > 0 && (
+                         <PDFErrorBoundary key={`pdf-${pdfKey}`}>
+                           <PDFDownloadLink
+                             document={
+                               <TravelPDF
+                                 travels={filteredTravels}
+                                 selectedVehicle={selectedVehicle}
+                                 selectedUser={selectedUser}
+                                 dateRange={dateFilter}
+                               />
+                             }
+                             fileName={`travel-records-${format(new Date(), 'yyyy-MM-dd')}.pdf`}
+                             className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors"
+                           >
+                             {({ loading, error }) => {
+                               if (loading) return 'Preparing PDF...';
+                               if (error) return 'Error generating PDF';
+                               return (
+                                 <>
+                                   <DocumentArrowDownIcon className="h-4 w-4" />
+                                   <span>Download PDF</span>
+                                 </>
+                               );
+                             }}
+                           </PDFDownloadLink>
+                         </PDFErrorBoundary>
+                       )}
                       <button
                         onClick={() => setShowDownloadOptions(!showDownloadOptions)}
                         className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors"
@@ -455,97 +559,94 @@ const AdminTravels = () => {
                           <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                         )}
                       </button>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <MapPinIcon className="h-4 w-4" />
-                        <span>View Only</span>
-                      </div>
+                      
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Filters Section */}
-              {showFilters && (
-                <div className="mb-3 bg-white rounded-lg shadow-sm border border-gray-200/50 p-3">
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-                    {/* Search */}
-                    <div className="lg:col-span-2">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Search
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search by location, user, vehicle..."
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
-                        />
-                      </div>
-                    </div>
+                             {/* Filters Section */}
+               {showFilters && (
+                 <div className="mb-3 bg-white rounded-lg shadow-sm border border-gray-200/50 p-3">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                     {/* Search */}
+                     <div className="lg:col-span-2">
+                       <label className="block text-xs font-medium text-gray-700 mb-1">
+                         Search
+                       </label>
+                       <div className="relative">
+                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+                         </div>
+                         <input
+                           type="text"
+                           value={searchQuery}
+                           onChange={(e) => setSearchQuery(e.target.value)}
+                           placeholder="Search by location, user, vehicle..."
+                           className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                         />
+                       </div>
+                     </div>
 
-                    {/* Vehicle Filter */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Vehicle
-                      </label>
-                      <select
-                        value={selectedVehicle}
-                        onChange={(e) => setSelectedVehicle(e.target.value)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
-                      >
-                        <option value="">All Vehicles</option>
-                        {vehicles.map((vehicle) => (
-                          <option key={vehicle} value={vehicle}>
-                            {vehicle}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                     {/* Vehicle Filter */}
+                     <div>
+                       <label className="block text-xs font-medium text-gray-700 mb-1">
+                         Vehicle
+                       </label>
+                       <select
+                         value={selectedVehicle}
+                         onChange={(e) => setSelectedVehicle(e.target.value)}
+                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                       >
+                         <option value="">All Vehicles</option>
+                         {vehicles.map((vehicle) => (
+                           <option key={vehicle} value={vehicle}>
+                             {vehicle}
+                           </option>
+                         ))}
+                       </select>
+                     </div>
 
-                    {/* User Filter */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        User (Driver)
-                      </label>
-                      <select
-                        value={selectedUser}
-                        onChange={(e) => setSelectedUser(e.target.value)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
-                      >
-                        <option value="">All Users</option>
-                        {users.map((user) => (
-                          <option key={user} value={user}>
-                            {user}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                     {/* User Filter */}
+                     <div>
+                       <label className="block text-xs font-medium text-gray-700 mb-1">
+                         User (Driver)
+                       </label>
+                       <select
+                         value={selectedUser}
+                         onChange={(e) => setSelectedUser(e.target.value)}
+                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
+                       >
+                         <option value="">All Users</option>
+                         {users.map((user) => (
+                           <option key={user} value={user}>
+                             {user}
+                           </option>
+                         ))}
+                       </select>
+                     </div>
 
-                    {/* Date Range */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Date Range
-                      </label>
-                      <div className="flex space-x-2">
-                        <input
-                          type="date"
-                          value={dateFilter.startDate}
-                          onChange={(e) => setDateFilter({...dateFilter, startDate: e.target.value})}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        />
-                        <input
-                          type="date"
-                          value={dateFilter.endDate}
-                          onChange={(e) => setDateFilter({...dateFilter, endDate: e.target.value})}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                     {/* Date Range */}
+                     <div className="lg:col-span-2">
+                       <label className="block text-xs font-medium text-gray-700 mb-1">
+                         Date Range
+                       </label>
+                       <div className="grid grid-cols-2 gap-2">
+                         <input
+                           type="date"
+                           value={dateFilter.startDate}
+                           onChange={(e) => setDateFilter({...dateFilter, startDate: e.target.value})}
+                           className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                         />
+                         <input
+                           type="date"
+                           value={dateFilter.endDate}
+                           onChange={(e) => setDateFilter({...dateFilter, endDate: e.target.value})}
+                           className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                         />
+                       </div>
+                     </div>
+                   </div>
 
                   {/* Filter Actions */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
@@ -587,7 +688,7 @@ const AdminTravels = () => {
                     {/* Download All */}
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <h4 className="text-xs font-medium text-gray-900 mb-2">Download All Records</h4>
-                      <PDFErrorBoundary>
+                      <PDFErrorBoundary key={`download-all-${pdfKey}`}>
                         <PDFDownloadLink
                           document={
                             <TravelPDF
@@ -686,14 +787,223 @@ const AdminTravels = () => {
                 </div>
               )}
 
-              {error && (
-                <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
-                    <div className="text-sm text-red-700 font-medium">{error}</div>
-                  </div>
-                </div>
-              )}
+                             {error && (
+                 <div className="mb-3 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-3 flex-shrink-0">
+                   <div className="flex items-center">
+                     <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
+                     <div className="text-sm text-red-700 font-medium">{error}</div>
+                   </div>
+                 </div>
+               )}
+
+               {/* Create Travel Form */}
+               {showCreateForm && (
+                 <div className="mb-3 bg-white rounded-lg shadow-sm border border-gray-200/50 p-4 flex-shrink-0">
+                   <div className="mb-4">
+                     <h3 className="text-lg font-semibold text-gray-900">Create New Travel Record</h3>
+                     <p className="text-sm text-gray-600 mt-1">Fill in the travel details to create a new record</p>
+                   </div>
+                   
+                   <form onSubmit={handleCreateTravel} className="space-y-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                               {/* Driver Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Driver *
+                          </label>
+                          <select
+                            name="user"
+                            value={createFormData.user}
+                            onChange={handleCreateFormChange}
+                            required
+                            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="">Select Driver</option>
+                            {drivers.length > 0 ? (
+                              drivers.map((driver) => (
+                                <option key={driver._id} value={driver._id}>
+                                  {driver.name} - {driver.department?.title || 'N/A'}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>No drivers found</option>
+                            )}
+                          </select>
+                          {drivers.length === 0 && (
+                            <p className="text-xs text-red-600 mt-1">
+                              No users with driver role found. Please create users with driver role first.
+                            </p>
+                          )}
+                        </div>
+
+                       {/* Vehicle Selection */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           Vehicle *
+                         </label>
+                         <select
+                           name="vehicle"
+                           value={createFormData.vehicle}
+                           onChange={handleCreateFormChange}
+                           required
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         >
+                           <option value="">Select Vehicle</option>
+                           {availableVehicles.map((vehicle) => (
+                             <option key={vehicle._id} value={vehicle._id}>
+                               {vehicle.vehicleName} - {vehicle.vehicleNumber}
+                             </option>
+                           ))}
+                         </select>
+                       </div>
+
+                       {/* Date */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           Date *
+                         </label>
+                         <input
+                           type="date"
+                           name="date"
+                           value={createFormData.date}
+                           onChange={handleCreateFormChange}
+                           required
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+
+                       {/* From Location */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           From Location *
+                         </label>
+                         <input
+                           type="text"
+                           name="fromLocation"
+                           value={createFormData.fromLocation}
+                           onChange={handleCreateFormChange}
+                           required
+                           placeholder="Starting location"
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+
+                       {/* To Location */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           To Location *
+                         </label>
+                         <input
+                           type="text"
+                           name="toLocation"
+                           value={createFormData.toLocation}
+                           onChange={handleCreateFormChange}
+                           required
+                           placeholder="Destination"
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+
+                       {/* Start Time */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           Start Time *
+                         </label>
+                         <input
+                           type="time"
+                           name="startTime"
+                           value={createFormData.startTime}
+                           onChange={handleCreateFormChange}
+                           required
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+
+                       {/* End Time */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           End Time *
+                         </label>
+                         <input
+                           type="time"
+                           name="endTime"
+                           value={createFormData.endTime}
+                           onChange={handleCreateFormChange}
+                           required
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+
+                       {/* Start KM */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           Start KM *
+                         </label>
+                         <input
+                           type="number"
+                           name="startKm"
+                           value={createFormData.startKm}
+                           onChange={handleCreateFormChange}
+                           required
+                           min="0"
+                           placeholder="Starting kilometer"
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+
+                       {/* End KM */}
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                           End KM *
+                         </label>
+                         <input
+                           type="number"
+                           name="endKm"
+                           value={createFormData.endKm}
+                           onChange={handleCreateFormChange}
+                           required
+                           min="0"
+                           placeholder="Ending kilometer"
+                           className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         />
+                       </div>
+                     </div>
+
+                     {/* Description */}
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                         Description
+                       </label>
+                       <textarea
+                         name="description"
+                         value={createFormData.description}
+                         onChange={handleCreateFormChange}
+                         rows="3"
+                         placeholder="Additional details about the travel..."
+                         className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                       />
+                     </div>
+
+                     {/* Form Actions */}
+                     <div className="flex justify-end space-x-3 pt-4">
+                       <button
+                         type="button"
+                         onClick={() => setShowCreateForm(false)}
+                         className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                       >
+                         Cancel
+                       </button>
+                       <button
+                         type="submit"
+                         disabled={loading}
+                         className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                       >
+                         {loading ? 'Creating...' : 'Create Travel'}
+                       </button>
+                     </div>
+                   </form>
+                 </div>
+               )}
 
               {/* Travels Table */}
               <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200/50 overflow-hidden">
@@ -704,10 +1014,10 @@ const AdminTravels = () => {
                         <div className="grid grid-cols-12 gap-4 items-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <div className="col-span-2">Date & Time</div>
                           <div className="col-span-2">User & Vehicle</div>
-                          <div className="col-span-3">Route</div>
+                          <div className="col-span-2">Route</div>
                           <div className="col-span-2">Distance</div>
                           <div className="col-span-2">Duration</div>
-                          <div className="col-span-1">Status</div>
+                          <div className="col-span-2">Description</div>
                         </div>
                       </div>
                       <GridSkeleton />
@@ -718,10 +1028,10 @@ const AdminTravels = () => {
                         <div className="grid grid-cols-12 gap-4 items-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <div className="col-span-2">Date & Time</div>
                           <div className="col-span-2">User & Vehicle</div>
-                          <div className="col-span-3">Route</div>
+                          <div className="col-span-2">Route</div>
                           <div className="col-span-2">Distance</div>
                           <div className="col-span-2">Duration</div>
-                          <div className="col-span-1">Status</div>
+                          <div className="col-span-2">Description</div>
                         </div>
                       </div>
 
@@ -772,17 +1082,12 @@ const AdminTravels = () => {
                                 </div>
                                 
                                 {/* Route */}
-                                <div className="col-span-3">
+                                <div className="col-span-2">
                                   <div className="flex items-center space-x-2">
                                     <span className="font-medium text-gray-900">{travel.fromLocation}</span>
                                     <span className="text-gray-400">→</span>
                                     <span className="font-medium text-gray-900">{travel.toLocation}</span>
                                   </div>
-                                  {travel.description && (
-                                    <div className="text-xs text-gray-500 mt-1 truncate">
-                                      {travel.description}
-                                    </div>
-                                  )}
                                 </div>
                                 
                                 {/* Distance */}
@@ -805,11 +1110,11 @@ const AdminTravels = () => {
                                   </div>
                                 </div>
                                 
-                                {/* Status */}
-                                <div className="col-span-1">
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Completed
-                                  </span>
+                                {/* Description */}
+                                <div className="col-span-2">
+                                  <div className="text-xs text-gray-600 break-words" title={travel.description || 'No description'}>
+                                    {travel.description || 'N/A'}
+                                  </div>
                                 </div>
                               </div>
                             </div>

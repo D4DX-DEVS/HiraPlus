@@ -9,6 +9,22 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { TableSkeleton } from '../components/SkeletonLoaders';
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import HiraPlus from '../assets/HiraPlus.jpg';
+import NotoSerifMalayalam from '../fonts/NotoSerifMalayalam-Regular.ttf';
+
+Font.register({
+  family: 'Noto Serif Malayalam',
+  src: NotoSerifMalayalam,
+});
+
+Font.register({
+  family: 'Noto Serif Malayalam',
+  src: NotoSerifMalayalam,
+});
+
+// Use default fonts for reliable PDF generation
+// The Malayalam font file is causing compatibility issues with @react-pdf/renderer
+// We'll use default fonts and handle Malayalam text encoding properly
+console.log('Using default fonts for PDF generation');
 
 // Helper function to get department share percentage based on department name
 const getDepartmentShareForDept = (departmentName, defaultShare) => {
@@ -25,28 +41,29 @@ const getDepartmentShareForDept = (departmentName, defaultShare) => {
   return defaultShare;
 };
 
-// Define styles for PDF with updated styling
+// Define styles for PDF with updated styling and Malayalam font support
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    padding: 30,
+    padding: 15,
   },
   header: {
-    fontSize: 12,
-    marginBottom: 3,
+    fontSize: 10,
+    marginBottom: 2,
     textAlign: 'center',
     fontWeight: 'bold',
     color: '#000000', // Black for better printing
+    fontFamily: 'Noto Serif Malayalam',
   },
   section: {
-    margin: 3,
-    padding: 3,
+    margin: 2,
+    padding: 2,
   },
   table: {
     display: 'table',
     width: 'auto',
-    marginVertical: 3,
+    marginVertical: 2,
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#000000',
@@ -57,8 +74,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#000000',
     borderBottomStyle: 'solid',
     alignItems: 'center',
-    minHeight: 25,
-    paddingVertical: 4,
+    minHeight: 18,
+    paddingVertical: 2,
   },
   tableHeader: {
     backgroundColor: '#F5F5F5', // Light gray background
@@ -68,119 +85,132 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     flex: 1,
-    fontSize: 9,
-    padding: 3,
+    fontSize: 8,
+    padding: 2,
     textAlign: 'left',
     color: '#000000',
     borderRightWidth: 1,
     borderRightColor: '#000000',
+    fontFamily: 'Noto Serif Malayalam',
   },
   tableCellRight: {
     flex: 1,
-    fontSize: 9,
-    padding: 3,
+    fontSize: 8,
+    padding: 2,
     textAlign: 'right',
     color: '#000000',
     borderRightWidth: 1,
     borderRightColor: '#000000',
+    fontFamily: 'Noto Serif Malayalam',
   },
   tableCellCompact: {
     flex: 1,
-    fontSize: 9,
-    padding: 2,
+    fontSize: 8,
+    padding: 1,
     textAlign: 'center',
     color: '#000000',
     borderRightWidth: 1,
     borderRightColor: '#000000',
+    fontFamily: 'Noto Serif Malayalam',
   },
   tableCellRightCompact: {
     flex: 1,
-    fontSize: 9,
-    padding: 2,
+    fontSize: 8,
+    padding: 1,
     textAlign: 'right',
     color: '#000000',
     borderRightWidth: 1,
     borderRightColor: '#000000',
+    fontFamily: 'Noto Serif Malayalam',
   },
   summaryCard: {
-    marginVertical: 8,
-    padding: 10,
+    marginVertical: 4,
+    padding: 5,
     borderWidth: 1,
     borderColor: '#000000', // Black border
-    borderRadius: 6,
+    borderRadius: 4,
     backgroundColor: '#F5F5F5', // Light gray background
   },
   summaryTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#000000', // Black text
-  },
-  summaryValue: {
     fontSize: 10,
-    color: '#000000', // Black text
-  },
-  dateRange: {
-    fontSize: 9,
+    fontWeight: 'bold',
     marginBottom: 3,
     color: '#000000', // Black text
-    textAlign: 'center',
+    fontFamily: 'Noto Serif Malayalam',
   },
-  ratesInfo: {
-    fontSize: 10,
-    color: '#000000', // Black text
-    marginBottom: 5,
-    textAlign: 'center',
-  },
-  mealCount: {
+  summaryValue: {
     fontSize: 8,
     color: '#000000', // Black text
+    fontFamily: 'Noto Serif Malayalam',
+  },
+  dateRange: {
+    fontSize: 8,
+    marginBottom: 2,
+    color: '#000000', // Black text
+    textAlign: 'center',
+    fontFamily: 'Noto Serif Malayalam',
+  },
+  ratesInfo: {
+    fontSize: 8,
+    color: '#000000', // Black text
+    marginBottom: 3,
+    textAlign: 'center',
+    fontFamily: 'Noto Serif Malayalam',
+  },
+  mealCount: {
+    fontSize: 7,
+    color: '#000000', // Black text
     marginTop: 1,
+    fontFamily: 'Noto Serif Malayalam',
   },
   logo: {
-    width: 80,
-    height: 50,
-    marginBottom: 5,
+    width: 60,
+    height: 40,
+    marginBottom: 3,
   },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 8,
   },
   headerText: {
     flex: 1,
     textAlign: 'center',
   },
   title: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#000000', // Black text
-    marginBottom: 2,
+    marginBottom: 1,
+    fontFamily: 'Noto Serif Malayalam',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#000000', // Black text
+    fontFamily: 'Noto Serif Malayalam',
   },
   logoContainer: {
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 10,
   },
   logoText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#000000',
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 1,
+    fontFamily: 'Noto Serif Malayalam',
   },
   totalRow: {
     borderTopWidth: 2,
     borderTopColor: '#374151',
     backgroundColor: '#F3F4F6',
-    fontSize: 9,
+    fontSize: 8,
   },
   totalText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
+    fontFamily: 'Noto Serif Malayalam',
   },
   verticalLine: {
     borderRightWidth: 1,
@@ -281,15 +311,16 @@ const BillPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
-                  <Text style={[styles.tableCell, { flex: 2 }]}>Name</Text>
-                  <Text style={[styles.tableCell, { flex: 1.5 }]}>Dept</Text>
-                  <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>B</Text>
-                  <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>L</Text>
-                  <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>D</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>Total Meals</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>Total Amount</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>Dept. Share</Text>
-                  <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Employee Payable</Text>
+                  <Text style={[styles.tableCell, { flex: 0.6 }]}>S.No.</Text>
+                  <Text style={[styles.tableCell, { flex: 1.8 }]}>Name</Text>
+                  <Text style={[styles.tableCell, { flex: 1.4 }]}>Dept</Text>
+                  <Text style={[styles.tableCellRightCompact, { flex: 0.8 }]}>B</Text>
+                  <Text style={[styles.tableCellRightCompact, { flex: 0.8 }]}>L</Text>
+                  <Text style={[styles.tableCellRightCompact, { flex: 0.8 }]}>D</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.1 }, styles.verticalLine]}>Total Meals</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.1 }, styles.verticalLine]}>Total Amount</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.1 }, styles.verticalLine]}>Dept. Share</Text>
+                  <Text style={[styles.tableCellRight, { flex: 1.1 }]}>Employee Payable</Text>
                 </View>
 
                 {(() => {
@@ -330,17 +361,18 @@ const BillPDF = ({
 
                     return (
                       <View key={`${user.userId}-${index}-${isIntern ? 'intern' : 'regular'}`} style={[styles.tableRow, isIntern && { backgroundColor: '#FEF3C7' }]}>
-                        <Text style={[styles.tableCell, { flex: 2 }]}>{user.name || 'N/A'}{isIntern ? ' (Intern)' : ''}</Text>
-                        <Text style={[styles.tableCell, { flex: 1.5 }]}>{
+                        <Text style={[styles.tableCell, { flex: 0.6 }]}>{index + 1}</Text>
+                        <Text style={[styles.tableCell, { flex: 1.8 }]}>{user.name || 'N/A'}{isIntern ? ' (Intern)' : ''}</Text>
+                        <Text style={[styles.tableCell, { flex: 1.4 }]}>{
                           user.department || user.parentDepartment || 'N/A'
                         }</Text>
-                        <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>{user.breakfastCount || 0}</Text>
-                        <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>{user.lunchCount || 0}</Text>
-                        <Text style={[styles.tableCellRightCompact, { flex: 1 }]}>{user.dinnerCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>{totalMeals}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>{totalMealAmount.toFixed(2)}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }, styles.verticalLine]}>{deptShareCalc.toFixed(2)}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{empPayableCalc.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRightCompact, { flex: 0.8 }]}>{user.breakfastCount || 0}</Text>
+                        <Text style={[styles.tableCellRightCompact, { flex: 0.8 }]}>{user.lunchCount || 0}</Text>
+                        <Text style={[styles.tableCellRightCompact, { flex: 0.8 }]}>{user.dinnerCount || 0}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.1 }, styles.verticalLine]}>{totalMeals}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.1 }, styles.verticalLine]}>{totalMealAmount.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.1 }, styles.verticalLine]}>{deptShareCalc.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.1 }]}>{empPayableCalc.toFixed(2)}</Text>
                       </View>
                     );
                   };
@@ -351,7 +383,7 @@ const BillPDF = ({
                       {interns.length > 0 && (
                         <>
                           <View style={[styles.tableRow, { backgroundColor: '#F59E0B', borderTopWidth: 2, borderTopColor: '#D97706' }]}>
-                            <Text style={[styles.tableCell, { flex: 9, fontWeight: 'bold', fontSize: 12, color: 'white', textAlign: 'center' }]}>
+                            <Text style={[styles.tableCell, { flex: 10, fontWeight: 'bold', fontSize: 12, color: 'white', textAlign: 'center' }]}>
                               INTERNS ({interns.length} students) - 100% Department Share
                             </Text>
                           </View>
@@ -364,7 +396,7 @@ const BillPDF = ({
                         <>
                           {interns.length > 0 && (
                                                       <View style={[styles.tableRow, { backgroundColor: '#6B7280', borderTopWidth: 2, borderTopColor: '#4B5563' }]}>
-                            <Text style={[styles.tableCell, { flex: 9, fontWeight: 'bold', fontSize: 12, color: 'white', textAlign: 'center' }]}>
+                            <Text style={[styles.tableCell, { flex: 10, fontWeight: 'bold', fontSize: 12, color: 'white', textAlign: 'center' }]}>
                               REGULAR EMPLOYEES ({regularEmployees.length} staff) - {getDepartmentShareForDept(allUsers[0]?.department || allUsers[0]?.parentDepartment, departmentShare)}% Department Share
                             </Text>
                           </View>
@@ -441,15 +473,15 @@ const BillPDF = ({
 
                   return (
                     <View style={[styles.tableRow, styles.totalRow]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold' }, styles.totalText]}>TOTAL ({allUsers.length} )</Text>
-                      <Text style={[styles.tableCell, { flex: 1.5, fontWeight: 'bold' }, styles.totalText]}>-</Text>
-                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold' }, styles.totalText]}>{totalBreakfast}</Text>
-                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold' }, styles.totalText]}>{totalLunch}</Text>
-                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold' }, styles.totalText]}>{totalDinner}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText, styles.verticalLine]}>{totalMealsCount}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText, styles.verticalLine]}>{grandTotal.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText, styles.verticalLine]}>{totalDeptShare.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }, styles.totalText]}>{totalEmpPayable.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({allUsers.length} )</Text>
+                      <Text style={[styles.tableCell, { flex: 1.5, fontWeight: 'bold', fontSize: 9 }]}>-</Text>
+                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalBreakfast}</Text>
+                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalLunch}</Text>
+                      <Text style={[styles.tableCellRightCompact, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalDinner}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }, styles.totalText, styles.verticalLine]}>{totalMealsCount}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }, styles.totalText, styles.verticalLine]}>{grandTotal.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }, styles.totalText, styles.verticalLine]}>{totalDeptShare.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }, styles.totalText]}>{totalEmpPayable.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -478,6 +510,7 @@ const BillPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>Meetings</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>Aud.</Text>
@@ -489,6 +522,7 @@ const BillPDF = ({
                   .filter((d) => !selectedDepartment || d.department === selectedDepartment)
                   .map((d, idx) => (
                     <View key={idx} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{idx + 1}</Text>
                       <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.meetingCount || 0}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.auditoriumCount || 0}</Text>
@@ -509,12 +543,12 @@ const BillPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetings}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalAuditorium}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalConference}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetingSpace}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalAmount.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length})</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalMeetings}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalAuditorium}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalConference}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalMeetingSpace}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalAmount.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -526,6 +560,7 @@ const BillPDF = ({
     }
 
     /* --------------------- GUEST MEALS -------------------- */
+    // Guest meals section - update department text with sanitizeText
     if (billType === 'guest') {
       if (!guestMealData?.departments) {
         console.error('Missing guest meal data');
@@ -575,11 +610,11 @@ const BillPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalAmount.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalBreakfast}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalLunch}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalDinner}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalAmount.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -664,15 +699,15 @@ const BillPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMorningSnacks}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMorningTea}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalEveningSnacks}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalEveningTea}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalAmount.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalBreakfast}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalLunch}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalDinner}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalMorningSnacks}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalMorningTea}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalEveningSnacks}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalEveningTea}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalAmount.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -728,12 +763,12 @@ const BillPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} departments)</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalFoodShare.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalRent.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetingFood.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalGuestMeals.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{grandTotal.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalFoodShare.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalRent.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalMeetingFood.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalGuestMeals.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{grandTotal.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -806,6 +841,7 @@ const SummaryPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>Meetings</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>Aud.</Text>
@@ -817,6 +853,7 @@ const SummaryPDF = ({
                   .filter((d) => !selectedDepartment || d.department === selectedDepartment)
                   .map((d, idx) => (
                     <View key={idx} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{idx + 1}</Text>
                       <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.meetingCount || 0}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.auditoriumCount || 0}</Text>
@@ -837,12 +874,12 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length} )</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetings}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalAuditorium}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalConference}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetingSpace}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalAmount.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2.4, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length} )</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalMeetings}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalAuditorium}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalConference}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalMeetingSpace}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.1, fontWeight: 'bold', fontSize: 9 }]}>{totalAmount.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -864,6 +901,7 @@ const SummaryPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>B</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>L</Text>
@@ -879,11 +917,12 @@ const SummaryPDF = ({
                       d.dinnerCount * mealRates.dinner;
                     return (
                       <View key={idx} style={styles.tableRow}>
-                        <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.breakfastCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.lunchCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.dinnerCount || 0}</Text>
-                        <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{amt.toFixed(2)}</Text>
+                        <Text style={[styles.tableCell, { flex: 0.6 }]}>{idx + 1}</Text>
+                        <Text style={[styles.tableCell, { flex: 1.8 }]}>{d.department}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 0.9 }]}>{d.breakfastCount || 0}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 0.9 }]}>{d.lunchCount || 0}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 0.9 }]}>{d.dinnerCount || 0}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1.1 }]}>{amt.toFixed(2)}</Text>
                       </View>
                     );
                   })}
@@ -900,11 +939,11 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalAmount.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2.4, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length})</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalBreakfast}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalLunch}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 0.9, fontWeight: 'bold', fontSize: 9 }]}>{totalDinner}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.1, fontWeight: 'bold', fontSize: 9 }]}>{totalAmount.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -926,6 +965,7 @@ const SummaryPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>B</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>L</Text>
@@ -986,15 +1026,15 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalBreakfast}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalLunch}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalDinner}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMorningSnacks}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalMorningTea}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalEveningSnacks}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 12 }]}>{totalEveningTea}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalAmount.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalBreakfast}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalLunch}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalDinner}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalMorningSnacks}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalMorningTea}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalEveningSnacks}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontWeight: 'bold', fontSize: 9 }]}>{totalEveningTea}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalAmount.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -1016,6 +1056,7 @@ const SummaryPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Food (75%)</Text>
                   <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Rent</Text>
@@ -1047,12 +1088,12 @@ const SummaryPDF = ({
 
                   return (
                     <View style={[styles.tableRow, { borderTopWidth: 2, borderTopColor: '#374151', backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 12 }]}>TOTAL ({filteredDepts.length})</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalFoodShare.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalRent.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalMeetingFood.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{totalGuestMeals.toFixed(2)}</Text>
-                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 12 }]}>{grandTotal.toFixed(2)}</Text>
+                      <Text style={[styles.tableCell, { flex: 2, fontWeight: 'bold', fontSize: 9 }]}>TOTAL ({filteredDepts.length} departments)</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalFoodShare.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalRent.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalMeetingFood.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{totalGuestMeals.toFixed(2)}</Text>
+                      <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', fontSize: 9 }]}>{grandTotal.toFixed(2)}</Text>
                     </View>
                   );
                 })()}
@@ -1173,7 +1214,7 @@ const DetailedDepartmentPDF = ({
                             )}
                           </View>
                           <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#059669' }}>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#000000' }}>
                               Total: {meeting.totalMeetingAmount.toFixed(2)}
                             </Text>
                           </View>
@@ -1205,7 +1246,7 @@ const DetailedDepartmentPDF = ({
                           <Text style={{ fontSize: 7, flex: 1, color: '#6B7280' }}>
                             B: {guestMeal.breakfastCount}, L: {guestMeal.lunchCount}, D: {guestMeal.dinnerCount}
                           </Text>
-                          <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#059669' }}>
+                          <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#000000' }}>
                             Amount: {guestMeal.amount.toFixed(2)}
                           </Text>
                         </View>
@@ -1221,7 +1262,12 @@ const DetailedDepartmentPDF = ({
                   </Text>
                   
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <Text style={{ fontSize: 8, color: '#6B7280' }}>Regular Food (75%):</Text>
+                    <Text style={{ fontSize: 8, color: '#6B7280' }}>Total Food Consumed:</Text>
+                    <Text style={{ fontSize: 8 }}>{dept.totalFoodAmount?.toFixed(2) || '0.00'}</Text>
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <Text style={{ fontSize: 8, color: '#6B7280' }}>Department Share:</Text>
                     <Text style={{ fontSize: 8 }}>{dept.foodShare.toFixed(2)}</Text>
                   </View>
                   
@@ -1242,7 +1288,7 @@ const DetailedDepartmentPDF = ({
                   
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#374151', paddingTop: 4 }}>
                     <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151' }}>TOTAL PAYABLE:</Text>
-                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>{dept.totalAmount.toFixed(2)}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000000' }}>{dept.totalAmount.toFixed(2)}</Text>
                   </View>
                 </View>
               </View>
@@ -1264,7 +1310,12 @@ const DetailedDepartmentPDF = ({
                 </Text>
                 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 9, color: '#6B7280' }}>Regular Food (75%):</Text>
+                  <Text style={{ fontSize: 9, color: '#6B7280' }}>Total Food Consumed:</Text>
+                  <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{filteredDepts.reduce((sum, dept) => sum + (dept.totalFoodAmount || 0), 0).toFixed(2)}</Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 9, color: '#6B7280' }}>Department Share:</Text>
                   <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{grandTotalFood.toFixed(2)}</Text>
                 </View>
                 
@@ -1285,7 +1336,7 @@ const DetailedDepartmentPDF = ({
                 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 2, borderTopColor: '#374151', paddingTop: 6 }}>
                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#374151' }}>GRAND TOTAL:</Text>
-                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#059669' }}>{grandTotal.toFixed(2)}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000' }}>{grandTotal.toFixed(2)}</Text>
                 </View>
               </View>
             );
@@ -1371,7 +1422,163 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
   );
 };
 
+// Accounts PDF component for detailed accounts bill
+const AccountsPDF = ({ 
+  departmentBillData, 
+  dateRange, 
+  selectedDepartmentsForAccounts, 
+  includeGuestMeals,
+  mealRates,
+  meetingFoodRates 
+}) => {
+  if (!departmentBillData?.departments || !dateRange?.startDate || !dateRange?.endDate) return null;
+  
+  const renderHeader = (title) => (
+    <View style={styles.headerContainer}>
+      <View style={styles.logoContainer}>
+        <Image 
+          src={HiraPlus} 
+          style={styles.logo}
+        />
+        <Text style={styles.logoText}>Hira Plus</Text>
+      </View>
+      <View style={styles.headerText}>
+        <Text style={styles.title}>
+          {title}
+        </Text>
+        <Text style={styles.subtitle}>
+          FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderTableHeader = () => (
+    <View style={[styles.tableRow, styles.tableHeader]}>
+      <Text style={[styles.tableCell, { flex: 0.6 }]}>S.No.</Text>
+      <Text style={[styles.tableCell, { flex: 1.1 }]}>Date</Text>
+      <Text style={[styles.tableCell, { flex: 1.4 }]}>Department</Text>
+      <Text style={[styles.tableCell, { flex: 1.7 }]}>Program</Text>
+      <Text style={[styles.tableCell, { flex: 2.1 }]}>Meeting</Text>
+      <Text style={[styles.tableCell, { flex: 1.1 }]}>Food/Snacks</Text>
+      {includeGuestMeals && (
+        <Text style={[styles.tableCell, { flex: 1.1 }]}>Guest Meals</Text>
+      )}
+      <Text style={[styles.tableCell, { flex: 1.1 }]}>Rent</Text>
+    </View>
+  );
+
+  const renderTableRow = (item, index) => (
+    <View key={index} style={styles.tableRow}>
+      <Text style={[styles.tableCell, { flex: 0.6, fontSize: 8 }]}>
+        {index + 1}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8 }]}>
+        {format(new Date(item.date), 'dd/MM/yyyy')}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1.4, fontSize: 8 }]}>
+        {item.department}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1.7, fontSize: 8 }]}>
+        {item.program}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 2.1, fontSize: 8 }]}>
+        {item.meeting}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8, color: '#000000' }]}>
+        ₹{item.foodSnacks?.toLocaleString() || '0'}
+      </Text>
+      {includeGuestMeals && (
+        <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8, color: '#000000' }]}>
+          ₹{item.guestMeals?.toLocaleString() || '0'}
+        </Text>
+      )}
+      <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8, color: '#000000' }]}>
+        ₹{item.rent?.toLocaleString() || '0'}
+      </Text>
+    </View>
+  );
+
+  const calculateTotals = () => {
+    return departmentBillData.departments.reduce((acc, item) => {
+      acc.foodSnacks += item.foodSnacks || 0;
+      acc.guestMeals += item.guestMeals || 0;
+      acc.rent += item.rent || 0;
+      acc.total += (item.foodSnacks || 0) + (item.guestMeals || 0) + (item.rent || 0);
+      return acc;
+    }, { foodSnacks: 0, guestMeals: 0, rent: 0, total: 0 });
+  };
+
+  const totals = calculateTotals();
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {renderHeader('HIRA PLUS ACCOUNTS BILL')}
+        
+        {/* Billing details */}
+        <View style={{ marginBottom: 5 }}>
+          <Text style={{ fontSize: 8, color: '#4B5563' }}>
+            Departments: {selectedDepartmentsForAccounts.join(', ')}
+          </Text>
+          <Text style={{ fontSize: 8, color: '#4B5563' }}>
+            Period: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} - {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+          </Text>
+          {includeGuestMeals && (
+            <Text style={{ fontSize: 8, color: '#4B5563' }}>
+              Guest Meals: Included
+            </Text>
+          )}
+        </View>
+        
+        {/* Detailed bill table */}
+        <View style={styles.section}>
+          <View style={styles.table}>
+            {renderTableHeader()}
+            {departmentBillData.departments.map((item, index) => renderTableRow(item, index))}
+          </View>
+        </View>
+
+        {/* Totals section */}
+        <View style={{ marginTop: 10 }}>
+          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold', fontSize: 8 }]}>TOTAL FOOD/SNACKS</Text>
+            <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', color: '#000000', fontSize: 8 }]}>
+              ₹{totals.foodSnacks.toLocaleString()}
+            </Text>
+          </View>
+          {includeGuestMeals && (
+            <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+              <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold', fontSize: 8 }]}>TOTAL GUEST MEALS</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', color: '#000000', fontSize: 8 }]}>
+                ₹{totals.guestMeals.toLocaleString()}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold', fontSize: 8 }]}>TOTAL RENT</Text>
+            <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', color: '#000000', fontSize: 8 }]}>
+              ₹{totals.rent.toLocaleString()}
+            </Text>
+          </View>
+          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold', fontSize: 8 }]}>GRAND TOTAL</Text>
+            <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', color: '#000000', fontSize: 8 }]}>
+              ₹{totals.total.toLocaleString()}
+            </Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
 const BillGenerator = () => {
+  // Test text encoding on component mount
+  // useEffect(() => {
+  //   testTextEncoding();
+  // }, []);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
@@ -1382,6 +1589,8 @@ const BillGenerator = () => {
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [deleteListId, setDeleteListId] = useState(null);
   const [billType, setBillType] = useState('food');
+  const [includeGuestMeals, setIncludeGuestMeals] = useState(false);
+  const [selectedDepartmentsForAccounts, setSelectedDepartmentsForAccounts] = useState([]);
   
   // Custom List Management States
   const [customLists, setCustomLists] = useState([]);
@@ -2455,6 +2664,191 @@ const BillGenerator = () => {
           console.error('Failed to fetch detailed department bills:', err);
           setError('Failed to fetch detailed department bills');
         }
+              } else if (billType === 'accounts') {
+          // Check if departments are selected
+          if (selectedDepartmentsForAccounts.length === 0) {
+            setError('No department is selected');
+            setLoading(false);
+            return;
+          }
+
+          // Accounts bill calculation - generate detailed bill based on meetings
+          try {
+            const detailedBillData = [];
+            
+            // Fetch all meetings data
+            const meetingsResponse = await axios.get(
+              `${import.meta.env.VITE_API_URL}/admin/meetings`,
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            );
+
+            console.log('Meetings response:', meetingsResponse.data);
+            console.log('Selected departments:', selectedDepartmentsForAccounts);
+            console.log('Date range:', dateRange);
+            
+            if (meetingsResponse.data && meetingsResponse.data.meetings) {
+              console.log('Total meetings found:', meetingsResponse.data.meetings.length);
+              
+              meetingsResponse.data.meetings.forEach(meeting => {
+                const departmentName = meeting.department?.title || meeting.department;
+                console.log('Checking meeting:', meeting.title, 'Department:', departmentName, 'Date:', meeting.startDatetime);
+                
+                // Filter by selected departments
+                if (selectedDepartmentsForAccounts.includes(departmentName)) {
+                  console.log('Meeting department matches:', departmentName);
+                  
+                  // Filter by date range
+                  const meetingDate = new Date(meeting.startDatetime);
+                  const startDate = new Date(dateRange.startDate);
+                  const endDate = new Date(dateRange.endDate);
+                  
+                  console.log('Meeting date:', meetingDate, 'Start date:', startDate, 'End date:', endDate);
+                  
+                  if (meetingDate >= startDate && meetingDate <= endDate) {
+                    console.log('Meeting date is within range, adding to bill');
+                    
+                    // Calculate food/snacks amount for this meeting
+                    const foodSnacksAmount = (
+                      (meeting.breakfast || 0) * meetingFoodRates.breakfast +
+                      (meeting.lunch || 0) * meetingFoodRates.lunch +
+                      (meeting.dinner || 0) * meetingFoodRates.dinner +
+                      (meeting.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                      (meeting.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                      (meeting.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                      (meeting.eveningTeaCount || 0) * meetingFoodRates.eveningTea
+                    );
+                    
+                    // Calculate guest meal amount for this meeting (if includeGuestMeals is true)
+                    let guestMealAmount = 0;
+                    if (includeGuestMeals) {
+                      // Calculate guest meals based on meeting's food requirements
+                      const guestBreakfast = Math.ceil((meeting.breakfast || 0) / 2); // 50% of meeting food as guest meals
+                      const guestLunch = Math.ceil((meeting.lunch || 0) / 2);
+                      const guestDinner = Math.ceil((meeting.dinner || 0) / 2);
+                      
+                      guestMealAmount = (
+                        guestBreakfast * mealRates.breakfast +
+                        guestLunch * mealRates.lunch +
+                        guestDinner * mealRates.dinner
+                      );
+                    }
+                    
+                    detailedBillData.push({
+                      date: meeting.startDatetime,
+                      department: departmentName,
+                      program: meeting.title || 'N/A',
+                      meeting: meeting.description || 'N/A',
+                      foodSnacks: foodSnacksAmount,
+                      guestMeals: guestMealAmount,
+                      rent: meeting.rent || 0
+                    });
+                  } else {
+                    console.log('Meeting date is outside range');
+                  }
+                } else {
+                  console.log('Meeting department does not match:', departmentName);
+                }
+              });
+            }
+            
+            console.log('Final detailed bill data:', detailedBillData);
+
+            // Add guest meals data if includeGuestMeals is true
+            if (includeGuestMeals) {
+              try {
+                const guestResponse = await axios.get(
+                  `${import.meta.env.VITE_API_URL}/admin/guest-meals`,
+                  {
+                    headers: { Authorization: `Bearer ${token}` }
+                  }
+                );
+
+                console.log('Guest meals response:', guestResponse.data);
+
+                if (guestResponse.data && guestResponse.data.guestMeals) {
+                  guestResponse.data.guestMeals.forEach(guestMeal => {
+                    const departmentName = guestMeal.department?.title || guestMeal.department;
+                    
+                    // Filter by selected departments
+                    if (selectedDepartmentsForAccounts.includes(departmentName)) {
+                      // Filter by date range
+                      const guestMealDate = new Date(guestMeal.date);
+                      const startDate = new Date(dateRange.startDate);
+                      const endDate = new Date(dateRange.endDate);
+                      
+                      console.log('Checking guest meal:', departmentName, 'Date:', guestMealDate);
+                      
+                      if (guestMealDate >= startDate && guestMealDate <= endDate) {
+                        console.log('Guest meal date is within range, adding to bill');
+                        
+                        // Calculate total amount for this guest meal entry
+                        const guestMealAmount = (
+                          (guestMeal.breakfastCount || 0) * mealRates.breakfast +
+                          (guestMeal.lunchCount || 0) * mealRates.lunch +
+                          (guestMeal.dinnerCount || 0) * mealRates.dinner
+                        );
+                        
+                        if (guestMealAmount > 0) {
+                          detailedBillData.push({
+                            date: guestMeal.date,
+                            department: departmentName,
+                            program: 'Guest Meals',
+                            meeting: `Breakfast: ${guestMeal.breakfastCount || 0}, Lunch: ${guestMeal.lunchCount || 0}, Dinner: ${guestMeal.dinnerCount || 0}`,
+                            foodSnacks: 0, // Guest meals don't have meeting food/snacks
+                            guestMeals: guestMealAmount,
+                            rent: 0 // Guest meals don't have rent
+                          });
+                        }
+                      } else {
+                        console.log('Guest meal date is outside range');
+                      }
+                    } else {
+                      console.log('Guest meal department does not match:', departmentName);
+                    }
+                  });
+                }
+              } catch (err) {
+                console.error('Failed to fetch guest meal data:', err);
+              }
+            }
+
+            // Sort by date and department
+            detailedBillData.sort((a, b) => {
+              const dateCompare = new Date(a.date) - new Date(b.date);
+              if (dateCompare !== 0) return dateCompare;
+              return a.department.localeCompare(b.department);
+            });
+
+            // Set the detailed bill data
+            setDepartmentBillData({ 
+              departments: detailedBillData.map(item => ({
+                department: item.department,
+                date: item.date,
+                program: item.program,
+                meeting: item.meeting,
+                foodSnacks: item.foodSnacks || 0,
+                guestMeals: item.guestMeals || 0,
+                rent: item.rent,
+                total: (item.foodSnacks || 0) + (item.guestMeals || 0) + item.rent
+              }))
+            });
+
+            // Calculate totals including food/snacks and guest meals
+            const totalFoodSnacks = detailedBillData.reduce((acc, item) => acc + (item.foodSnacks || 0), 0);
+            const totalGuestMeals = detailedBillData.reduce((acc, item) => acc + (item.guestMeals || 0), 0);
+            const totalRent = detailedBillData.reduce((acc, item) => acc + (item.rent || 0), 0);
+            const grandTotal = totalFoodSnacks + totalGuestMeals + totalRent;
+            
+            setTotalAmount(grandTotal);
+            setDepartmentPayable(grandTotal);
+            setEmployeePayable(0);
+
+          } catch (err) {
+            console.error('Failed to fetch accounts bill data:', err);
+            setError('Failed to fetch accounts bill data');
+          }
       } else if (billType === 'custom') {
         // Custom list bill calculation
         await calculateCustomListBills();
@@ -2504,13 +2898,26 @@ const BillGenerator = () => {
                            billType === 'guest' ? 'Guest Meals' :
                            billType === 'department' ? 'Department Bills (All Types)' : 
                            billType === 'invoice' ? 'Invoice' :
-                           billType === 'custom' ? 'Custom List Bills' : 'Select Bill Type'}
+                           billType === 'custom' ? 'Custom List Bills' :
+                           billType === 'accounts' ? 'Accounts' : 'Select Bill Type'}
                         </span>
-                        {selectedDepartment && (
-                          <span className="flex items-center text-blue-600">
-                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
-                            {selectedDepartment} Department
-                          </span>
+                        {billType === 'accounts' ? (
+                          selectedDepartmentsForAccounts.length > 0 && (
+                            <span className="flex items-center text-blue-600">
+                              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
+                              {selectedDepartmentsForAccounts.length === 1 
+                                ? `${selectedDepartmentsForAccounts[0]} Department`
+                                : `${selectedDepartmentsForAccounts.length} Departments Selected`
+                              }
+                            </span>
+                          )
+                        ) : (
+                          selectedDepartment && (
+                            <span className="flex items-center text-blue-600">
+                              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
+                              {selectedDepartment} Department
+                            </span>
+                          )
                         )}
                         {billType === 'rent' && selectedVenue && (
                           <span className="flex items-center text-purple-600">
@@ -2572,9 +2979,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'food' ? 'text-green-900' : 'text-gray-900'}`}>
                             Food Bills
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'food' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'food' ? 'text-green-600' : 'text-gray-500'}`}>
                             Employee meals
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'food' && (
@@ -2614,9 +3021,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'rent' ? 'text-green-900' : 'text-gray-900'}`}>
                             Venue Rent
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'rent' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'rent' ? 'text-green-600' : 'text-gray-500'}`}>
                             Meeting costs
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'rent' && (
@@ -2656,9 +3063,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'guest' ? 'text-green-900' : 'text-gray-900'}`}>
                             Guest Meals
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'guest' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'guest' ? 'text-green-600' : 'text-gray-500'}`}>
                             Visitor meals
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'guest' && (
@@ -2698,9 +3105,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'meeting' ? 'text-green-900' : 'text-gray-900'}`}>
                             Meeting Food / Snacks
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'meeting' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'meeting' ? 'text-green-600' : 'text-gray-500'}`}>
                             Event catering
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'meeting' && (
@@ -2741,9 +3148,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'department' ? 'text-green-900' : 'text-gray-900'}`}>
                             Department Bill (Summary)
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'department' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'department' ? 'text-green-600' : 'text-gray-500'}`}>
                             Summary view of all bill types
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'department' && (
@@ -2784,9 +3191,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'department-detailed' ? 'text-green-900' : 'text-gray-900'}`}>
                             Department Bill (Detailed)
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'department-detailed' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'department-detailed' ? 'text-green-600' : 'text-gray-500'}`}>
                             Individual programs/meetings listed
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'department-detailed' && (
@@ -2827,9 +3234,9 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'invoice' ? 'text-green-900' : 'text-gray-900'}`}>
                             Invoice
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'invoice' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'invoice' ? 'text-green-600' : 'text-gray-500'}`}>
                             Department summary
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'invoice' && (
@@ -2869,12 +3276,56 @@ const BillGenerator = () => {
                           <span className={`block text-sm font-medium ${billType === 'custom' ? 'text-green-900' : 'text-gray-900'}`}>
                             Custom List
                           </span>
-                          <span className={`mt-1 flex items-center text-sm ${billType === 'custom' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'custom' ? 'text-green-600' : 'text-gray-500'}`}>
                             Selected users
-                          </span>
+                          </span> */}
                         </span>
                       </span>
                       {billType === 'custom' && (
+                        <div className="h-5 w-5 text-green-600">
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </label>
+
+                    <label className="relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 shadow-sm focus:outline-none hover:border-green-500 transition-all duration-200">
+                      <input
+                        type="radio"
+                        value="accounts"
+                        checked={billType === 'accounts'}
+                        onChange={(e) => {
+                          setBillType(e.target.value);
+                          setSelectedVenue('');
+                          setSelectedCustomList('');
+                          setRentData(null);
+                          setBillData(null);
+                          setGuestMealData(null);
+                          setMeetingFoodData(null);
+                          setDepartmentBillData(null);
+                          setCustomListData(null);
+                          setDepartmentData(null);
+                          setTotalAmount(0);
+                          setEmployeePayable(0);
+                          setDepartmentPayable(0);
+                          setDepartmentShare(75);
+                          setIncludeGuestMeals(false);
+                          setSelectedDepartmentsForAccounts([]);
+                        }}
+                        className="sr-only"
+                      />
+                      <span className="flex flex-1">
+                        <span className="flex flex-col">
+                          <span className={`block text-sm font-medium ${billType === 'accounts' ? 'text-green-900' : 'text-gray-900'}`}>
+                            Accounts
+                          </span>
+                          {/* <span className={`mt-1 flex items-center text-sm ${billType === 'accounts' ? 'text-green-600' : 'text-gray-500'}`}>
+                            Account management
+                          </span> */}
+                        </span>
+                      </span>
+                      {billType === 'accounts' && (
                         <div className="h-5 w-5 text-green-600">
                           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -2887,32 +3338,104 @@ const BillGenerator = () => {
 
                 {/* Department Selection */}
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Department</h2>
-                  <div className="max-w-md">
-                    <select
-                      value={selectedDepartment}
-                      onChange={(e) => {
-                        const newDepartment = e.target.value;
-                        setSelectedDepartment(newDepartment);
-                        // Reset data to prevent stale data from showing
-                        setBillData(null);
-                        setDepartmentData(null);
-                        setRentData(null);
-                        setGuestMealData(null);
-                        setMeetingFoodData(null);
-                        setDepartmentBillData(null);
-                        setTotalAmount(0);
-                        setEmployeePayable(0);
-                        setDepartmentPayable(0);
-                      }}
-                      className="block w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
-                    >
-                      <option value="">All Departments</option>
-                      {departments.map((dept) => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
-                    </select>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-semibold text-gray-900">Select Department</h2>
+                    {billType !== 'accounts' && (
+                      <div className="w-72">
+                        <select
+                          value={selectedDepartment}
+                          onChange={(e) => {
+                            const newDepartment = e.target.value;
+                            setSelectedDepartment(newDepartment);
+                            // Reset data to prevent stale data from showing
+                            setBillData(null);
+                            setDepartmentData(null);
+                            setRentData(null);
+                            setGuestMealData(null);
+                            setMeetingFoodData(null);
+                            setDepartmentBillData(null);
+                            setTotalAmount(0);
+                            setEmployeePayable(0);
+                            setDepartmentPayable(0);
+                          }}
+                          className="block w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                        >
+                          <option value="">All Departments</option>
+                          {departments.map((dept) => (
+                            <option key={dept} value={dept}>{dept}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
+
+                  {billType === 'accounts' && (
+                    <div className="max-w-md">
+                      <div>
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedDepartmentsForAccounts.length === departments.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedDepartmentsForAccounts(departments);
+                                  } else {
+                                    setSelectedDepartmentsForAccounts([]);
+                                  }
+                                  // Reset data to prevent stale data from showing
+                                  setBillData(null);
+                                  setDepartmentData(null);
+                                  setRentData(null);
+                                  setGuestMealData(null);
+                                  setMeetingFoodData(null);
+                                  setDepartmentBillData(null);
+                                  setTotalAmount(0);
+                                  setEmployeePayable(0);
+                                  setDepartmentPayable(0);
+                                }}
+                                className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                              />
+                              <span className="ml-2 text-sm font-medium text-gray-900">Select All Departments</span>
+                            </label>
+                            <span className="text-xs text-gray-500">
+                              {selectedDepartmentsForAccounts.length} of {departments.length} selected
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                          {departments.map((dept) => (
+                            <label key={dept} className="flex items-center cursor-pointer hover:bg-white hover:shadow-sm rounded p-2 transition-all duration-200">
+                              <input
+                                type="checkbox"
+                                checked={selectedDepartmentsForAccounts.includes(dept)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedDepartmentsForAccounts(prev => [...prev, dept]);
+                                  } else {
+                                    setSelectedDepartmentsForAccounts(prev => prev.filter(d => d !== dept));
+                                  }
+                                  // Reset data to prevent stale data from showing
+                                  setBillData(null);
+                                  setDepartmentData(null);
+                                  setRentData(null);
+                                  setGuestMealData(null);
+                                  setMeetingFoodData(null);
+                                  setDepartmentBillData(null);
+                                  setTotalAmount(0);
+                                  setEmployeePayable(0);
+                                  setDepartmentPayable(0);
+                                }}
+                                className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{dept}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Venue Selection - Show only for rent bills */}
@@ -2939,6 +3462,26 @@ const BillGenerator = () => {
                         ))}
                       </select>
 
+                    </div>
+                  </div>
+                )}
+
+                {/* Accounts Options - Show only for accounts bills */}
+                {billType === 'accounts' && (
+                  <div className="mb-8">
+                    {/* <h2 className="text-xl font-semibold text-gray-900 mb-4">Accounts Options</h2> */}
+                    
+                    {/* Include Guest Meals Checkbox */}
+                    <div className="mb-6">
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeGuestMeals}
+                          onChange={(e) => setIncludeGuestMeals(e.target.checked)}
+                          className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Include Guest Meals</span>
+                      </label>
                     </div>
                   </div>
                 )}
@@ -3237,10 +3780,11 @@ const BillGenerator = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payable</th>
+                                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payable</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -3255,110 +3799,136 @@ const BillGenerator = () => {
                   (billType === 'meeting' && meetingFoodData?.departments) ||
                   (billType === 'department' && departmentBillData?.departments) ||
                   (billType === 'department-detailed' && detailedDepartmentData?.departments) ||
+                  (billType === 'accounts' && departmentBillData?.departments) ||
                   (billType === 'custom' && billData?.departments)) && (
-                  <div className="mb-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                                    <div className="mb-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                       <h3 className="text-lg font-semibold text-gray-900">
                         {billType === 'food' ? 'Food Bill Details' : 
                          billType === 'rent' ? `Venue Rent Details${selectedVenue ? ` - ${selectedVenue}` : ''}` : 
                          billType === 'meeting' ? 'Meeting Food Details' : 
                          billType === 'department' ? 'Department Bills (All Types)' :
                          billType === 'department-detailed' ? 'Detailed Department Bills (Individual Programs)' :
+                         billType === 'accounts' ? 'Accounts Bill Details' :
                          billType === 'custom' ? `Custom List Bills - ${customListData?.title || 'Selected Users'}` :
                          'Guest Meal Details'}
                       </h3>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-x-auto max-w-full">
+                      <table className="w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Department
-                            </th>
+                            {billType !== 'accounts' && (
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Department
+                              </th>
+                            )}
                             {billType === 'department' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food Bill (75%)</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rent Bill</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Food</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Meals</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food Bill (75%)</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rent Bill</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Food</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Meals</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                               </>
                             )}
                             {billType === 'department-detailed' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Programs</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food (75%)</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rent</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Food</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Meals</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Programs</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food (75%)</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rent</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Food</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Meals</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                               </>
                             )}
                             {billType === 'food' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
                               </>
                             )}
                             {billType === 'rent' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Meetings</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auditorium</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conference Hall</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Space</th>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Meetings</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auditorium</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conference Hall</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Space</th>
                               </>
                             )}
                             {billType === 'guest' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lunch</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dinner</th>
                               </>
                             )}
                             {billType === 'meeting' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">B</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MS</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MT</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ES</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ET</th>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">B</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MS</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MT</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ES</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ET</th>
                               </>
                             )}
-                            {billType !== 'department' && (
+                            {billType === 'accounts' && (
                               <>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dept. Payable</th>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dept</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food</th>
+                                {includeGuestMeals && (
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+                                )}
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rent</th>
+                              </>
+                            )}
+                            {billType !== 'department' && billType !== 'accounts' && (
+                              <>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dept. Payable</th>
                               </>
                             )}
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {billType === 'department' && departmentBillData?.departments?.map((dept) => (
+                          {billType === 'department' && departmentBillData?.departments?.map((dept, index) => (
                             <tr key={dept.department} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                              <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">{dept.department}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.foodShare).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.rentTotal).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-orange-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.meetingFoodTotal).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-teal-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.guestMealTotal).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.total).toLocaleString()}
                               </td>
                             </tr>
                           ))}
                           {billType === 'department-detailed' && detailedDepartmentData?.departments?.map((dept) => (
                             <tr key={dept.department} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 <div className="space-y-1">
                                   <div className="font-bold text-gray-900">{dept.department}</div>
                                   <div className="text-xs text-gray-500">
@@ -3366,7 +3936,7 @@ const BillGenerator = () => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
                                 <div className="space-y-1">
                                   {(dept.meetings || []).map((meeting, idx) => (
                                     <div key={idx} className="text-xs">
@@ -3386,24 +3956,54 @@ const BillGenerator = () => {
                                   ))}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.foodShare || 0).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.totalRentAmount || 0).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-orange-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.totalMeetingFoodAmount || 0).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-teal-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.totalGuestMealAmount || 0).toLocaleString()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {Math.round(dept.totalAmount || 0).toLocaleString()}
                               </td>
                             </tr>
                           ))}
-                          {billType === 'food' && departmentData?.departments?.map((dept) => {
+                          {billType === 'accounts' && departmentBillData?.departments?.map((item, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
+                                {index + 1}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                                {format(new Date(item.date), 'dd/MM/yyyy')}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                                {item.department}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {item.program}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {item.meeting}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-orange-600">
+                                ₹{item.foodSnacks.toLocaleString()}
+                              </td>
+                              {includeGuestMeals && (
+                                <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-teal-600">
+                                  ₹{item.guestMeals.toLocaleString()}
+                                </td>
+                              )}
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-purple-600">
+                                ₹{item.rent.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                          {billType === 'food' && departmentData?.departments?.map((dept, index) => {
                             // Calculate actual billable amounts from user data with intern separation
                             let actualBreakfast = 0, actualLunch = 0, actualDinner = 0;
                             let internTotal = 0, regularTotal = 0;
@@ -3458,6 +4058,7 @@ const BillGenerator = () => {
                             
                             return (
                               <tr key={dept.department} className="hover:bg-gray-50">
+                                <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualBreakfast}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualLunch}</td>
@@ -3471,8 +4072,9 @@ const BillGenerator = () => {
                               </tr>
                             );
                           })}
-                          {billType === 'rent' && rentData?.departments?.map((dept) => (
+                          {billType === 'rent' && rentData?.departments?.map((dept, index) => (
                             <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.meetingCount || 0}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.auditoriumCount || 0}</td>
@@ -3486,8 +4088,9 @@ const BillGenerator = () => {
                               </td>
                             </tr>
                           ))}
-                          {billType === 'guest' && guestMealData?.departments?.map((dept) => (
+                          {billType === 'guest' && guestMealData?.departments?.map((dept, index) => (
                             <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.breakfastCount || 0}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.lunchCount || 0}</td>
@@ -3500,8 +4103,9 @@ const BillGenerator = () => {
                               </td>
                             </tr>
                           ))}
-                          {billType === 'meeting' && meetingFoodData?.departments?.map((dept) => (
+                          {billType === 'meeting' && meetingFoodData?.departments?.map((dept, index) => (
                             <tr key={dept.department} className="hover:bg-gray-50">
+                              <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.breakfast || 0}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dept.lunch || 0}</td>
@@ -3534,7 +4138,7 @@ const BillGenerator = () => {
                               </td>
                             </tr>
                           ))}
-                          {billType === 'custom' && billData?.departments?.map((dept) => {
+                          {billType === 'custom' && billData?.departments?.map((dept, index) => {
                             // Calculate actual billable amounts from custom list user data with intern separation
                             let actualBreakfast = 0, actualLunch = 0, actualDinner = 0;
                             let internTotal = 0, regularTotal = 0;
@@ -3579,6 +4183,7 @@ const BillGenerator = () => {
                             
                             return (
                               <tr key={dept.department} className="hover:bg-gray-50">
+                                <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualBreakfast}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{actualLunch}</td>
@@ -3613,6 +4218,7 @@ const BillGenerator = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Name</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakfast</th>
@@ -3645,6 +4251,9 @@ const BillGenerator = () => {
                       <table className="w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                              S.No.
+                            </th>
                             <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                               Employee Name
                             </th>
@@ -3724,6 +4333,9 @@ const BillGenerator = () => {
 
                               return (
                                 <tr key={`${user.userId}-${index}-${isIntern ? 'intern' : 'regular'}`} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${isIntern ? 'bg-yellow-50 border-l-4 border-orange-400' : ''}`}>
+                                  <td className="px-2 py-4 text-sm text-gray-900 text-center">
+                                    {index + 1}
+                                  </td>
                                   <td className="px-2 py-4 text-sm font-medium text-gray-900 truncate">
                                     {user.name || 'N/A'}{isIntern ? ' 📚' : ''}
                                   </td>
@@ -3770,7 +4382,7 @@ const BillGenerator = () => {
                                 {interns.length > 0 && (
                                   <>
                                     <tr className="bg-orange-500">
-                                      <td colSpan="9" className="px-2 py-3 text-center text-white font-bold text-xs">
+                                      <td colSpan="10" className="px-2 py-3 text-center text-white font-bold text-xs">
                                         🎓 INTERNS ({interns.length} students) - 100% Department Share, 0% Employee Share
                                       </td>
                                     </tr>
@@ -3783,7 +4395,7 @@ const BillGenerator = () => {
                                   <>
                                     {interns.length > 0 && (
                                       <tr className="bg-gray-600">
-                                        <td colSpan="9" className="px-2 py-3 text-center text-white font-bold text-xs">
+                                        <td colSpan="10" className="px-2 py-3 text-center text-white font-bold text-xs">
                                           👥 REGULAR EMPLOYEES ({regularEmployees.length} staff) - Department-specific Share Rates
                                         </td>
                                       </tr>
@@ -3800,7 +4412,7 @@ const BillGenerator = () => {
                       {/* Summary Row */}
                       <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                         <tr>
-                          <td className="px-2 py-4 text-sm font-bold text-gray-900" colSpan="6">
+                          <td className="px-2 py-4 text-sm font-bold text-gray-900" colSpan="7">
                             TOTAL ({billData.departments
                               .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
                               .reduce((acc, dept) => acc + dept.users.filter(user => !user.isFreeFood).length, 0)} employees)
@@ -4212,6 +4824,31 @@ const BillGenerator = () => {
                           if (loading) return 'Preparing PDF...';
                           if (error) return 'Error generating PDF';
                           return 'Download Invoice PDF';
+                        }}
+                      </PDFDownloadLink>
+                    </PDFErrorBoundary>
+                  )}
+
+                  {(billType === 'accounts' && departmentBillData?.departments) && (
+                    <PDFErrorBoundary>
+                      <PDFDownloadLink
+                        document={
+                          <AccountsPDF
+                            departmentBillData={departmentBillData}
+                            dateRange={dateRange}
+                            selectedDepartmentsForAccounts={selectedDepartmentsForAccounts}
+                            includeGuestMeals={includeGuestMeals}
+                            mealRates={mealRates}
+                            meetingFoodRates={meetingFoodRates}
+                          />
+                        }
+                        fileName={`accounts-bill-${selectedDepartmentsForAccounts.join('-')}-${format(new Date(dateRange.startDate), 'yyyy-MM-dd')}.pdf`}
+                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        {({ loading, error }) => {
+                          if (loading) return 'Preparing PDF...';
+                          if (error) return 'Error generating PDF';
+                          return 'Download Accounts PDF';
                         }}
                       </PDFDownloadLink>
                     </PDFErrorBoundary>
