@@ -43,7 +43,7 @@ const travelSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    trim: true
+    required: true
   }
 }, {
   timestamps: true

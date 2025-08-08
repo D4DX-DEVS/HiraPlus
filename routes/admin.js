@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern, isDriver } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern, role } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -153,7 +153,7 @@ router.post('/users', adminAuth, async (req, res) => {
       status: status || 'active',
       isFreeFood: isFreeFood || false,
       isIntern: isIntern || false,
-      isDriver: isDriver || false
+      role: role
     });
     await user.save();
 
@@ -172,7 +172,7 @@ router.post('/users', adminAuth, async (req, res) => {
         status: user.status,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
-        isDriver: user.isDriver
+        role: user.role
       }
     });
   } catch (error) {
@@ -186,7 +186,7 @@ router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern isDriver')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern role')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -202,7 +202,7 @@ router.get('/users', adminAuth, async (req, res) => {
       createdAt: user.createdAt,
       isFreeFood: user.isFreeFood,
       isIntern: user.isIntern,
-      isDriver: user.isDriver
+      role: user.role
     }));
 
     res.json(mappedUsers);
@@ -215,7 +215,7 @@ router.get('/users', adminAuth, async (req, res) => {
 // Get list of drivers (no authentication required)
 router.get('/drivers', async (req, res) => {
   try {
-    const drivers = await User.find({ isDriver: true })
+    const drivers = await User.find({ role: 'driver' })
       .populate('department', 'title')
       .select('name phoneNumber department designation status')
       .sort({ name: 1 });
@@ -277,7 +277,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern, isDriver } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern, role } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -339,7 +339,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (status && ['active', 'inactive'].includes(status)) user.status = status;
     if (typeof isFreeFood !== 'undefined') user.isFreeFood = isFreeFood;
     if (typeof isIntern !== 'undefined') user.isIntern = isIntern;
-    if (typeof isDriver !== 'undefined') user.isDriver = isDriver;
+    if (typeof role !== 'undefined') user.role = role;
 
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
@@ -367,7 +367,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         status: user.status,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
-        isDriver: user.isDriver
+        role: user.role
       }
     });
   } catch (error) {
@@ -3468,12 +3468,15 @@ router.get('/department-bills-detailed', adminAuth, async (req, res) => {
       ]);
 
       let foodDeptShare = 0;
+      let totalFoodAmount = 0;
       for (const userMeal of userResponse) {
         const userTotal = (
           (userMeal.breakfastCount || 0) * 40 +
           (userMeal.lunchCount || 0) * 80 +
           (userMeal.dinnerCount || 0) * 40
         );
+
+        totalFoodAmount += userTotal;
 
         // Use intern logic: 100% dept share for interns, department-specific % for others
         const isIntern = userMeal.user.isIntern === true;
@@ -3483,6 +3486,7 @@ router.get('/department-bills-detailed', adminAuth, async (req, res) => {
       }
 
       departmentData.foodShare = foodDeptShare;
+      departmentData.totalFoodAmount = totalFoodAmount;
 
       // Calculate total amount
       departmentData.totalAmount = 
@@ -3567,15 +3571,188 @@ router.post('/vehicles', adminAuth, async (req, res) => {
 
 router.get('/travel/all', adminAuth, async (req, res) => {
   try {
-    const travels = await Travel.find().populate('user').populate('vehicle');
+    const travels = await Travel.find()
+      .populate('user', 'name phoneNumber department designation')
+      .populate('vehicle', 'name number type')
+      .sort({ date: -1 });
+    
     res.json(travels);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Get all travels error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
   }
 });
 
+// Admin: Create travel record
+router.post('/travel', adminAuth, async (req, res) => {
+  try {
+    const {
+      user,
+      vehicle,
+      fromLocation,
+      toLocation,
+      startKm,
+      endKm,
+      startTime,
+      endTime,
+      date,
+      description
+    } = req.body;
+
+    // Validate required fields
+    if (!user || !vehicle || !fromLocation || !toLocation || !startKm || !endKm || !startTime || !endTime || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: user, vehicle, fromLocation, toLocation, startKm, endKm, startTime, endTime, date'
+      });
+    }
+
+    // Validate user exists and is a driver
+    const foundUser = await User.findById(user);
+    if (!foundUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (foundUser.role !== 'driver') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only drivers can be assigned to travel records'
+      });
+    }
+
+    // Validate vehicle exists
+    const foundVehicle = await Vehicle.findById(vehicle);
+    if (!foundVehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle not found'
+      });
+    }
+
+    // Validate km values
+    if (endKm <= startKm) {
+      return res.status(400).json({
+        success: false,
+        message: 'End kilometer must be greater than start kilometer'
+      });
+    }
+
+    // Create new travel record
+    const travel = new Travel({
+      user,
+      vehicle,
+      fromLocation: fromLocation.trim(),
+      toLocation: toLocation.trim(),
+      startKm,
+      endKm,
+      startTime,
+      endTime,
+      date: new Date(date),
+      description: description?.trim() || ''
+    });
+
+    const savedTravel = await travel.save();
+    await savedTravel.populate('user', 'name phoneNumber department designation');
+    await savedTravel.populate('vehicle', 'name number type');
+
+    res.status(201).json({
+      success: true,
+      message: 'Travel record created successfully',
+      travel: savedTravel
+    });
+  } catch (error) {
+    console.error('Create travel error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Update travel record
+router.put('/travel/:travelId', adminAuth, async (req, res) => {
+  try {
+    const {
+      vehicle,
+      fromLocation,
+      toLocation,
+      startKm,
+      endKm,
+      startTime,
+      endTime,
+      date,
+      description
+    } = req.body;
+
+    const travel = await Travel.findById(req.params.travelId);
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel record not found'
+      });
+    }
+
+    // Update fields if provided
+    if (vehicle) travel.vehicle = vehicle;
+    if (fromLocation) travel.fromLocation = fromLocation.trim();
+    if (toLocation) travel.toLocation = toLocation.trim();
+    if (startKm !== undefined) travel.startKm = startKm;
+    if (endKm !== undefined) travel.endKm = endKm;
+    if (startTime) travel.startTime = startTime;
+    if (endTime) travel.endTime = endTime;
+    if (date) travel.date = new Date(date);
+    if (description) travel.description = description.trim();
+
+    await travel.save();
+    await travel.populate('user', 'name phoneNumber department designation');
+    await travel.populate('vehicle', 'name number type');
+
+    res.json({
+      success: true,
+      message: 'Travel record updated successfully',
+      travel
+    });
+  } catch (error) {
+    console.error('Update travel error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get all drivers for admin travel creation
+router.get('/drivers', adminAuth, async (req, res) => {
+  try {
+    const drivers = await User.find({ role: 'driver' })
+      .populate('department', 'title')
+      .select('name phoneNumber department designation status')
+      .sort({ name: 1 });
+    
+    res.json({
+      success: true,
+      drivers,
+      total: drivers.length
+    });
+  } catch (error) {
+    console.error('Fetch drivers error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+
+
 // Get all vehicles
-router.get('/vehicles', adminAuth, async (req, res) => {
+router.get('/vehicles', async (req, res) => {
   try {
     const vehicles = await Vehicle.find().sort({ createdAt: -1 });
     res.json({
