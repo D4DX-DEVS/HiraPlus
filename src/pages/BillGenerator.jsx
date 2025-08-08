@@ -2814,11 +2814,11 @@ const BillGenerator = () => {
               }
             }
 
-            // Sort by date and department
+            // Sort by department first, then by date
             detailedBillData.sort((a, b) => {
-              const dateCompare = new Date(a.date) - new Date(b.date);
-              if (dateCompare !== 0) return dateCompare;
-              return a.department.localeCompare(b.department);
+              const deptCompare = a.department.localeCompare(b.department);
+              if (deptCompare !== 0) return deptCompare;
+              return new Date(a.date) - new Date(b.date);
             });
 
             // Set the detailed bill data
