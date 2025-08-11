@@ -217,7 +217,7 @@ router.get('/drivers', async (req, res) => {
   try {
     const drivers = await User.find({ role: 'driver' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation status')
+      .select('name phoneNumber department designation status role')
       .sort({ name: 1 });
 
     const mappedDrivers = drivers.map(driver => ({
@@ -226,7 +226,8 @@ router.get('/drivers', async (req, res) => {
       phoneNumber: driver.phoneNumber,
       department: driver.department || '',
       designation: driver.designation || '',
-      status: driver.status || 'active'
+      status: driver.status || 'active',
+      role: driver.role
     }));
 
     res.json(mappedDrivers);
@@ -241,7 +242,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
   try {
     const users = await User.find({ status: 'active' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation isIntern')
+      .select('name phoneNumber department designation isIntern role')
       .sort({ name: 1 });
 
     const usersList = users.map(user => ({
@@ -251,6 +252,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
       department: user.department ? user.department.title : '',
       designation: user.designation || '',
       isIntern: user.isIntern,
+      role: user.role,
       displayName: `${user.name || 'Unknown'} (${user.phoneNumber}) - ${user.department ? user.department.title : 'N/A'}`
     }));
 
@@ -911,7 +913,8 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       isFreeFood: user.isFreeFood,
-      isIntern: user.isIntern
+      isIntern: user.isIntern,
+      role: user.role
     });
   } catch (error) {
     if (error.name === 'CastError') {
@@ -2662,7 +2665,7 @@ router.post('/custom-lists', adminAuth, async (req, res) => {
     await customList.save();
     
     // Populate users for response
-    await customList.populate('users', 'name phoneNumber department designation');
+    await customList.populate('users', 'name phoneNumber department designation role');
 
     res.status(201).json({
       message: 'Custom list created successfully',
@@ -2678,7 +2681,7 @@ router.post('/custom-lists', adminAuth, async (req, res) => {
 router.get('/custom-lists', adminAuth, async (req, res) => {
   try {
     const customLists = await CustomList.find()
-      .populate('users', 'name phoneNumber department designation')
+      .populate('users', 'name phoneNumber department designation role')
       .sort({ createdAt: -1 });
 
     res.json(customLists);
@@ -2694,7 +2697,7 @@ router.get('/custom-lists/:id', adminAuth, async (req, res) => {
     const customList = await CustomList.findById(req.params.id)
       .populate({
         path: 'users',
-        select: 'name phoneNumber department designation',
+        select: 'name phoneNumber department designation role',
         populate: {
           path: 'department',
           select: 'title'
@@ -3572,7 +3575,7 @@ router.post('/vehicles', adminAuth, async (req, res) => {
 router.get('/travel/all', adminAuth, async (req, res) => {
   try {
     const travels = await Travel.find()
-      .populate('user', 'name phoneNumber department designation')
+      .populate('user', 'name phoneNumber department designation role')
       .populate('vehicle', 'name number type')
       .sort({ date: -1 });
     
@@ -3658,7 +3661,7 @@ router.post('/travel', adminAuth, async (req, res) => {
     });
 
     const savedTravel = await travel.save();
-    await savedTravel.populate('user', 'name phoneNumber department designation');
+    await savedTravel.populate('user', 'name phoneNumber department designation role');
     await savedTravel.populate('vehicle', 'name number type');
 
     res.status(201).json({
@@ -3710,7 +3713,7 @@ router.put('/travel/:travelId', adminAuth, async (req, res) => {
     if (description) travel.description = description.trim();
 
     await travel.save();
-    await travel.populate('user', 'name phoneNumber department designation');
+    await travel.populate('user', 'name phoneNumber department designation role');
     await travel.populate('vehicle', 'name number type');
 
     res.json({
@@ -3732,7 +3735,7 @@ router.get('/drivers', adminAuth, async (req, res) => {
   try {
     const drivers = await User.find({ role: 'driver' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation status')
+      .select('name phoneNumber department designation status role')
       .sort({ name: 1 });
     
     res.json({

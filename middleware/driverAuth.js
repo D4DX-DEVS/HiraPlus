@@ -52,3 +52,4 @@ const driverAuth = async (req, res, next) => {
 };
 
 module.exports = driverAuth;
+
