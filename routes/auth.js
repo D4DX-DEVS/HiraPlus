@@ -417,7 +417,7 @@ router.get('/users', async (req, res) => {
     // Get all users, excluding sensitive information
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation isIntern')
+      .select('name phoneNumber department designation isIntern role')
       .sort({ name: 1 });
 
     res.json({
@@ -887,10 +887,10 @@ router.get('/today-checked-in', async (req, res) => {
         $lt: tomorrow
       }
     })
-    .populate('user', 'name department designation')
+    .populate('user', 'name department designation role')
     .populate({
       path: 'user',
-      select: 'name department designation',
+      select: 'name department designation role',
       populate: {
         path: 'department',
         select: 'title'
@@ -905,7 +905,7 @@ router.get('/today-checked-in', async (req, res) => {
     })
     .populate({
       path: 'user',
-      select: 'name department designation',
+      select: 'name department designation role',
       populate: {
         path: 'department',
         select: 'title'
@@ -1061,7 +1061,7 @@ router.post('/travels', driverAuth, async (req, res) => {
     });
 
     await travel.save();
-    await travel.populate('user', 'name phoneNumber department designation');
+    await travel.populate('user', 'name phoneNumber department designation role');
     await travel.populate('vehicle', 'name number type');
     
     res.status(201).json({
@@ -1103,7 +1103,7 @@ router.get('/drivers', async (req, res) => {
   try {
     const drivers = await User.find({ role: 'driver' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation status')
+      .select('name phoneNumber department designation status role')
       .sort({ name: 1 });
 
     const mappedDrivers = drivers.map(driver => ({
@@ -1112,7 +1112,8 @@ router.get('/drivers', async (req, res) => {
       phoneNumber: driver.phoneNumber,
       department: driver.department || '',
       designation: driver.designation || '',
-      status: driver.status || 'active'
+      status: driver.status || 'active',
+      role: driver.role
     }));
 
     res.json(mappedDrivers);
