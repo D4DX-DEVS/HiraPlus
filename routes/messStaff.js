@@ -869,20 +869,27 @@ router.get('/meals/today', messStaffAuth, async (req, res) => {
   }
 });
 
-// Get meals by date range with counts
+// Get meals by date range with counts (Staff, Guest, and Meeting meals)
 router.get('/meals', messStaffAuth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    const query = {};
+    // Build date query only if both dates are provided
+    const mealQuery = {};
+    const guestMealQuery = {};
+    const meetingQuery = {};
+    
     if (startDate && endDate) {
-      query.date = {
-        $gte: new Date(startDate),
-        $lt: new Date(endDate)
-      };
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      mealQuery.date = { $gte: start, $lt: end };
+      guestMealQuery.date = { $gte: start, $lt: end };
+      meetingQuery.startDatetime = { $gte: start, $lt: end };
     }
 
-    let meals = await Meal.find(query)
+    // Fetch staff meals
+    let staffMeals = await Meal.find(mealQuery)
       .populate({
         path: 'userId',
         model: 'User',
@@ -894,8 +901,22 @@ router.get('/meals', messStaffAuth, async (req, res) => {
       })
       .sort({ date: 1 });
 
-    // Convert meals to plain objects and restructure
-    meals = meals.map(meal => {
+    // Fetch guest meals
+    let guestMeals = await GuestMeal.find(guestMealQuery)
+      .populate('department', 'title')
+      .sort({ date: 1 });
+
+    // Fetch meeting meals
+    let meetingMeals = await Meeting.find({ 
+      ...meetingQuery,
+      foodRequired: true,
+      status: 'approved'
+    })
+      .populate('department', 'title')
+      .sort({ startDatetime: 1 });
+
+    // Convert staff meals to plain objects and restructure
+    staffMeals = staffMeals.map(meal => {
       const mealObj = meal.toObject();
       return {
         ...mealObj,
@@ -913,50 +934,154 @@ router.get('/meals', messStaffAuth, async (req, res) => {
       };
     });
 
-    // Group meals by date
-    const groupedMeals = meals.reduce((acc, meal) => {
-      if (!meal.userId) return acc; // Skip meals without user
+    // Group all meals by date
+    const groupedMeals = {};
+    
+    // Process staff meals
+    staffMeals.forEach(meal => {
+      if (!meal.userId) return; // Skip meals without user
 
       const dateStr = meal.date.toISOString().split('T')[0];
-      if (!acc[dateStr]) {
-        acc[dateStr] = {
-          breakfast: [],
-          lunch: [],
-          dinner: []
+      if (!groupedMeals[dateStr]) {
+        groupedMeals[dateStr] = {
+          staff: { breakfast: [], lunch: [], dinner: [] },
+          guest: { breakfast: 0, lunch: 0, dinner: 0 },
+          meeting: { breakfast: 0, lunch: 0, dinner: 0 }
         };
       }
       
-      if (meal.breakfast) acc[dateStr].breakfast.push(meal);
-      if (meal.lunch) acc[dateStr].lunch.push(meal);
-      if (meal.dinner) acc[dateStr].dinner.push(meal);
-      return acc;
-    }, {});
+      if (meal.breakfast) groupedMeals[dateStr].staff.breakfast.push(meal);
+      if (meal.lunch) groupedMeals[dateStr].staff.lunch.push(meal);
+      if (meal.dinner) groupedMeals[dateStr].staff.dinner.push(meal);
+    });
 
-    // Add counts for each date
-    const mealCounts = {};
+    // Process guest meals
+    guestMeals.forEach(meal => {
+      const dateStr = meal.date.toISOString().split('T')[0];
+      if (!groupedMeals[dateStr]) {
+        groupedMeals[dateStr] = {
+          staff: { breakfast: [], lunch: [], dinner: [] },
+          guest: { breakfast: 0, lunch: 0, dinner: 0 },
+          meeting: { breakfast: 0, lunch: 0, dinner: 0 }
+        };
+      }
+      
+      groupedMeals[dateStr].guest.breakfast += meal.breakfastCount || 0;
+      groupedMeals[dateStr].guest.lunch += meal.lunchCount || 0;
+      groupedMeals[dateStr].guest.dinner += meal.dinnerCount || 0;
+    });
+
+    // Process meeting meals
+    meetingMeals.forEach(meeting => {
+      const dateStr = meeting.startDatetime.toISOString().split('T')[0];
+      if (!groupedMeals[dateStr]) {
+        groupedMeals[dateStr] = {
+          staff: { breakfast: [], lunch: [], dinner: [] },
+          guest: { breakfast: 0, lunch: 0, dinner: 0 },
+          meeting: { breakfast: 0, lunch: 0, dinner: 0 }
+        };
+      }
+      
+      groupedMeals[dateStr].meeting.breakfast += meeting.breakfast || 0;
+      groupedMeals[dateStr].meeting.lunch += meeting.lunch || 0;
+      groupedMeals[dateStr].meeting.dinner += meeting.dinner || 0;
+    });
+
+    // Calculate daily counts for each date
+    const dailyCounts = {};
     Object.keys(groupedMeals).forEach(date => {
-      mealCounts[date] = {
-        breakfast: groupedMeals[date].breakfast.length,
-        lunch: groupedMeals[date].lunch.length,
-        dinner: groupedMeals[date].dinner.length,
-        total: groupedMeals[date].breakfast.length + 
-               groupedMeals[date].lunch.length + 
-               groupedMeals[date].dinner.length
+      const dateData = groupedMeals[date];
+      
+      // Staff counts
+      const staffBreakfast = dateData.staff.breakfast.length;
+      const staffLunch = dateData.staff.lunch.length;
+      const staffDinner = dateData.staff.dinner.length;
+      const staffTotal = staffBreakfast + staffLunch + staffDinner;
+      
+      // Guest counts
+      const guestBreakfast = dateData.guest.breakfast;
+      const guestLunch = dateData.guest.lunch;
+      const guestDinner = dateData.guest.dinner;
+      const guestTotal = guestBreakfast + guestLunch + guestDinner;
+      
+      // Meeting counts
+      const meetingBreakfast = dateData.meeting.breakfast;
+      const meetingLunch = dateData.meeting.lunch;
+      const meetingDinner = dateData.meeting.dinner;
+      const meetingTotal = meetingBreakfast + meetingLunch + meetingDinner;
+      
+      // Total counts for the date
+      const totalBreakfast = staffBreakfast + guestBreakfast + meetingBreakfast;
+      const totalLunch = staffLunch + guestLunch + meetingLunch;
+      const totalDinner = staffDinner + guestDinner + meetingDinner;
+      const grandTotal = totalBreakfast + totalLunch + totalDinner;
+
+      dailyCounts[date] = {
+        staff: {
+          breakfast: staffBreakfast,
+          lunch: staffLunch,
+          dinner: staffDinner,
+          total: staffTotal
+        },
+        guest: {
+          breakfast: guestBreakfast,
+          lunch: guestLunch,
+          dinner: guestDinner,
+          total: guestTotal
+        },
+        meeting: {
+          breakfast: meetingBreakfast,
+          lunch: meetingLunch,
+          dinner: meetingDinner,
+          total: meetingTotal
+        },
+        total: {
+          breakfast: totalBreakfast,
+          lunch: totalLunch,
+          dinner: totalDinner,
+          total: grandTotal
+        }
       };
     });
 
     // Calculate total counts across all dates
-    const validMeals = meals.filter(meal => meal.userId);
-    const totalCounts = {
-      breakfast: validMeals.filter(meal => meal.breakfast).length,
-      lunch: validMeals.filter(meal => meal.lunch).length,
-      dinner: validMeals.filter(meal => meal.dinner).length,
-      total: validMeals.length
+    const validStaffMeals = staffMeals.filter(meal => meal.userId);
+    const totalStaffCounts = {
+      breakfast: validStaffMeals.filter(meal => meal.breakfast).length,
+      lunch: validStaffMeals.filter(meal => meal.lunch).length,
+      dinner: validStaffMeals.filter(meal => meal.dinner).length,
+      total: validStaffMeals.length
+    };
+
+    const totalGuestCounts = {
+      breakfast: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0), 0),
+      lunch: guestMeals.reduce((sum, meal) => sum + (meal.lunchCount || 0), 0),
+      dinner: guestMeals.reduce((sum, meal) => sum + (meal.dinnerCount || 0), 0),
+      total: guestMeals.reduce((sum, meal) => sum + (meal.breakfastCount || 0) + (meal.lunchCount || 0) + (meal.dinnerCount || 0), 0)
+    };
+
+    const totalMeetingCounts = {
+      breakfast: meetingMeals.reduce((sum, meeting) => sum + (meeting.breakfast || 0), 0),
+      lunch: meetingMeals.reduce((sum, meeting) => sum + (meeting.lunch || 0), 0),
+      dinner: meetingMeals.reduce((sum, meeting) => sum + (meeting.dinner || 0), 0),
+      total: meetingMeals.reduce((sum, meeting) => sum + (meeting.breakfast || 0) + (meeting.lunch || 0) + (meeting.dinner || 0), 0)
+    };
+
+    const grandTotalCounts = {
+      breakfast: totalStaffCounts.breakfast + totalGuestCounts.breakfast + totalMeetingCounts.breakfast,
+      lunch: totalStaffCounts.lunch + totalGuestCounts.lunch + totalMeetingCounts.lunch,
+      dinner: totalStaffCounts.dinner + totalGuestCounts.dinner + totalMeetingCounts.dinner,
+      total: totalStaffCounts.total + totalGuestCounts.total + totalMeetingCounts.total
     };
 
     res.json({
-      totalCounts,
-      dailyCounts: mealCounts,
+      totalCounts: {
+        staff: totalStaffCounts,
+        guest: totalGuestCounts,
+        meeting: totalMeetingCounts,
+        grandTotal: grandTotalCounts
+      },
+      dailyCounts,
       meals: groupedMeals
     });
   } catch (error) {

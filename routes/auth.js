@@ -112,7 +112,8 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
         isFreeFood: user.isFreeFood,
-        isIntern: user.isIntern
+        isIntern: user.isIntern,
+        role: user.role
       }
     };
   } catch (error) {
@@ -314,7 +315,8 @@ router.post('/verify-otp', async (req, res) => {
         isVerified: user.isVerified,
         isDeptHead: user.isDeptHead,
         isFreeFood: user.isFreeFood,
-        isIntern: user.isIntern
+        isIntern: user.isIntern,
+        role: user.role
       }
     });
   } catch (error) {
@@ -366,7 +368,8 @@ router.get('/me', async (req, res) => {
         status: user.status,
         isDeptHead: user.isDeptHead,
         isFreeFood: user.isFreeFood,
-        isIntern: user.isIntern
+        isIntern: user.isIntern,
+        role: user.role
       }
     });
   } catch (error) {
