@@ -32,9 +32,9 @@ const getDepartmentShareForDept = (departmentName, defaultShare) => {
   
   const deptName = departmentName.toLowerCase().trim();
   
-  // GIO and Solidarity departments: 0% department share (employees pay 100%)
+  // GIO and Solidarity departments: 100% department share (department pays 100%)
   if (deptName === 'gio' || deptName === 'solidarity') {
-    return 0;
+    return 100;
   }
   
   // All other departments: use the provided default share
@@ -1366,7 +1366,10 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
       </View>
       <View style={styles.headerText}>
         <Text style={styles.title}>
-          {title}
+          JAMA AT E ISLAMI HIND KERALA
+        </Text>
+        <Text style={styles.subtitle}>
+          HIRA CENTRE, KOZHIKODE - 673004
         </Text>
         <Text style={styles.subtitle}>
           FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
@@ -1396,8 +1399,12 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Amount</Text>
             </View>
             <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 3 }]}>Food Bill Share (75%)</Text>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Department Food Share</Text>
               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.foodShare?.toFixed(2)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Total Food Share by Employee</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.employeeFoodShare?.toFixed(2) || '0.00'}</Text>
             </View>
             <View style={styles.tableRow}>
               <Text style={[styles.tableCell, { flex: 3 }]}>Venue Rent</Text>
@@ -1417,6 +1424,27 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
             </View>
           </View>
         </View>
+        
+        {/* Meeting Details */}
+        {invoiceData.meetings && invoiceData.meetings.length > 0 && (
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 5 }}>Meetings Conducted:</Text>
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={[styles.tableCell, { flex: 2 }]}>Meeting Name</Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>Date</Text>
+              </View>
+              {invoiceData.meetings.map((meeting, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>{meeting.title || 'N/A'}</Text>
+                  <Text style={[styles.tableCell, { flex: 1, fontSize: 8 }]}>
+                    {format(new Date(meeting.startDatetime), 'dd/MM/yyyy')}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </Page>
     </Document>
   );
@@ -1473,9 +1501,9 @@ const AccountsPDF = ({
       <Text style={[styles.tableCell, { flex: 0.6, fontSize: 8 }]}>
         {index + 1}
       </Text>
-      <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8 }]}>
-        {format(new Date(item.date), 'dd/MM/yyyy')}
-      </Text>
+              <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8 }]}>
+          {item.isGuestMealSummary ? format(new Date(), 'dd/MM/yyyy') : format(new Date(item.date), 'dd/MM/yyyy')}
+        </Text>
       <Text style={[styles.tableCell, { flex: 1.4, fontSize: 8 }]}>
         {item.department}
       </Text>
@@ -1686,25 +1714,52 @@ const BillGenerator = () => {
 
   // Function to handle department selection
   const handleDepartmentSelection = async (departmentName, isSelected) => {
+    console.log(`Department selection: ${departmentName}, isSelected: ${isSelected}`);
+    
     if (isSelected) {
       // Add department to selected departments
       setSelectedDepartments(prev => [...prev, departmentName]);
       
-      // Fetch users from this department and add them to the form
-      const departmentUsers = await fetchUsersByDepartment(departmentName);
-      const userIds = departmentUsers.map(user => user._id);
+      // Try to get users from availableUsers first, then fetch if needed
+      let departmentUsers = availableUsers.filter(user => 
+        user.department === departmentName || user.parentDepartment === departmentName
+      );
       
-      setCustomListForm(prev => ({
-        ...prev,
-        departments: [...prev.departments, departmentName],
-        users: [...new Set([...prev.users, ...userIds])] // Remove duplicates
-      }));
+      if (departmentUsers.length === 0) {
+        // Fallback to API call if no users found in availableUsers
+        departmentUsers = await fetchUsersByDepartment(departmentName);
+      }
+      
+      console.log(`Users for ${departmentName}:`, departmentUsers);
+      
+      const userIds = departmentUsers.map(user => user._id);
+      console.log(`User IDs to add:`, userIds);
+      
+      setCustomListForm(prev => {
+        const newUsers = [...new Set([...prev.users, ...userIds])];
+        console.log(`Previous users:`, prev.users);
+        console.log(`New users array:`, newUsers);
+        
+        return {
+          ...prev,
+          departments: [...prev.departments, departmentName],
+          users: newUsers
+        };
+      });
     } else {
       // Remove department from selected departments
       setSelectedDepartments(prev => prev.filter(dept => dept !== departmentName));
       
       // Remove users from this department from the form
-      const departmentUsers = await fetchUsersByDepartment(departmentName);
+      let departmentUsers = availableUsers.filter(user => 
+        user.department === departmentName || user.parentDepartment === departmentName
+      );
+      
+      if (departmentUsers.length === 0) {
+        // Fallback to API call if no users found in availableUsers
+        departmentUsers = await fetchUsersByDepartment(departmentName);
+      }
+      
       const userIdsToRemove = departmentUsers.map(user => user._id);
       
       setCustomListForm(prev => ({
@@ -2527,6 +2582,7 @@ const BillGenerator = () => {
             
             // Calculate totals for regular employees with department-specific shares
             let regularDeptShare = 0;
+            let regularEmpShare = 0;
             regularEmployees.forEach(u => {
               const userTotal = (u.breakfastCount || 0) * mealRates.breakfast +
                               (u.lunchCount || 0) * mealRates.lunch +
@@ -2534,13 +2590,17 @@ const BillGenerator = () => {
               const userDeptName = u.department || selectedDepartment || '';
               const userDeptShare = getDepartmentShareForDept(userDeptName, 75); // Default 75% for regular staff
               const userDeptAmount = (userTotal * userDeptShare) / 100;
+              const userEmpAmount = userTotal - userDeptAmount;
               regularDeptShare += userDeptAmount;
+              regularEmpShare += userEmpAmount;
             });
             
             const foodDeptShare = internDeptShare + regularDeptShare;
+            const foodEmpShare = regularEmpShare; // Interns don't pay anything
             
             deptMap[selectedDepartment] = {
               foodShare: foodDeptShare,
+              employeeFoodShare: foodEmpShare,
               rentTotal: 0,
               meetingFoodTotal: 0,
               guestMealTotal: 0
@@ -2621,8 +2681,35 @@ const BillGenerator = () => {
             }
           } catch {}
 
+          // Fetch meetings for this department
+          let departmentMeetings = [];
+          try {
+            const meetingsResponse = await axios.get(
+              `${import.meta.env.VITE_API_URL}/admin/meetings`,
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            );
+            
+            if (meetingsResponse.data && meetingsResponse.data.meetings) {
+              departmentMeetings = meetingsResponse.data.meetings.filter(meeting => {
+                const departmentName = meeting.department?.title || meeting.department;
+                const meetingDate = new Date(meeting.startDatetime);
+                const startDate = new Date(dateRange.startDate);
+                const endDate = new Date(dateRange.endDate);
+                
+                return departmentName === selectedDepartment && 
+                       meetingDate >= startDate && 
+                       meetingDate <= endDate;
+              });
+            }
+          } catch (err) {
+            console.error('Failed to fetch meetings:', err);
+          }
+
           const summary = deptMap[selectedDepartment] || { foodShare: 0, rentTotal: 0, meetingFoodTotal: 0, guestMealTotal: 0 };
           summary.total = summary.foodShare + summary.rentTotal + summary.meetingFoodTotal + summary.guestMealTotal;
+          summary.meetings = departmentMeetings;
 
           setDepartmentBillData({ departments: [{ department: selectedDepartment, ...summary }] });
           setInvoiceData(summary);
@@ -2720,28 +2807,13 @@ const BillGenerator = () => {
                       (meeting.eveningTeaCount || 0) * meetingFoodRates.eveningTea
                     );
                     
-                    // Calculate guest meal amount for this meeting (if includeGuestMeals is true)
-                    let guestMealAmount = 0;
-                    if (includeGuestMeals) {
-                      // Calculate guest meals based on meeting's food requirements
-                      const guestBreakfast = Math.ceil((meeting.breakfast || 0) / 2); // 50% of meeting food as guest meals
-                      const guestLunch = Math.ceil((meeting.lunch || 0) / 2);
-                      const guestDinner = Math.ceil((meeting.dinner || 0) / 2);
-                      
-                      guestMealAmount = (
-                        guestBreakfast * mealRates.breakfast +
-                        guestLunch * mealRates.lunch +
-                        guestDinner * mealRates.dinner
-                      );
-                    }
-                    
                     detailedBillData.push({
                       date: meeting.startDatetime,
                       department: departmentName,
                       program: meeting.title || 'N/A',
                       meeting: meeting.description || 'N/A',
                       foodSnacks: foodSnacksAmount,
-                      guestMeals: guestMealAmount,
+                      guestMeals: 0, // No guest meals in individual program rows
                       rent: meeting.rent || 0
                     });
                   } else {
@@ -2767,6 +2839,9 @@ const BillGenerator = () => {
 
                 console.log('Guest meals response:', guestResponse.data);
 
+                // Aggregate guest meals by department
+                const guestMealSummary = {};
+                
                 if (guestResponse.data && guestResponse.data.guestMeals) {
                   guestResponse.data.guestMeals.forEach(guestMeal => {
                     const departmentName = guestMeal.department?.title || guestMeal.department;
@@ -2781,26 +2856,28 @@ const BillGenerator = () => {
                       console.log('Checking guest meal:', departmentName, 'Date:', guestMealDate);
                       
                       if (guestMealDate >= startDate && guestMealDate <= endDate) {
-                        console.log('Guest meal date is within range, adding to bill');
+                        console.log('Guest meal date is within range, adding to summary');
                         
-                        // Calculate total amount for this guest meal entry
+                        if (!guestMealSummary[departmentName]) {
+                          guestMealSummary[departmentName] = {
+                            breakfastCount: 0,
+                            lunchCount: 0,
+                            dinnerCount: 0,
+                            totalAmount: 0
+                          };
+                        }
+                        
+                        guestMealSummary[departmentName].breakfastCount += (guestMeal.breakfastCount || 0);
+                        guestMealSummary[departmentName].lunchCount += (guestMeal.lunchCount || 0);
+                        guestMealSummary[departmentName].dinnerCount += (guestMeal.dinnerCount || 0);
+                        
                         const guestMealAmount = (
                           (guestMeal.breakfastCount || 0) * mealRates.breakfast +
                           (guestMeal.lunchCount || 0) * mealRates.lunch +
                           (guestMeal.dinnerCount || 0) * mealRates.dinner
                         );
                         
-                        if (guestMealAmount > 0) {
-                          detailedBillData.push({
-                            date: guestMeal.date,
-                            department: departmentName,
-                            program: 'Guest Meals',
-                            meeting: `Breakfast: ${guestMeal.breakfastCount || 0}, Lunch: ${guestMeal.lunchCount || 0}, Dinner: ${guestMeal.dinnerCount || 0}`,
-                            foodSnacks: 0, // Guest meals don't have meeting food/snacks
-                            guestMeals: guestMealAmount,
-                            rent: 0 // Guest meals don't have rent
-                          });
-                        }
+                        guestMealSummary[departmentName].totalAmount += guestMealAmount;
                       } else {
                         console.log('Guest meal date is outside range');
                       }
@@ -2809,16 +2886,42 @@ const BillGenerator = () => {
                     }
                   });
                 }
+                
+                // Add guest meal summary rows for each department
+                Object.entries(guestMealSummary).forEach(([departmentName, summary]) => {
+                  if (summary.totalAmount > 0) {
+                    detailedBillData.push({
+                      date: new Date().toISOString(), // Use current date for summary rows
+                      department: departmentName,
+                      program: 'Guest Meals Summary',
+                      meeting: `Breakfast: ${summary.breakfastCount}, Lunch: ${summary.lunchCount}, Dinner: ${summary.dinnerCount}`,
+                      foodSnacks: 0, // Guest meals don't have meeting food/snacks
+                      guestMeals: summary.totalAmount,
+                      rent: 0, // Guest meals don't have rent
+                      isGuestMealSummary: true // Flag to identify summary rows
+                    });
+                  }
+                });
               } catch (err) {
                 console.error('Failed to fetch guest meal data:', err);
               }
             }
 
-            // Sort by department first, then by date
+            // Sort by department first, then by date (guest meal summaries at the end of each department)
             detailedBillData.sort((a, b) => {
               const deptCompare = a.department.localeCompare(b.department);
               if (deptCompare !== 0) return deptCompare;
-              return new Date(a.date) - new Date(b.date);
+              
+              // Put guest meal summaries at the end of each department
+              if (a.isGuestMealSummary && !b.isGuestMealSummary) return 1;
+              if (!a.isGuestMealSummary && b.isGuestMealSummary) return -1;
+              
+              // For non-summary items, sort by date
+              if (!a.isGuestMealSummary && !b.isGuestMealSummary) {
+                return new Date(a.date) - new Date(b.date);
+              }
+              
+              return 0;
             });
 
             // Set the detailed bill data
@@ -2831,7 +2934,8 @@ const BillGenerator = () => {
                 foodSnacks: item.foodSnacks || 0,
                 guestMeals: item.guestMeals || 0,
                 rent: item.rent,
-                total: (item.foodSnacks || 0) + (item.guestMeals || 0) + item.rent
+                total: (item.foodSnacks || 0) + (item.guestMeals || 0) + item.rent,
+                isGuestMealSummary: item.isGuestMealSummary || false
               }))
             });
 
@@ -3650,7 +3754,10 @@ const BillGenerator = () => {
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Select Departments ({selectedDepartments.length} selected)</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Select Departments ({selectedDepartments.length} selected)
+                                <span className="text-xs text-gray-500 ml-2">• Selecting a department automatically adds all its users</span>
+                              </label>
                               <div className="border border-gray-300 rounded-lg p-4 max-h-40 overflow-y-auto mb-4">
                                 <div className="space-y-2">
                                   {departments.map((department) => (
@@ -3672,6 +3779,23 @@ const BillGenerator = () => {
 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Select Individual Users ({customListForm.users.length} selected)</label>
+                              
+                              {/* Department summary */}
+                              {selectedDepartments.length > 0 && (
+                                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                  <p className="text-sm font-medium text-green-800 mb-2">Users added from departments:</p>
+                                  <div className="space-y-1">
+                                    {selectedDepartments.map((dept) => (
+                                      <div key={dept} className="text-xs text-green-700">
+                                        • {dept}: {availableUsers.filter(user => 
+                                          (user.department === dept || user.parentDepartment === dept) && 
+                                          customListForm.users.includes(user._id)
+                                        ).length} users
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* User search bar */}
                               <input
@@ -3716,6 +3840,9 @@ const BillGenerator = () => {
                                         />
                                         <span className="ml-3 text-sm text-gray-900">
                                           {user.displayName || `${user.name} (${user.phoneNumber})`}
+                                          {selectedDepartments.includes(user.department || user.parentDepartment) && (
+                                            <span className="text-xs text-green-600 ml-2">• Auto-added from department</span>
+                                          )}
                                         </span>
                                       </label>
                                     ))}
