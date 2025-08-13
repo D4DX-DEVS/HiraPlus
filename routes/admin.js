@@ -1800,6 +1800,197 @@ router.delete('/guest-meals/:id', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Get department-wise staff food summary for accounts bill
+router.get('/department-staff-food-summary', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, departments } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
+    }
+
+    // Parse departments array if provided
+    let selectedDepartments = [];
+    if (departments) {
+      try {
+        selectedDepartments = JSON.parse(departments);
+      } catch (e) {
+        return res.status(400).json({ message: 'Invalid departments parameter format' });
+      }
+    }
+
+    // Create date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Get all departments if none specified
+    let departmentQuery = {};
+    if (selectedDepartments.length > 0) {
+      const departmentDocs = await Department.find({ title: { $in: selectedDepartments } });
+      const departmentIds = departmentDocs.map(dept => dept._id);
+      departmentQuery = { department: { $in: departmentIds } };
+    }
+
+    const users = await User.find(departmentQuery).populate('department', 'title').lean();
+
+    if (!users || users.length === 0) {
+      return res.json({
+        dateRange: { from: start, to: end },
+        departments: []
+      });
+    }
+
+    // Get meal counts using aggregation
+    const mealCounts = await Meal.aggregate([
+      {
+        $match: {
+          date: { $gte: start, $lte: end },
+          userId: { $in: users.map(user => user._id) }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      {
+        $lookup: {
+          from: 'departments',
+          localField: 'user.department',
+          foreignField: '_id',
+          as: 'userDepartment'
+        }
+      },
+      {
+        $unwind: { path: '$userDepartment', preserveNullAndEmptyArrays: true }
+      },
+      {
+        $group: {
+          _id: {
+            userId: '$userId',
+            department: '$userDepartment._id'
+          },
+          user: { $first: '$user' },
+          userDepartment: { $first: '$userDepartment' },
+          breakfastCount: {
+            $sum: { $cond: [{ $eq: ['$breakfast', true] }, 1, 0] }
+          },
+          lunchCount: {
+            $sum: { $cond: [{ $eq: ['$lunch', true] }, 1, 0] }
+          },
+          dinnerCount: {
+            $sum: { $cond: [{ $eq: ['$dinner', true] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.department',
+          departmentTitle: { $first: '$userDepartment.title' },
+          users: {
+            $push: {
+              userId: '$_id.userId',
+              name: '$user.name',
+              phoneNumber: '$user.phoneNumber',
+              department: '$userDepartment.title',
+              designation: '$user.designation',
+              isFreeFood: { $ifNull: ['$user.isFreeFood', false] },
+              isIntern: { $ifNull: ['$user.isIntern', false] },
+              breakfastCount: '$breakfastCount',
+              lunchCount: '$lunchCount',
+              dinnerCount: '$dinnerCount',
+              totalMeals: { $add: ['$breakfastCount', '$lunchCount', '$dinnerCount'] }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          department: { $ifNull: ['$departmentTitle', 'Unknown'] },
+          users: 1,
+          totals: {
+            breakfast: { $sum: '$users.breakfastCount' },
+            lunch: { $sum: '$users.lunchCount' },
+            dinner: { $sum: '$users.dinnerCount' },
+            total: { $sum: '$users.totalMeals' }
+          }
+        }
+      },
+      {
+        $sort: { 'totals.total': -1 }
+      }
+    ]);
+
+    // Add users with no meals for each department
+    const departmentsWithAllUsers = await Promise.all(
+      mealCounts.map(async (dept) => {
+        // Find department ObjectId for querying users
+        const departmentDoc = await Department.findOne({ title: dept.department });
+        if (!departmentDoc) return dept;
+
+        const deptUsers = await User.find({ 
+          department: departmentDoc._id,
+          _id: { $nin: dept.users.map(u => u.userId) }
+        }).populate('department', 'title');
+
+        const usersWithNoMeals = deptUsers.map(user => ({
+          userId: user._id,
+          name: user.name || '',
+          phoneNumber: user.phoneNumber || '',
+          department: user.department ? user.department.title : '',
+          designation: user.designation || '',
+          isDeptHead: user.isDeptHead || false,
+          isFreeFood: user.isFreeFood || false,
+          isIntern: user.isIntern || false,
+          breakfastCount: 0,
+          lunchCount: 0,
+          dinnerCount: 0,
+          totalMeals: 0
+        }));
+
+        // Combine and sort all users by total meals
+        const allUsers = [...dept.users, ...usersWithNoMeals].sort((a, b) => b.totalMeals - a.totalMeals);
+
+        return {
+          ...dept,
+          users: allUsers
+        };
+      })
+    );
+
+    // Calculate overall totals
+    const overallTotals = departmentsWithAllUsers.reduce((acc, dept) => {
+      acc.breakfast += dept.totals.breakfast;
+      acc.lunch += dept.totals.lunch;
+      acc.dinner += dept.totals.dinner;
+      acc.total += dept.totals.total;
+      return acc;
+    }, { breakfast: 0, lunch: 0, dinner: 0, total: 0 });
+
+    res.json({
+      dateRange: { from: start, to: end },
+      overallTotals,
+      departments: departmentsWithAllUsers
+    });
+
+  } catch (error) {
+    console.error('Error fetching department staff food summary:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch department staff food summary',
+      error: error.message 
+    });
+  }
+});
+
 // Admin: Create meeting
 router.post('/meetings', adminAuth, async (req, res) => {
   try {
