@@ -36,7 +36,7 @@ const Meetings = () => {
     startDatetime: '',
     endDatetime: '',
     hall: 'Auditorium [2nd Floor]',
-    rent: '',
+    rent: '0',
     noOfPersons: '',
     hiraStaff: 0,
     guests: 0,
@@ -48,7 +48,8 @@ const Meetings = () => {
     eveningSnacksCount: 0,
     eveningTeaCount: 0,
     dinner: 0,
-    department: ''
+    department: '',
+    subDepartment: ''
   });
 
   const halls = [
@@ -61,7 +62,7 @@ const Meetings = () => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/departments`);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/departments`);
         setDepartments(response.data.departments);
       } catch (err) {
         console.error('Failed to fetch departments:', err);
@@ -112,6 +113,21 @@ const Meetings = () => {
       setError('Department is required');
       return;
     }
+
+    // Check if selected department is hierarchical and requires sub-department
+    if (!departments || departments.length === 0) {
+      setError('Departments not loaded. Please refresh the page.');
+      return;
+    }
+    
+    const selectedDept = departments.find(dept => 
+      (typeof dept === 'string' ? dept : dept.title) === formData.department
+    );
+    
+    if (selectedDept && selectedDept.isHierarchical && !formData.subDepartment.trim()) {
+      setError('Sub-department is required for Outside Departments');
+      return;
+    }
     if (!formData.rent && formData.rent !== 0) {
       setError('Rent amount is required');
       return;
@@ -143,10 +159,17 @@ const Meetings = () => {
         lunch: parseInt(formData.lunch) || 0,
         eveningSnacksCount: parseInt(formData.eveningSnacksCount) || 0,
         eveningTeaCount: parseInt(formData.eveningTeaCount) || 0,
-        dinner: parseInt(formData.dinner) || 0
+        dinner: parseInt(formData.dinner) || 0,
+        subDepartment: formData.subDepartment.trim() || ''
       };
 
       console.log('Submitting meeting data:', submitData);
+      console.log('Departments loaded:', departments.length);
+      console.log('Selected department:', formData.department);
+      console.log('Selected sub-department:', formData.subDepartment);
+      console.log('Editing meeting:', editingMeeting);
+      console.log('Method:', method);
+      console.log('URL:', url);
 
       await axios({
         method,
@@ -163,7 +186,7 @@ const Meetings = () => {
         startDatetime: '',
         endDatetime: '',
         hall: 'Auditorium [2nd Floor]',
-        rent: '',
+        rent: '0',
         noOfPersons: '',
         hiraStaff: 0,
         guests: 0,
@@ -175,12 +198,15 @@ const Meetings = () => {
         eveningSnacksCount: 0,
         eveningTeaCount: 0,
         dinner: 0,
-        department: ''
+        department: '',
+        subDepartment: ''
       });
       setError(''); // Clear any previous errors
       fetchMeetings();
     } catch (err) {
       console.error('Meeting submission error:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       setError(err.response?.data?.message || 'Failed to save meeting');
     }
   };
@@ -207,7 +233,7 @@ const Meetings = () => {
       startDatetime: format(new Date(meeting.startDatetime), "yyyy-MM-dd'T'HH:mm"),
       endDatetime: format(new Date(meeting.endDatetime), "yyyy-MM-dd'T'HH:mm"),
       hall: meeting.hall || 'Auditorium [2nd Floor]',
-      rent: meeting.rent || 0,
+      rent: meeting.rent?.toString() || '0',
       noOfPersons: meeting.noOfPersons || 0,
       hiraStaff: meeting.hiraStaff || 0,
       guests: meeting.guests || 0,
@@ -219,7 +245,8 @@ const Meetings = () => {
       eveningSnacksCount: meeting.eveningSnacksCount || 0,
       eveningTeaCount: meeting.eveningTeaCount || 0,
       dinner: meeting.dinner || 0,
-      department: departmentValue
+      department: departmentValue,
+      subDepartment: meeting.subDepartment || ''
     });
     setShowModal(true);
   };
@@ -252,6 +279,7 @@ const Meetings = () => {
       meeting.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       departmentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (meeting.subDepartment || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.hall?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesDepartment = selectedDepartment === '' || departmentName === selectedDepartment;
@@ -307,29 +335,31 @@ const Meetings = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        setEditingMeeting(null);
-                        setFormData({
-                          title: '',
-                          description: '',
-                          startDatetime: '',
-                          endDatetime: '',
-                          hall: 'Auditorium [2nd Floor]',
-                          noOfPersons: '',
-                          hiraStaff: 0,
-                          guests: 0,
-                          foodRequired: false,
-                          breakfast: 0,
-                          morningSnacksCount: 0,
-                          morningTeaCount: 0,
-                          lunch: 0,
-                          eveningSnacksCount: 0,
-                          eveningTeaCount: 0,
-                          dinner: 0,
-                          department: ''
-                        });
-                        setShowModal(true);
-                      }}
+                                              onClick={() => {
+                          setEditingMeeting(null);
+                          setFormData({
+                            title: '',
+                            description: '',
+                            startDatetime: '',
+                            endDatetime: '',
+                            hall: 'Auditorium [2nd Floor]',
+                            rent: '0',
+                            noOfPersons: '',
+                            hiraStaff: 0,
+                            guests: 0,
+                            foodRequired: false,
+                            breakfast: 0,
+                            morningSnacksCount: 0,
+                            morningTeaCount: 0,
+                            lunch: 0,
+                            eveningSnacksCount: 0,
+                            eveningTeaCount: 0,
+                            dinner: 0,
+                            department: '',
+                            subDepartment: ''
+                          });
+                          setShowModal(true);
+                        }}
                       className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
                     >
                       <PlusIcon className="h-4 w-4 mr-1.5" />
@@ -449,7 +479,13 @@ const Meetings = () => {
                           <select
                             required
                             value={formData.department}
-                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                            onChange={(e) => {
+                              setFormData({ 
+                                ...formData, 
+                                department: e.target.value,
+                                subDepartment: '' // Reset sub-department when department changes
+                              });
+                            }}
                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                             disabled={loading}
                           >
@@ -461,6 +497,48 @@ const Meetings = () => {
                             ))}
                           </select>
                         </div>
+
+                        {/* Sub-Department Dropdown - Only show for hierarchical departments */}
+                        {(() => {
+                          // Safety check for departments array
+                          if (!departments || departments.length === 0) {
+                            return null;
+                          }
+                          
+                          const selectedDept = departments.find(dept => 
+                            (typeof dept === 'string' ? dept : dept.title) === formData.department
+                          );
+                          
+                          if (selectedDept && selectedDept.isHierarchical) {
+                            return (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  <span className="flex items-center">
+                                    <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                    Sub-Department (Outside Department)
+                                  </span>
+                                </label>
+                                <select
+                                  required
+                                  value={formData.subDepartment}
+                                  onChange={(e) => setFormData({ ...formData, subDepartment: e.target.value })}
+                                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                  disabled={loading}
+                                >
+                                  <option value="">Select Sub-Department</option>
+                                  {selectedDept.subDepartments?.map(subDept => (
+                                    <option key={subDept._id} value={subDept.title}>
+                                      {subDept.title}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
