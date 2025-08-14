@@ -72,6 +72,12 @@ const meetingSchema = new mongoose.Schema({
     ref: 'Department',
     required: true
   },
+  // New field for sub-department (optional, used for hierarchical departments)
+  subDepartment: {
+    type: String,
+    required: false,
+    trim: true
+  },
   status: {
     type: String,
     enum: ['approved', 'pending'],

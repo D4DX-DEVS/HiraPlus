@@ -1808,7 +1808,7 @@ router.post('/meetings', adminAuth, async (req, res) => {
       hall, noOfPersons, rent, foodRequired, breakfast,
       morningSnacksCount, morningTeaCount, lunch,
       eveningSnacksCount, eveningTeaCount, dinner,
-      department
+      department, subDepartment
     } = req.body;
 
     // Validate required fields
@@ -1862,6 +1862,28 @@ router.post('/meetings', adminAuth, async (req, res) => {
       });
     }
 
+    // Validate sub-department for hierarchical departments
+    if (departmentDoc.isHierarchical && (!subDepartment || !subDepartment.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sub-department is required for hierarchical departments'
+      });
+    }
+
+    // Validate sub-department exists in the department's sub-departments
+    if (departmentDoc.isHierarchical && subDepartment && subDepartment.trim()) {
+      const subDeptExists = departmentDoc.subDepartments.some(
+        subDept => subDept.title.toLowerCase() === subDepartment.trim().toLowerCase()
+      );
+      
+      if (!subDeptExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Sub-department "${subDepartment}" not found in "${departmentDoc.title}"`
+        });
+      }
+    }
+
     // Check for meeting conflicts
     const conflictingMeetings = await checkMeetingConflict(
       new Date(startDatetime),
@@ -1903,6 +1925,7 @@ router.post('/meetings', adminAuth, async (req, res) => {
       eveningTeaCount: parseInt(eveningTeaCount) || 0,
       dinner: parseInt(dinner) || 0,
       department: departmentDoc._id,
+              subDepartment: subDepartment && subDepartment.trim() ? subDepartment.trim() : null, // Add sub-department field
       status: 'approved', // Auto-approve for admin
       createdBy: 'admin'
     });
@@ -1933,9 +1956,21 @@ router.get('/meetings', adminAuth, async (req, res) => {
       .populate('department', 'title')
       .sort({ startDatetime: -1 });
 
+    // Add sub-department information to each meeting
+    const meetingsWithSubDept = meetings.map(meeting => {
+      const meetingObj = meeting.toObject();
+      
+      // If meeting has a sub-department, add it to the response
+      if (meeting.subDepartment) {
+        meetingObj.subDepartmentTitle = meeting.subDepartment;
+      }
+      
+      return meetingObj;
+    });
+
     res.json({
       success: true,
-      meetings
+      meetings: meetingsWithSubDept
     });
   } catch (error) {
     console.error('Fetch meetings error:', error);
@@ -1954,7 +1989,7 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
       hall, noOfPersons, rent, foodRequired, breakfast,
       morningSnacksCount, morningTeaCount, lunch,
       eveningSnacksCount, eveningTeaCount, dinner,
-      department, status
+      department, subDepartment, status
     } = req.body;
 
     const meeting = await Meeting.findById(req.params.meetingId);
@@ -1965,9 +2000,9 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
       });
     }
 
-    // If department is being updated, validate and get the reference
-    if (department && department !== meeting.department) {
-      let departmentDoc;
+    // Get department document for validation (whether updating or not)
+    let departmentDoc;
+    if (department) {
       if (mongoose.Types.ObjectId.isValid(department)) {
         departmentDoc = await Department.findById(department);
       } else if (typeof department === 'string') {
@@ -1985,7 +2020,31 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
           message: 'Invalid department. Please select a valid department.'
         });
       }
+
+      // Always update the department reference to ensure consistency
       meeting.department = departmentDoc._id;
+    }
+
+    // Validate sub-department for hierarchical departments
+    if (departmentDoc && departmentDoc.isHierarchical && (!subDepartment || !subDepartment.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sub-department is required for hierarchical departments'
+      });
+    }
+
+    // Validate sub-department exists in the department's sub-departments
+    if (departmentDoc && departmentDoc.isHierarchical && subDepartment && subDepartment.trim()) {
+      const subDeptExists = departmentDoc.subDepartments.some(
+        subDept => subDept.title.toLowerCase() === subDepartment.trim().toLowerCase()
+      );
+      
+      if (!subDeptExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Sub-department "${subDepartment}" not found in "${departmentDoc.title}"`
+        });
+      }
     }
 
     // Prepare updated values for conflict checking
@@ -2047,6 +2106,11 @@ router.put('/meetings/:meetingId', adminAuth, async (req, res) => {
     // Handle boolean fields
     if (typeof foodRequired !== 'undefined') meeting.foodRequired = foodRequired;
     if (status && ['approved', 'pending'].includes(status)) meeting.status = status;
+    
+    // Handle sub-department field
+    if (subDepartment !== undefined) {
+      meeting.subDepartment = subDepartment && subDepartment.trim() ? subDepartment.trim() : null;
+    }
 
     await meeting.save();
 
@@ -2098,9 +2162,21 @@ router.get('/departments', async (req, res) => {
     const departments = await Department.find()
       .sort({ title: 1 });
 
+    // Add sub-department information for hierarchical departments
+    const departmentsWithSubDepts = departments.map(dept => {
+      const deptObj = dept.toObject();
+      
+      // Add sub-departments array for hierarchical departments
+      if (dept.isHierarchical && dept.subDepartments) {
+        deptObj.subDepartments = dept.subDepartments;
+      }
+      
+      return deptObj;
+    });
+
     res.json({
       success: true,
-      departments,
+      departments: departmentsWithSubDepts,
       total: departments.length
     });
   } catch (error) {
@@ -2262,7 +2338,7 @@ router.delete('/departments/:id', adminAuth, async (req, res) => {
 // Get department-wise rent bills
 router.get('/department-rent-bills', adminAuth, async (req, res) => {
   try {
-    const { startDate, endDate, department, venue } = req.query;
+    const { startDate, endDate, department, venue, subDepartment } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
@@ -2283,6 +2359,11 @@ router.get('/department-rent-bills', adminAuth, async (req, res) => {
     // Add venue filter if provided
     if (venue) {
       matchCondition.hall = venue;
+    }
+
+    // Add sub-department filter if provided
+    if (subDepartment && subDepartment.trim()) {
+      matchCondition.subDepartment = subDepartment.trim();
     }
 
     if (department) {
@@ -2435,7 +2516,7 @@ router.get('/department-guest-meals', adminAuth, async (req, res) => {
 // Get department-wise meeting food bills
 router.get('/meeting-food-bills', adminAuth, async (req, res) => {
   try {
-    const { startDate, endDate, department, venue } = req.query;
+    const { startDate, endDate, department, venue, subDepartment } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Both startDate and endDate parameters are required' });
@@ -2457,6 +2538,11 @@ router.get('/meeting-food-bills', adminAuth, async (req, res) => {
     // Add venue filter if provided
     if (venue) {
       matchCondition.hall = venue;
+    }
+
+    // Add sub-department filter if provided
+    if (subDepartment && subDepartment.trim()) {
+      matchCondition.subDepartment = subDepartment.trim();
     }
 
     if (department) {
@@ -3395,6 +3481,7 @@ router.get('/department-bills-detailed', adminAuth, async (req, res) => {
           rentAmount: rentAmount,
           meetingFoodAmount: meetingFoodAmount,
           totalMeetingAmount: rentAmount + meetingFoodAmount,
+          subDepartment: meeting.subDepartment || null, // Add sub-department information
           createdBy: meeting.createdBy
         });
 
