@@ -3539,8 +3539,10 @@ const BillGenerator = () => {
               // For non-summary items, sort by date
               if (!a.isStaffFoodSummary && !a.isGuestMealSummary && !b.isStaffFoodSummary && !b.isGuestMealSummary) {
                 return new Date(a.date) - new Date(b.date);
+              if (!a.isGuestMealSummary && !b.isGuestMealSummary) {
+              return new Date(a.date) - new Date(b.date);
               }
-              
+            }
               return 0;
             });
 
