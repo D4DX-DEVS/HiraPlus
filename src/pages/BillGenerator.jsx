@@ -1769,8 +1769,9 @@ const AccountsPDF = ({
       <Text style={[styles.tableCell, { flex: 1.1 }]}>Date</Text>
       <Text style={[styles.tableCell, { flex: 1.4 }]}>Department</Text>
       <Text style={[styles.tableCell, { flex: 1.7 }]}>Program</Text>
-      <Text style={[styles.tableCell, { flex: 2.1 }]}>Meeting</Text>
+      <Text style={[styles.tableCell, { flex: 2.1 }]}>Details</Text>
       <Text style={[styles.tableCell, { flex: 1.1 }]}>Food/Snacks</Text>
+      <Text style={[styles.tableCell, { flex: 1.1 }]}>Staff Food</Text>
       {includeGuestMeals && (
         <Text style={[styles.tableCell, { flex: 1.1 }]}>Guest Meals</Text>
       )}
@@ -1784,7 +1785,7 @@ const AccountsPDF = ({
         {index + 1}
       </Text>
       <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8 }]}>
-          {item.isGuestMealSummary ? format(new Date(), 'dd/MM/yyyy') : format(new Date(item.date), 'dd/MM/yyyy')}
+        {(item.isGuestMealSummary || item.isStaffFoodSummary) ? format(new Date(), 'dd/MM/yyyy') : format(new Date(item.date), 'dd/MM/yyyy')}
       </Text>
       <Text style={[styles.tableCell, { flex: 1.4, fontSize: 8 }]}>
         {item.department}
@@ -1797,6 +1798,9 @@ const AccountsPDF = ({
       </Text>
       <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8, color: '#000000' }]}>
         ₹{item.foodSnacks?.toLocaleString() || '0'}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8, color: '#000000' }]}>
+        ₹{item.staffFood?.toLocaleString() || '0'}
       </Text>
       {includeGuestMeals && (
         <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8, color: '#000000' }]}>
@@ -1812,11 +1816,12 @@ const AccountsPDF = ({
   const calculateTotals = () => {
     return departmentBillData.departments.reduce((acc, item) => {
       acc.foodSnacks += item.foodSnacks || 0;
+      acc.staffFood += item.staffFood || 0;
       acc.guestMeals += item.guestMeals || 0;
       acc.rent += item.rent || 0;
-      acc.total += (item.foodSnacks || 0) + (item.guestMeals || 0) + (item.rent || 0);
+      acc.total += (item.foodSnacks || 0) + (item.staffFood || 0) + (item.guestMeals || 0) + (item.rent || 0);
       return acc;
-    }, { foodSnacks: 0, guestMeals: 0, rent: 0, total: 0 });
+    }, { foodSnacks: 0, staffFood: 0, guestMeals: 0, rent: 0, total: 0 });
   };
 
   const totals = calculateTotals();
@@ -1833,6 +1838,9 @@ const AccountsPDF = ({
           </Text>
           <Text style={{ fontSize: 8, color: '#4B5563' }}>
             Period: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} - {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+          </Text>
+          <Text style={{ fontSize: 8, color: '#4B5563' }}>
+            Staff Food: Included (Department & Employee Shares)
           </Text>
           {includeGuestMeals && (
             <Text style={{ fontSize: 8, color: '#4B5563' }}>
@@ -1855,6 +1863,12 @@ const AccountsPDF = ({
             <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold', fontSize: 8 }]}>TOTAL FOOD/SNACKS</Text>
             <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', color: '#000000', fontSize: 8 }]}>
               ₹{totals.foodSnacks.toLocaleString()}
+            </Text>
+          </View>
+          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold', fontSize: 8 }]}>TOTAL STAFF FOOD</Text>
+            <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold', color: '#000000', fontSize: 8 }]}>
+              ₹{totals.staffFood.toLocaleString()}
             </Text>
           </View>
           {includeGuestMeals && (
@@ -3339,6 +3353,98 @@ const BillGenerator = () => {
             
             console.log('Final detailed bill data:', detailedBillData);
 
+            // Add staff food data
+            try {
+              const staffFoodResponse = await axios.get(
+                `${import.meta.env.VITE_API_URL}/admin/department-staff-food-summary`,
+                {
+                  params: {
+                    startDate: dateRange.startDate,
+                    endDate: dateRange.endDate,
+                    departments: JSON.stringify(selectedDepartmentsForAccounts)
+                  },
+                  headers: { Authorization: `Bearer ${token}` }
+                }
+              );
+
+              console.log('Staff food response:', staffFoodResponse.data);
+
+              // Aggregate staff food by department
+              const staffFoodSummary = {};
+              
+              if (staffFoodResponse.data && staffFoodResponse.data.departments) {
+                staffFoodResponse.data.departments.forEach(dept => {
+                  const departmentName = dept.department;
+                  
+                  // Filter by selected departments
+                  if (selectedDepartmentsForAccounts.includes(departmentName)) {
+                    console.log('Processing staff food for department:', departmentName);
+                    
+                    // Calculate totals for each department
+                    let departmentTotal = 0;
+                    let departmentShare = 0;
+                    let employeeShare = 0;
+                    
+                    dept.users.forEach(user => {
+                      if (!user.isFreeFood) { // Exclude free food users
+                        const userTotal = (
+                          (user.breakfastCount || 0) * mealRates.breakfast +
+                          (user.lunchCount || 0) * mealRates.lunch +
+                          (user.dinnerCount || 0) * mealRates.dinner
+                        );
+                        
+                        departmentTotal += userTotal;
+                        
+                        // Calculate department and employee shares based on user type
+                        if (user.isIntern === true) {
+                          // Interns: 100% department share
+                          departmentShare += userTotal;
+                        } else {
+                          // Regular employees: department-specific share
+                          const userDeptShare = getDepartmentShareForDept(departmentName, 75); // Default 75%
+                          const userDeptAmount = (userTotal * userDeptShare) / 100;
+                          const userEmpAmount = userTotal - userDeptAmount;
+                          
+                          departmentShare += userDeptAmount;
+                          employeeShare += userEmpAmount;
+                        }
+                      }
+                    });
+                    
+                    if (departmentTotal > 0) {
+                      staffFoodSummary[departmentName] = {
+                        totalAmount: departmentTotal,
+                        departmentShare: departmentShare,
+                        employeeShare: employeeShare,
+                        userCount: dept.users.filter(u => !u.isFreeFood).length
+                      };
+                    }
+                  }
+                });
+              }
+              
+              // Add staff food summary rows for each department
+              Object.entries(staffFoodSummary).forEach(([departmentName, summary]) => {
+                if (summary.totalAmount > 0) {
+                  detailedBillData.push({
+                    date: new Date().toISOString(), // Use current date for summary rows
+                    department: departmentName,
+                    program: 'Staff Food Summary',
+                    meeting: `Dept%: ${summary.departmentShare.toLocaleString()}, Emp%: ${summary.employeeShare.toLocaleString()}`,
+                    foodSnacks: 0, // Staff food is separate from meeting food/snacks
+                    guestMeals: 0, // Staff food is separate from guest meals
+                    staffFood: summary.totalAmount,
+                    staffFoodDeptShare: summary.departmentShare,
+                    staffFoodEmpShare: summary.employeeShare,
+                    rent: 0, // Staff food doesn't have rent
+                    isStaffFoodSummary: true // Flag to identify summary rows
+                  });
+                }
+              });
+            } catch (err) {
+              console.error('Failed to fetch staff food data:', err);
+            }
+
             // Add guest meals data if includeGuestMeals is true
             if (includeGuestMeals) {
               try {
@@ -3419,18 +3525,20 @@ const BillGenerator = () => {
               }
             }
 
-            // Sort by department first, then by date (guest meal summaries at the end of each department)
+            // Sort by department first, then by date (summaries at the end of each department)
             detailedBillData.sort((a, b) => {
               const deptCompare = a.department.localeCompare(b.department);
               if (deptCompare !== 0) return deptCompare;
               
-              // Put guest meal summaries at the end of each department
+              // Put summaries at the end of each department (staff food first, then guest meals)
+              if (a.isStaffFoodSummary && !b.isStaffFoodSummary) return 1;
+              if (!a.isStaffFoodSummary && b.isStaffFoodSummary) return -1;
               if (a.isGuestMealSummary && !b.isGuestMealSummary) return 1;
               if (!a.isGuestMealSummary && b.isGuestMealSummary) return -1;
               
               // For non-summary items, sort by date
-              if (!a.isGuestMealSummary && !b.isGuestMealSummary) {
-              return new Date(a.date) - new Date(b.date);
+              if (!a.isStaffFoodSummary && !a.isGuestMealSummary && !b.isStaffFoodSummary && !b.isGuestMealSummary) {
+                return new Date(a.date) - new Date(b.date);
               }
               
               return 0;
@@ -3445,17 +3553,24 @@ const BillGenerator = () => {
                 meeting: item.meeting,
                 foodSnacks: item.foodSnacks || 0,
                 guestMeals: item.guestMeals || 0,
+                staffFood: item.staffFood || 0,
+                staffFoodDeptShare: item.staffFoodDeptShare || 0,
+                staffFoodEmpShare: item.staffFoodEmpShare || 0,
                 rent: item.rent,
-                total: (item.foodSnacks || 0) + (item.guestMeals || 0) + item.rent,
-                isGuestMealSummary: item.isGuestMealSummary || false
+                total: (item.foodSnacks || 0) + (item.guestMeals || 0) + (item.staffFood || 0) + item.rent,
+                isGuestMealSummary: item.isGuestMealSummary || false,
+                isStaffFoodSummary: item.isStaffFoodSummary || false
               }))
             });
 
-            // Calculate totals including food/snacks and guest meals
+            // Calculate totals including food/snacks, guest meals, and staff food
             const totalFoodSnacks = detailedBillData.reduce((acc, item) => acc + (item.foodSnacks || 0), 0);
             const totalGuestMeals = detailedBillData.reduce((acc, item) => acc + (item.guestMeals || 0), 0);
+            const totalStaffFood = detailedBillData.reduce((acc, item) => acc + (item.staffFood || 0), 0);
+            const totalStaffFoodDeptShare = detailedBillData.reduce((acc, item) => acc + (item.staffFoodDeptShare || 0), 0);
+            const totalStaffFoodEmpShare = detailedBillData.reduce((acc, item) => acc + (item.staffFoodEmpShare || 0), 0);
             const totalRent = detailedBillData.reduce((acc, item) => acc + (item.rent || 0), 0);
-            const grandTotal = totalFoodSnacks + totalGuestMeals + totalRent;
+            const grandTotal = totalFoodSnacks + totalGuestMeals + totalStaffFood + totalRent;
             
             setTotalAmount(grandTotal);
             setDepartmentPayable(grandTotal);
