@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import { ExclamationTriangleIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
@@ -10,11 +10,6 @@ import { TableSkeleton } from '../components/SkeletonLoaders';
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import HiraPlus from '../assets/HiraPlus.jpg';
 import NotoSerifMalayalam from '../fonts/NotoSerifMalayalam-Regular.ttf';
-
-Font.register({
-  family: 'Noto Serif Malayalam',
-  src: NotoSerifMalayalam,
-});
 
 Font.register({
   family: 'Noto Serif Malayalam',
@@ -1351,11 +1346,28 @@ const DetailedDepartmentPDF = ({
   }
 };
 
-// Insert the new InvoicePDF component just before BillGenerator definition
-const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
-  if (!invoiceData || !dateRange?.startDate || !dateRange?.endDate) return null;
+// Regular Invoice PDF component for non-hierarchical departments
+const RegularInvoicePDF = memo(({ invoiceData, selectedDepartment, dateRange }) => {
+  console.log('RegularInvoicePDF: Rendering with data:', { invoiceData, selectedDepartment, dateRange });
   
-  const renderHeader = (title) => (
+  // Enhanced safety checks to prevent PDF generation errors
+  if (!invoiceData || !dateRange?.startDate || !dateRange?.endDate) {
+    console.log('RegularInvoicePDF: Missing required data', { invoiceData, dateRange });
+    return null;
+  }
+  
+  // Ensure all required fields exist with fallbacks
+  const safeInvoiceData = {
+    foodShare: Number(invoiceData.foodShare) || 0,
+    employeeFoodShare: Number(invoiceData.employeeFoodShare) || 0,
+    rentTotal: Number(invoiceData.rentTotal) || 0,
+    meetingFoodTotal: Number(invoiceData.meetingFoodTotal) || 0,
+    guestMealTotal: Number(invoiceData.guestMealTotal) || 0,
+    total: Number(invoiceData.total) || 0,
+    meetings: Array.isArray(invoiceData.meetings) ? invoiceData.meetings : []
+  };
+  
+  const renderHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.logoContainer}>
         <Image 
@@ -1381,7 +1393,7 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {renderHeader('HIRA PLUS INVOICE')}
+        {renderHeader()}
         
         {/* Billing details */}
         <View style={{ marginBottom: 10 }}>
@@ -1399,34 +1411,36 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Amount</Text>
             </View>
             <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 3 }]}>Department Food Share</Text>
-              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.foodShare?.toFixed(2)}</Text>
-            </View>
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 3 }]}>Total Food Share by Employee</Text>
-              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.employeeFoodShare?.toFixed(2) || '0.00'}</Text>
+               <Text style={[styles.tableCell, { flex: 3 }]}>Department Food Share</Text>
+               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.foodShare.toFixed(2)}</Text>
+             </View>
+             <View style={styles.tableRow}>
+               <Text style={[styles.tableCell, { flex: 3 }]}>Total Food Share by Employee</Text>
+               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.employeeFoodShare.toFixed(2)}</Text>
             </View>
             <View style={styles.tableRow}>
               <Text style={[styles.tableCell, { flex: 3 }]}>Venue Rent</Text>
-              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.rentTotal?.toFixed(2)}</Text>
+               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.rentTotal.toFixed(2)}</Text>
             </View>
             <View style={styles.tableRow}>
               <Text style={[styles.tableCell, { flex: 3 }]}>Meeting Food</Text>
-              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.meetingFoodTotal?.toFixed(2)}</Text>
+               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.meetingFoodTotal.toFixed(2)}</Text>
             </View>
             <View style={styles.tableRow}>
               <Text style={[styles.tableCell, { flex: 3 }]}>Guest Meals</Text>
-              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{invoiceData.guestMealTotal?.toFixed(2)}</Text>
+               <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.guestMealTotal.toFixed(2)}</Text>
             </View>
             <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
               <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold' }]}>TOTAL</Text>
-              <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }]}>{invoiceData.total?.toFixed(2)}</Text>
+               <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }]}>{safeInvoiceData.total.toFixed(2)}</Text>
             </View>
           </View>
         </View>
         
-        {/* Meeting Details */}
-        {invoiceData.meetings && invoiceData.meetings.length > 0 && (
+        
+
+                 {/* Meeting Details */}
+         {safeInvoiceData.meetings && safeInvoiceData.meetings.length > 0 && (
           <View style={{ marginBottom: 10 }}>
             <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 5 }}>Meetings Conducted:</Text>
             <View style={styles.table}>
@@ -1434,7 +1448,7 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
                 <Text style={[styles.tableCell, { flex: 2 }]}>Meeting Name</Text>
                 <Text style={[styles.tableCell, { flex: 1 }]}>Date</Text>
               </View>
-              {invoiceData.meetings.map((meeting, index) => (
+                             {safeInvoiceData.meetings.map((meeting, index) => (
                 <View key={index} style={styles.tableRow}>
                   <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>{meeting.title || 'N/A'}</Text>
                   <Text style={[styles.tableCell, { flex: 1, fontSize: 8 }]}>
@@ -1448,7 +1462,275 @@ const InvoicePDF = ({ invoiceData, selectedDepartment, dateRange }) => {
       </Page>
     </Document>
   );
-};
+});
+
+// Hierarchical Invoice PDF component for departments with sub-departments
+const HierarchicalInvoicePDF = memo(({ invoiceData, selectedDepartment, selectedSubDepartment, dateRange }) => {
+  console.log('HierarchicalInvoicePDF: Rendering with data:', { invoiceData, selectedDepartment, selectedSubDepartment, dateRange });
+  
+  // Enhanced safety checks to prevent PDF generation errors
+  if (!invoiceData || !dateRange?.startDate || !dateRange?.endDate) {
+    console.log('HierarchicalInvoicePDF: Missing required data', { invoiceData, dateRange });
+    return null;
+  }
+  
+  console.log('HierarchicalInvoicePDF Debug:', {
+    invoiceData,
+    selectedDepartment,
+    selectedSubDepartment,
+    subDepartmentBreakdown: invoiceData.subDepartmentBreakdown
+  });
+  
+  // Ensure all required fields exist with fallbacks
+  const safeInvoiceData = {
+    foodShare: Number(invoiceData.foodShare) || 0,
+    employeeFoodShare: Number(invoiceData.employeeFoodShare) || 0,
+    rentTotal: Number(invoiceData.rentTotal) || 0,
+    meetingFoodTotal: Number(invoiceData.meetingFoodTotal) || 0,
+    guestMealTotal: Number(invoiceData.guestMealTotal) || 0,
+    total: Number(invoiceData.total) || 0,
+    meetings: Array.isArray(invoiceData.meetings) ? invoiceData.meetings : [],
+    subDepartmentBreakdown: []
+  };
+  
+  // Safe sub-department breakdown processing
+  if (invoiceData.subDepartmentBreakdown && Array.isArray(invoiceData.subDepartmentBreakdown)) {
+    try {
+      safeInvoiceData.subDepartmentBreakdown = invoiceData.subDepartmentBreakdown.map(item => {
+        if (!item || typeof item !== 'object') {
+          console.warn('Invalid sub-department item:', item);
+          return {
+            title: 'Unknown',
+            meetings: [],
+            meetingFoodTotal: 0,
+            rentTotal: 0,
+            total: 0
+          };
+        }
+        
+        return {
+          title: String(item.title || 'Unknown'),
+          meetings: Array.isArray(item.meetings) ? item.meetings : [],
+          meetingFoodTotal: Number(item.meetingFoodTotal) || 0,
+          rentTotal: Number(item.rentTotal) || 0,
+          total: Number(item.total) || 0
+        };
+      });
+    } catch (error) {
+      console.error('Error processing sub-department breakdown:', error);
+      safeInvoiceData.subDepartmentBreakdown = [];
+    }
+  }
+  
+  console.log('HierarchicalInvoicePDF Safe Data:', safeInvoiceData);
+  
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.logoContainer}>
+        <Image 
+          src={HiraPlus} 
+          style={styles.logo}
+        />
+        <Text style={styles.logoText}>Hira Plus</Text>
+      </View>
+      <View style={styles.headerText}>
+        <Text style={styles.title}>
+          JAMA AT E ISLAMI HIND KERALA
+        </Text>
+        <Text style={styles.subtitle}>
+          HIRA CENTRE, KOZHIKODE - 673004
+        </Text>
+        <Text style={styles.subtitle}>
+          FROM: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} TO: {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+        </Text>
+      </View>
+    </View>
+  );
+  
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {renderHeader()}
+        
+        {/* Billing details */}
+        <View style={{ marginBottom: 10 }}>
+          <Text style={{ fontSize: 10, color: '#4B5563' }}>Department: {selectedDepartment}</Text>
+          {selectedSubDepartment && (
+            <Text style={{ fontSize: 10, color: '#4B5563' }}>Sub-Department: {selectedSubDepartment}</Text>
+          )}
+          {selectedSubDepartment && (
+            <Text style={{ fontSize: 9, color: '#6B7280', fontStyle: 'italic' }}>
+              Note: This invoice shows data specifically for the selected sub-department. All calculations (meeting food, rent, etc.) are filtered to show only data from this sub-department.
+            </Text>
+          )}
+          {!selectedSubDepartment && safeInvoiceData.subDepartmentBreakdown && safeInvoiceData.subDepartmentBreakdown.length > 0 && (
+            <Text style={{ fontSize: 9, color: '#6B7280', fontStyle: 'italic' }}>
+              Note: This invoice shows the complete breakdown for all sub-departments within this Outside Department.
+            </Text>
+          )}
+          <Text style={{ fontSize: 10, color: '#4B5563' }}>
+            Period: {format(new Date(dateRange.startDate), 'dd/MM/yyyy')} - {format(new Date(dateRange.endDate), 'dd/MM/yyyy')}
+          </Text>
+        </View>
+        
+        {/* Charge breakdown table */}
+        <View style={styles.section}>
+          <View style={styles.table}>
+            <View style={[styles.tableRow, styles.tableHeader]}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Description</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Amount</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Department Food Share</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.foodShare.toFixed(2)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Total Food Share by Employee</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.employeeFoodShare.toFixed(2)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Venue Rent</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.rentTotal.toFixed(2)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Meeting Food</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.meetingFoodTotal.toFixed(2)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 3 }]}>Guest Meals</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{safeInvoiceData.guestMealTotal.toFixed(2)}</Text>
+            </View>
+            <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+              <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold' }]}>TOTAL</Text>
+              <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }]}>{safeInvoiceData.total.toFixed(2)}</Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Sub-Department Breakdown - Only for "All Sub-Departments" */}
+        {!selectedSubDepartment && safeInvoiceData.subDepartmentBreakdown && safeInvoiceData.subDepartmentBreakdown.length > 0 && (
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 5 }}>Sub-Department Breakdown:</Text>
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={[styles.tableCell, { flex: 2 }]}>Sub-Department</Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>Meetings</Text>
+                <Text style={[styles.tableCellRight, { flex: 1 }]}>Meeting Food</Text>
+                <Text style={[styles.tableCellRight, { flex: 1 }]}>Rent</Text>
+                <Text style={[styles.tableCellRight, { flex: 1 }]}>Total</Text>
+              </View>
+              {(() => {
+                try {
+                  return safeInvoiceData.subDepartmentBreakdown.map((subDept, index) => {
+                    // Additional safety check for each sub-department
+                    const safeSubDept = {
+                      title: String(subDept?.title || 'Unknown'),
+                      meetings: Array.isArray(subDept?.meetings) ? subDept.meetings : [],
+                      meetingFoodTotal: Number(subDept?.meetingFoodTotal) || 0,
+                      rentTotal: Number(subDept?.rentTotal) || 0,
+                      total: Number(subDept?.total) || 0
+                    };
+                    
+                    return (
+                      <View key={index} style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>{safeSubDept.title}</Text>
+                        <Text style={[styles.tableCell, { flex: 1, fontSize: 8 }]}>{safeSubDept.meetings.length}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8 }]}>{safeSubDept.meetingFoodTotal.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8 }]}>{safeSubDept.rentTotal.toFixed(2)}</Text>
+                        <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8, fontWeight: 'bold' }]}>{safeSubDept.total.toFixed(2)}</Text>
+                      </View>
+                    );
+                  });
+                } catch (error) {
+                  console.error('Error rendering sub-department breakdown:', error);
+                  return (
+                    <View style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 5, fontSize: 8, color: 'red' }]}>
+                        Error rendering sub-department breakdown
+                      </Text>
+                    </View>
+                  );
+                }
+              })()}
+              {/* Total row */}
+              {(() => {
+                try {
+                  const totalMeetings = safeInvoiceData.subDepartmentBreakdown.reduce((sum, subDept) => {
+                    const meetingsCount = Array.isArray(subDept?.meetings) ? subDept.meetings.length : 0;
+                    return sum + meetingsCount;
+                  }, 0);
+                  
+                  const totalMeetingFood = safeInvoiceData.subDepartmentBreakdown.reduce((sum, subDept) => {
+                    const meetingFood = Number(subDept?.meetingFoodTotal) || 0;
+                    return sum + meetingFood;
+                  }, 0);
+                  
+                  const totalRent = safeInvoiceData.subDepartmentBreakdown.reduce((sum, subDept) => {
+                    const rent = Number(subDept?.rentTotal) || 0;
+                    return sum + rent;
+                  }, 0);
+                  
+                  const grandTotal = safeInvoiceData.subDepartmentBreakdown.reduce((sum, subDept) => {
+                    const total = Number(subDept?.total) || 0;
+                    return sum + total;
+                  }, 0);
+                  
+                  return (
+                    <View style={[styles.tableRow, { borderBottomWidth: 0, backgroundColor: '#F3F4F6' }]}>
+                      <Text style={[styles.tableCell, { flex: 2, fontSize: 8, fontWeight: 'bold' }]}>TOTAL</Text>
+                      <Text style={[styles.tableCell, { flex: 1, fontSize: 8, fontWeight: 'bold' }]}>
+                        {totalMeetings}
+                      </Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8, fontWeight: 'bold' }]}>
+                        {totalMeetingFood.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8, fontWeight: 'bold' }]}>
+                        {totalRent.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8, fontWeight: 'bold' }]}>
+                        {grandTotal.toFixed(2)}
+                      </Text>
+                    </View>
+                  );
+                } catch (error) {
+                  console.error('Error calculating totals:', error);
+                  return (
+                    <View style={[styles.tableRow, { borderBottomWidth: 0, backgroundColor: '#F3F4F6' }]}>
+                      <Text style={[styles.tableCell, { flex: 5, fontSize: 8, color: 'red', fontWeight: 'bold' }]}>
+                        Error calculating totals
+                      </Text>
+                    </View>
+                  );
+                }
+              })()}
+            </View>
+          </View>
+        )}
+
+        {/* Meeting Details */}
+        {safeInvoiceData.meetings && safeInvoiceData.meetings.length > 0 && (
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 5 }}>Meetings Conducted:</Text>
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={[styles.tableCell, { flex: 2 }]}>Meeting Name</Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>Date</Text>
+              </View>
+              {safeInvoiceData.meetings.map((meeting, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>{meeting.title || 'N/A'}</Text>
+                  <Text style={[styles.tableCell, { flex: 1, fontSize: 8 }]}>
+                    {format(new Date(meeting.startDatetime), 'dd/MM/yyyy')}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </Page>
+    </Document>
+  );
+});
 
 // Accounts PDF component for detailed accounts bill
 const AccountsPDF = ({ 
@@ -1681,16 +1963,89 @@ const BillGenerator = () => {
   const [employeePayable, setEmployeePayable] = useState(0);
   const [departmentPayable, setDepartmentPayable] = useState(0);
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedSubDepartment, setSelectedSubDepartment] = useState('');
   const [departments, setDepartments] = useState([]);
+  const [fullDepartments, setFullDepartments] = useState([]);
   // Inside BillGenerator component state declarations, add invoiceData
   const [invoiceData, setInvoiceData] = useState(null);
   const [showAllUsers, setShowAllUsers] = useState(false);
+  const [pdfKey, setPdfKey] = useState(Date.now());
+  const [downloadCount, setDownloadCount] = useState(0);
+
+  // Suppress browser extension errors that cause loops
+  useEffect(() => {
+    const suppressExtensionErrors = (e) => {
+      if (e.message && (
+        e.message.includes('content-all.js') ||
+        e.message.includes('save-page') ||
+        e.message.includes('translate-page') ||
+        e.message.includes('Receiving end does not exist') ||
+        e.message.includes('Could not establish connection')
+      )) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    // Add error listener
+    window.addEventListener('error', suppressExtensionErrors);
+    window.addEventListener('unhandledrejection', suppressExtensionErrors);
+
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('error', suppressExtensionErrors);
+      window.removeEventListener('unhandledrejection', suppressExtensionErrors);
+    };
+  }, []);
+
+  // Update PDF key when switching between different PDF types or data changes
+  useEffect(() => {
+    // Force complete component cleanup by updating key
+    setPdfKey(Date.now());
+  }, [billType, selectedDepartment, selectedSubDepartment, dateRange.startDate, dateRange.endDate]);
+
+  // Additional cleanup when switching between regular and hierarchical departments
+  useEffect(() => {
+    // Force PDF key update when department changes to ensure clean component state
+    setPdfKey(Date.now());
+  }, [selectedDepartment]);
+
+  // Force cleanup after any PDF download to prevent state conflicts
+  const handlePDFDownload = () => {
+    // Force component re-render after a short delay
+    setTimeout(() => {
+      setPdfKey(Date.now());
+    }, 100);
+  };
+
+  // Helper function to safely format dates for PDF filenames
+  const getSafeFileName = (baseName, dateRange) => {
+    try {
+      if (dateRange?.startDate) {
+        const date = new Date(dateRange.startDate);
+        if (!isNaN(date.getTime())) {
+          return `${baseName}-${format(date, 'yyyy-MM-dd')}.pdf`;
+        }
+      }
+      return `${baseName}-no-date.pdf`;
+    } catch (error) {
+      console.error('Error formatting date for filename:', error);
+      return `${baseName}-error.pdf`;
+    }
+  };
 
   const venues = [
     'Auditorium [2nd Floor]',
     'Conference Hall [3rd Floor]',
     'Meeting Space [1st Floor]'
   ];
+
+  // Helper function to get sub-departments for a hierarchical department
+  const getSubDepartmentsForDepartment = (departmentName) => {
+    const department = fullDepartments.find(dept => dept.title === departmentName);
+    return department && department.isHierarchical ? department.subDepartments || [] : [];
+  };
 
   // Custom List Management Functions
   const fetchCustomLists = async () => {
@@ -1755,8 +2110,8 @@ const BillGenerator = () => {
         console.log(`New users array:`, newUsers);
         
         return {
-          ...prev,
-          departments: [...prev.departments, departmentName],
+        ...prev,
+        departments: [...prev.departments, departmentName],
           users: newUsers
         };
       });
@@ -1973,6 +2328,9 @@ const BillGenerator = () => {
             headers: { Authorization: `Bearer ${token}` }
           }
         );
+        
+        // Store full department data for hierarchical checks
+        setFullDepartments(departmentResponse.data.departments);
         
         // Extract department titles from the response
         const departmentTitles = departmentResponse.data.departments
@@ -2631,7 +2989,8 @@ const BillGenerator = () => {
                     startDate: dateRange.startDate,
                     endDate: dateRange.endDate,
                     department: selectedDepartment,
-                    venue
+                    venue,
+                    ...(selectedSubDepartment && { subDepartment: selectedSubDepartment })
                   },
                   headers: { Authorization: `Bearer ${token}` }
                 }
@@ -2653,7 +3012,8 @@ const BillGenerator = () => {
                 params: {
                   startDate: dateRange.startDate,
                   endDate: dateRange.endDate,
-                  department: selectedDepartment
+                  department: selectedDepartment,
+                  ...(selectedSubDepartment && { subDepartment: selectedSubDepartment })
                 },
                 headers: { Authorization: `Bearer ${token}` }
               }
@@ -2697,6 +3057,8 @@ const BillGenerator = () => {
 
           // Fetch meetings for this department
           let departmentMeetings = [];
+          let subDepartmentBreakdown = [];
+          
           try {
             const meetingsResponse = await axios.get(
               `${import.meta.env.VITE_API_URL}/admin/meetings`,
@@ -2706,7 +3068,8 @@ const BillGenerator = () => {
             );
             
             if (meetingsResponse.data && meetingsResponse.data.meetings) {
-              departmentMeetings = meetingsResponse.data.meetings.filter(meeting => {
+              // Get all meetings for this department
+              const allDepartmentMeetings = meetingsResponse.data.meetings.filter(meeting => {
                 const departmentName = meeting.department?.title || meeting.department;
                 const meetingDate = new Date(meeting.startDatetime);
                 const startDate = new Date(dateRange.startDate);
@@ -2716,6 +3079,69 @@ const BillGenerator = () => {
                        meetingDate >= startDate && 
                        meetingDate <= endDate;
               });
+
+              // Filter meetings based on selected sub-department
+              departmentMeetings = selectedSubDepartment 
+                ? allDepartmentMeetings.filter(meeting => meeting.subDepartment === selectedSubDepartment)
+                : allDepartmentMeetings;
+
+              // Create sub-department breakdown for hierarchical departments
+              const selectedDept = fullDepartments.find(dept => dept.title === selectedDepartment);
+              if (selectedDept && selectedDept.isHierarchical) {
+                const subDepts = selectedDept.subDepartments || [];
+
+                // If a specific sub-department is selected, only show that one
+                const subDeptsToProcess = selectedSubDepartment 
+                  ? subDepts.filter(subDept => subDept.title === selectedSubDepartment)
+                  : subDepts;
+
+                subDepartmentBreakdown = await Promise.all(subDeptsToProcess.map(async (subDept) => {
+                  const subDeptMeetings = allDepartmentMeetings.filter(meeting =>
+                    meeting.subDepartment === subDept.title
+                  );
+
+                  // Get accurate meeting food data using the same API as main billing
+                  let meetingFoodTotal = 0;
+                  try {
+                    const meetingFoodResp = await axios.get(
+                      `${import.meta.env.VITE_API_URL}/admin/meeting-food-bills`,
+                      {
+                        params: {
+                          startDate: dateRange.startDate,
+                          endDate: dateRange.endDate,
+                          department: selectedDepartment,
+                          subDepartment: subDept.title // Pass sub-department filter
+                        },
+                        headers: { Authorization: `Bearer ${token}` }
+                      }
+                    );
+                    if (meetingFoodResp.data && meetingFoodResp.data.departments && meetingFoodResp.data.departments.length) {
+                      const d = meetingFoodResp.data.departments[0];
+                      meetingFoodTotal = (
+                        (d.breakfast || 0) * meetingFoodRates.breakfast +
+                        (d.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                        (d.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                        (d.lunch || 0) * meetingFoodRates.lunch +
+                        (d.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                        (d.eveningTeaCount || 0) * meetingFoodRates.eveningTea +
+                        (d.dinner || 0) * meetingFoodRates.dinner
+                      );
+                    }
+                  } catch (err) {
+                    console.error(`Failed to fetch meeting food data for sub-department ${subDept.title}:`, err);
+                  }
+
+                  const rentTotal = subDeptMeetings.reduce((sum, meeting) => sum + (meeting.rent || 0), 0);
+
+                  return {
+                    title: subDept.title,
+                    meetings: subDeptMeetings,
+                    meetingFoodTotal,
+                    rentTotal,
+                    total: meetingFoodTotal + rentTotal
+                  };
+                }));
+              }
             }
           } catch (err) {
             console.error('Failed to fetch meetings:', err);
@@ -2723,12 +3149,48 @@ const BillGenerator = () => {
 
           const summary = deptMap[selectedDepartment] || { foodShare: 0, rentTotal: 0, meetingFoodTotal: 0, guestMealTotal: 0 };
           summary.total = summary.foodShare + summary.rentTotal + summary.meetingFoodTotal + summary.guestMealTotal;
-          summary.meetings = departmentMeetings;
+          summary.meetings = departmentMeetings || [];
+          summary.selectedSubDepartment = selectedSubDepartment || null;
+          
+          // Ensure subDepartmentBreakdown is always a valid array with proper structure
+          let safeSubDepartmentBreakdown = [];
+          if (subDepartmentBreakdown && Array.isArray(subDepartmentBreakdown)) {
+            safeSubDepartmentBreakdown = subDepartmentBreakdown.map(item => ({
+              title: item.title || 'Unknown',
+              meetings: Array.isArray(item.meetings) ? item.meetings : [],
+              meetingFoodTotal: Number(item.meetingFoodTotal) || 0,
+              rentTotal: Number(item.rentTotal) || 0,
+              total: Number(item.total) || 0
+            }));
+          }
+          
+          summary.subDepartmentBreakdown = safeSubDepartmentBreakdown;
 
-          setDepartmentBillData({ departments: [{ department: selectedDepartment, ...summary }] });
-          setInvoiceData(summary);
-          setTotalAmount(summary.total);
-          setDepartmentPayable(summary.total);
+          // Ensure all required fields exist for PDF generation
+          const safeSummary = {
+            foodShare: summary.foodShare || 0,
+            employeeFoodShare: summary.employeeFoodShare || 0,
+            rentTotal: summary.rentTotal || 0,
+            meetingFoodTotal: summary.meetingFoodTotal || 0,
+            guestMealTotal: summary.guestMealTotal || 0,
+            total: summary.total || 0,
+            meetings: Array.isArray(summary.meetings) ? summary.meetings : [],
+            subDepartmentBreakdown: safeSubDepartmentBreakdown,
+            selectedSubDepartment: summary.selectedSubDepartment || null
+          };
+
+          // Debug logging
+          console.log('Invoice Data Debug:', {
+            selectedDepartment,
+            selectedSubDepartment,
+            safeSummary,
+            subDepartmentBreakdown: safeSubDepartmentBreakdown
+          });
+
+          setDepartmentBillData({ departments: [{ department: selectedDepartment, ...safeSummary }] });
+          setInvoiceData(safeSummary);
+          setTotalAmount(safeSummary.total);
+          setDepartmentPayable(safeSummary.total);
           setEmployeePayable(0);
         } catch (err) {
           console.error('Failed to generate invoice:', err);
@@ -2792,7 +3254,8 @@ const BillGenerator = () => {
             if (meetingsResponse.data && meetingsResponse.data.meetings) {
               console.log('Total meetings found:', meetingsResponse.data.meetings.length);
               
-              meetingsResponse.data.meetings.forEach(meeting => {
+              // Use for...of loop to handle async operations
+              for (const meeting of meetingsResponse.data.meetings) {
                 const departmentName = meeting.department?.title || meeting.department;
                 console.log('Checking meeting:', meeting.title, 'Department:', departmentName, 'Date:', meeting.startDatetime);
                 
@@ -2810,8 +3273,44 @@ const BillGenerator = () => {
                   if (meetingDate >= startDate && meetingDate <= endDate) {
                     console.log('Meeting date is within range, adding to bill');
                     
-                    // Calculate food/snacks amount for this meeting
-                    const foodSnacksAmount = (
+                    // Check if this is a hierarchical department
+                    const selectedDept = fullDepartments.find(dept => dept.title === departmentName);
+                    const isHierarchical = selectedDept && selectedDept.isHierarchical;
+                    
+                    let foodSnacksAmount = 0;
+                    
+                    if (isHierarchical) {
+                      // For hierarchical departments, use accurate API data
+                      try {
+                        const meetingFoodResp = await axios.get(
+                          `${import.meta.env.VITE_API_URL}/admin/meeting-food-bills`,
+                          {
+                            params: {
+                              startDate: dateRange.startDate,
+                              endDate: dateRange.endDate,
+                              department: departmentName,
+                              subDepartment: meeting.subDepartment || undefined
+                            },
+                            headers: { Authorization: `Bearer ${token}` }
+                          }
+                        );
+                        
+                        if (meetingFoodResp.data && meetingFoodResp.data.departments && meetingFoodResp.data.departments.length) {
+                          const d = meetingFoodResp.data.departments[0];
+                          foodSnacksAmount = (
+                            (d.breakfast || 0) * meetingFoodRates.breakfast +
+                            (d.lunch || 0) * meetingFoodRates.lunch +
+                            (d.dinner || 0) * meetingFoodRates.dinner +
+                            (d.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                            (d.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                            (d.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                            (d.eveningTeaCount || 0) * meetingFoodRates.eveningTea
+                          );
+                        }
+                      } catch (err) {
+                        console.error(`Failed to fetch meeting food data for hierarchical department ${departmentName}:`, err);
+                        // Fallback to meeting object data
+                        foodSnacksAmount = (
                       (meeting.breakfast || 0) * meetingFoodRates.breakfast +
                       (meeting.lunch || 0) * meetingFoodRates.lunch +
                       (meeting.dinner || 0) * meetingFoodRates.dinner +
@@ -2820,6 +3319,19 @@ const BillGenerator = () => {
                       (meeting.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
                       (meeting.eveningTeaCount || 0) * meetingFoodRates.eveningTea
                     );
+                      }
+                    } else {
+                      // For regular departments, use meeting object data (unchanged)
+                      foodSnacksAmount = (
+                        (meeting.breakfast || 0) * meetingFoodRates.breakfast +
+                        (meeting.lunch || 0) * meetingFoodRates.lunch +
+                        (meeting.dinner || 0) * meetingFoodRates.dinner +
+                        (meeting.morningSnacksCount || 0) * meetingFoodRates.morningSnacks +
+                        (meeting.morningTeaCount || 0) * meetingFoodRates.morningTea +
+                        (meeting.eveningSnacksCount || 0) * meetingFoodRates.eveningSnacks +
+                        (meeting.eveningTeaCount || 0) * meetingFoodRates.eveningTea
+                      );
+                    }
                     
                     detailedBillData.push({
                       date: meeting.startDatetime,
@@ -2836,7 +3348,7 @@ const BillGenerator = () => {
                 } else {
                   console.log('Meeting department does not match:', departmentName);
                 }
-              });
+              }
             }
             
             console.log('Final detailed bill data:', detailedBillData);
@@ -2947,7 +3459,7 @@ const BillGenerator = () => {
 
                 // Aggregate guest meals by department
                 const guestMealSummary = {};
-                
+
                 if (guestResponse.data && guestResponse.data.guestMeals) {
                   guestResponse.data.guestMeals.forEach(guestMeal => {
                     const departmentName = guestMeal.department?.title || guestMeal.department;
@@ -3027,8 +3539,10 @@ const BillGenerator = () => {
               // For non-summary items, sort by date
               if (!a.isStaffFoodSummary && !a.isGuestMealSummary && !b.isStaffFoodSummary && !b.isGuestMealSummary) {
                 return new Date(a.date) - new Date(b.date);
+              if (!a.isGuestMealSummary && !b.isGuestMealSummary) {
+              return new Date(a.date) - new Date(b.date);
               }
-              
+            }
               return 0;
             });
 
@@ -3179,6 +3693,7 @@ const BillGenerator = () => {
                           setBillType(e.target.value);
                           setSelectedVenue('');
                           setSelectedCustomList('');
+                          setSelectedSubDepartment(''); // Reset sub-department when bill type changes
                           setRentData(null);
                           setBillData(null);
                           setGuestMealData(null);
@@ -3566,6 +4081,7 @@ const BillGenerator = () => {
                           onChange={(e) => {
                             const newDepartment = e.target.value;
                             setSelectedDepartment(newDepartment);
+                            setSelectedSubDepartment(''); // Reset sub-department when department changes
                             // Reset data to prevent stale data from showing
                             setBillData(null);
                             setDepartmentData(null);
@@ -3587,6 +4103,48 @@ const BillGenerator = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Sub-Department Selection - Only for Invoice bill type with hierarchical departments */}
+                  {billType === 'invoice' && selectedDepartment && (() => {
+                    const subDepartments = getSubDepartmentsForDepartment(selectedDepartment);
+                    if (subDepartments.length > 0) {
+                      return (
+                        <div className="mt-4">
+                          <div className="flex items-center gap-4">
+                            <h3 className="text-lg font-medium text-gray-800">Select Sub-Department (Optional)</h3>
+                            <div className="w-72">
+                              <select
+                                value={selectedSubDepartment}
+                                onChange={(e) => {
+                                  setSelectedSubDepartment(e.target.value);
+                                  // Reset data to prevent stale data from showing
+                                  setBillData(null);
+                                  setDepartmentData(null);
+                                  setRentData(null);
+                                  setGuestMealData(null);
+                                  setMeetingFoodData(null);
+                                  setDepartmentBillData(null);
+                                  setTotalAmount(0);
+                                  setEmployeePayable(0);
+                                  setDepartmentPayable(0);
+                                }}
+                                className="block w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
+                              >
+                                <option value="">All Sub-Departments</option>
+                                {subDepartments.map((subDept) => (
+                                  <option key={subDept._id} value={subDept.title}>{subDept.title}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-sm text-gray-600">
+                            Select a specific sub-department to generate an invoice for that sub-department only, or leave as "All Sub-Departments" for the entire Outside Department.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {billType === 'accounts' && (
                     <div className="max-w-md">
@@ -5055,20 +5613,189 @@ const BillGenerator = () => {
                     </PDFErrorBoundary>
                   )}
 
-                  {(billType === 'invoice' && invoiceData) && (
-                    <PDFErrorBoundary>
-                      <PDFDownloadLink
-                        document={<InvoicePDF invoiceData={invoiceData} selectedDepartment={selectedDepartment} dateRange={dateRange} />}
-                        fileName={`invoice-${selectedDepartment}-${format(new Date(dateRange.startDate), 'yyyy-MM-dd')}.pdf`}
-                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                      >
-                        {({ loading, error }) => {
-                          if (loading) return 'Preparing PDF...';
-                          if (error) return 'Error generating PDF';
-                          return 'Download Invoice PDF';
-                        }}
-                      </PDFDownloadLink>
-                    </PDFErrorBoundary>
+                                    {/* Invoice PDF Download - Simplified Structure */}
+                  {(billType === 'invoice' && dateRange?.startDate && dateRange?.endDate) && (
+                    <>
+                      {/* No Data Available */}
+                      {!invoiceData && (
+                        <PDFErrorBoundary key={`no-data-boundary-${pdfKey}-${downloadCount}`}>
+                          <PDFDownloadLink
+                            key={`no-data-pdf-${pdfKey}-${downloadCount}`}
+                            document={
+                              <Document>
+                                <Page size="A4" style={styles.page}>
+                                  <Text>No invoice data available. Please generate the bill first.</Text>
+                                </Page>
+                              </Document>
+                            }
+                            fileName={getSafeFileName('no-data', dateRange)}
+                            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                          >
+                            {({ loading, error }) => {
+                              if (loading) return 'Preparing PDF...';
+                              if (error) return 'Error generating PDF';
+                              return 'No Data Available';
+                            }}
+                          </PDFDownloadLink>
+                        </PDFErrorBoundary>
+                      )}
+
+
+
+                      {/* Invoice PDF Download - Manual Approach */}
+                      {invoiceData && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              console.log('Starting invoice PDF generation...');
+                              
+                              // Create the invoice PDF document
+                              const doc = (
+                                <Document>
+                                  <Page size="A4" style={styles.page}>
+                                    {/* Header */}
+                                    <View style={styles.headerContainer}>
+                                      <View style={styles.logoContainer}>
+                                        <Image src={HiraPlus} style={styles.logo} />
+                                        <Text style={styles.logoText}>Hira Plus</Text>
+                                      </View>
+                                      <View style={styles.headerText}>
+                                        <Text style={styles.title}>JAMA AT E ISLAMI HIND KERALA</Text>
+                                        <Text style={styles.subtitle}>HIRA CENTRE, KOZHIKODE - 673004</Text>
+                                        <Text style={styles.subtitle}>
+                                          FROM: {dateRange?.startDate ? format(new Date(dateRange.startDate), 'dd/MM/yyyy') : 'N/A'} 
+                                          TO: {dateRange?.endDate ? format(new Date(dateRange.endDate), 'dd/MM/yyyy') : 'N/A'}
+                                        </Text>
+                                      </View>
+                                    </View>
+
+                                    {/* Department Info */}
+                                    <View style={{ marginBottom: 10 }}>
+                                      <Text style={{ fontSize: 10, color: '#4B5563' }}>Department: {selectedDepartment}</Text>
+                                      {selectedSubDepartment && (
+                                        <Text style={{ fontSize: 10, color: '#4B5563' }}>Sub-Department: {selectedSubDepartment}</Text>
+                                      )}
+                                      <Text style={{ fontSize: 10, color: '#4B5563' }}>
+                                        Period: {dateRange?.startDate ? format(new Date(dateRange.startDate), 'dd/MM/yyyy') : 'N/A'} - {dateRange?.endDate ? format(new Date(dateRange.endDate), 'dd/MM/yyyy') : 'N/A'}
+                                      </Text>
+                                    </View>
+
+                                    {/* Charge Breakdown */}
+                                    <View style={styles.section}>
+                                      <View style={styles.table}>
+                                        <View style={[styles.tableRow, styles.tableHeader]}>
+                                          <Text style={[styles.tableCell, { flex: 3 }]}>Description</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Amount</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                          <Text style={[styles.tableCell, { flex: 3 }]}>Department Food Share</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Number(invoiceData.foodShare || 0).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                          <Text style={[styles.tableCell, { flex: 3 }]}>Total Food Share by Employee</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Number(invoiceData.employeeFoodShare || 0).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                          <Text style={[styles.tableCell, { flex: 3 }]}>Venue Rent</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Number(invoiceData.rentTotal || 0).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                          <Text style={[styles.tableCell, { flex: 3 }]}>Meeting Food</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Number(invoiceData.meetingFoodTotal || 0).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                          <Text style={[styles.tableCell, { flex: 3 }]}>Guest Meals</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{Number(invoiceData.guestMealTotal || 0).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+                                          <Text style={[styles.tableCell, { flex: 3, fontWeight: 'bold' }]}>TOTAL</Text>
+                                          <Text style={[styles.tableCellRight, { flex: 1.2, fontWeight: 'bold' }]}>{Number(invoiceData.total || 0).toFixed(2)}</Text>
+                                        </View>
+                                      </View>
+                                    </View>
+
+                                    {/* Sub-Department Breakdown (if hierarchical) */}
+                                    {fullDepartments.find(dept => dept.title === selectedDepartment)?.isHierarchical && 
+                                     !selectedSubDepartment && 
+                                     invoiceData.subDepartmentBreakdown && 
+                                     invoiceData.subDepartmentBreakdown.length > 0 && (
+                                      <View style={{ marginBottom: 10 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 5 }}>Sub-Department Breakdown:</Text>
+                                        <View style={styles.table}>
+                                          <View style={[styles.tableRow, styles.tableHeader]}>
+                                            <Text style={[styles.tableCell, { flex: 2 }]}>Sub-Department</Text>
+                                            <Text style={[styles.tableCell, { flex: 1 }]}>Meetings</Text>
+                                            <Text style={[styles.tableCellRight, { flex: 1 }]}>Meeting Food</Text>
+                                            <Text style={[styles.tableCellRight, { flex: 1 }]}>Rent</Text>
+                                            <Text style={[styles.tableCellRight, { flex: 1 }]}>Total</Text>
+                                          </View>
+                                          {invoiceData.subDepartmentBreakdown.map((subDept, index) => (
+                                            <View key={index} style={styles.tableRow}>
+                                              <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>{subDept.title || 'Unknown'}</Text>
+                                              <Text style={[styles.tableCell, { flex: 1, fontSize: 8 }]}>{Array.isArray(subDept.meetings) ? subDept.meetings.length : 0}</Text>
+                                              <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8 }]}>{Number(subDept.meetingFoodTotal || 0).toFixed(2)}</Text>
+                                              <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8 }]}>{Number(subDept.rentTotal || 0).toFixed(2)}</Text>
+                                              <Text style={[styles.tableCellRight, { flex: 1, fontSize: 8, fontWeight: 'bold' }]}>{Number(subDept.total || 0).toFixed(2)}</Text>
+                                            </View>
+                                          ))}
+                                        </View>
+                                      </View>
+                                    )}
+
+                                    {/* Meeting Details */}
+                                    {invoiceData.meetings && Array.isArray(invoiceData.meetings) && invoiceData.meetings.length > 0 && (
+                                      <View style={{ marginBottom: 10 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 5 }}>Meetings Conducted:</Text>
+                                        <View style={styles.table}>
+                                          <View style={[styles.tableRow, styles.tableHeader]}>
+                                            <Text style={[styles.tableCell, { flex: 2 }]}>Meeting Name</Text>
+                                            <Text style={[styles.tableCell, { flex: 1 }]}>Date</Text>
+                                          </View>
+                                          {invoiceData.meetings.map((meeting, index) => (
+                                            <View key={index} style={styles.tableRow}>
+                                              <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>{meeting.title || 'N/A'}</Text>
+                                              <Text style={[styles.tableCell, { flex: 1, fontSize: 8 }]}>
+                                                {meeting.startDatetime ? format(new Date(meeting.startDatetime), 'dd/MM/yyyy') : 'N/A'}
+                                              </Text>
+                                            </View>
+                                          ))}
+                                        </View>
+                                      </View>
+                                    )}
+                                  </Page>
+                                </Document>
+                              );
+
+                              // Generate PDF blob
+                              const blob = await pdf(doc).toBlob();
+                              console.log('Invoice PDF blob created, size:', blob.size);
+
+                              // Create download link
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = getSafeFileName(`invoice-${selectedDepartment}${selectedSubDepartment ? `-${selectedSubDepartment}` : ''}`, dateRange);
+                              
+                              // Trigger download
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              
+                              // Clean up
+                              URL.revokeObjectURL(url);
+                              console.log('Invoice download completed successfully');
+                              
+                            } catch (error) {
+                              console.error('Invoice PDF generation failed:', error);
+                              alert('Invoice PDF generation failed: ' + error.message);
+                            }
+                          }}
+                          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                        >
+                          Download Invoice PDF
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {(billType === 'accounts' && departmentBillData?.departments) && (
@@ -5095,6 +5822,8 @@ const BillGenerator = () => {
                       </PDFDownloadLink>
                     </PDFErrorBoundary>
                   )}
+
+
                 </div>
               </div>
             </div>
