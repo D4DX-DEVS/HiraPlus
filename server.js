@@ -9,6 +9,8 @@ const messStaffRoutes = require('./routes/messStaff');
 const bannerRoutes = require('./routes/banner');
 const receptionRoutes = require('./routes/reception');
 const departmentRoutes = require('./routes/departments');
+const leadersRoutes = require('./routes/leaders');
+const leadersMeetingsRoutes = require('./routes/leadersMeetings');
 
 const app = express();
 
@@ -36,6 +38,8 @@ app.use('/api/mess-staff', messStaffRoutes);
 app.use('/api/banner', bannerRoutes);
 app.use('/api/reception', receptionRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/testing/leaders', leadersRoutes);
+app.use('/api/testing/leaders-meetings', leadersMeetingsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
