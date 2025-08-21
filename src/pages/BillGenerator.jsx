@@ -634,6 +634,7 @@ const BillPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>B</Text>
                   <Text style={[styles.tableCellRight, { flex: 1 }]}>L</Text>
@@ -657,6 +658,7 @@ const BillPDF = ({
                       (d.eveningTeaCount || 0) * meetingFoodRates.eveningTea;
                     return (
                       <View key={idx} style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { flex: 0.8 }]}>{idx + 1}</Text>
                         <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
                         <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.breakfast || 0}</Text>
                         <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.lunch || 0}</Text>
@@ -727,6 +729,7 @@ const BillPDF = ({
             <View style={styles.section}>
               <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
+                  <Text style={[styles.tableCell, { flex: 0.8 }]}>S.No.</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Department</Text>
                   <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Food (75%)</Text>
                   <Text style={[styles.tableCellRight, { flex: 1.2 }]}>Rent</Text>
@@ -738,6 +741,7 @@ const BillPDF = ({
                   .filter((d) => !selectedDepartment || d.department === selectedDepartment)
                   .map((d, idx) => (
                     <View key={idx} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{idx + 1}</Text>
                       <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{d.foodShare?.toFixed(2)}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{d.rentTotal?.toFixed(2)}</Text>
@@ -984,6 +988,7 @@ const SummaryPDF = ({
                       (d.eveningTeaCount || 0) * meetingFoodRates.eveningTea;
                     return (
                       <View key={idx} style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { flex: 0.8 }]}>{idx + 1}</Text>
                         <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
                         <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.breakfast || 0}</Text>
                         <Text style={[styles.tableCellRight, { flex: 1 }]}>{d.lunch || 0}</Text>
@@ -1063,6 +1068,7 @@ const SummaryPDF = ({
                   .filter((d) => !selectedDepartment || d.department === selectedDepartment)
                   .map((d, idx) => (
                     <View key={idx} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{idx + 1}</Text>
                       <Text style={[styles.tableCell, { flex: 2 }]}>{d.department}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{d.foodShare?.toFixed(2)}</Text>
                       <Text style={[styles.tableCellRight, { flex: 1.2 }]}>{d.rentTotal?.toFixed(2)}</Text>
@@ -1785,7 +1791,7 @@ const AccountsPDF = ({
         {index + 1}
       </Text>
       <Text style={[styles.tableCell, { flex: 1.1, fontSize: 8 }]}>
-        {(item.isGuestMealSummary || item.isStaffFoodSummary) ? format(new Date(), 'dd/MM/yyyy') : format(new Date(item.date), 'dd/MM/yyyy')}
+        {format(new Date(item.date), 'dd/MM/yyyy')}
       </Text>
       <Text style={[styles.tableCell, { flex: 1.4, fontSize: 8 }]}>
         {item.department}
@@ -3427,7 +3433,7 @@ const BillGenerator = () => {
               Object.entries(staffFoodSummary).forEach(([departmentName, summary]) => {
                 if (summary.totalAmount > 0) {
                   detailedBillData.push({
-                    date: new Date().toISOString(), // Use current date for summary rows
+                    date: new Date(dateRange.endDate).toISOString(), // Use bill period end date for summary rows
                     department: departmentName,
                     program: 'Staff Food Summary',
                     meeting: `Dept%: ${summary.departmentShare.toLocaleString()}, Emp%: ${summary.employeeShare.toLocaleString()}`,
@@ -3509,7 +3515,7 @@ const BillGenerator = () => {
                 Object.entries(guestMealSummary).forEach(([departmentName, summary]) => {
                   if (summary.totalAmount > 0) {
                     detailedBillData.push({
-                      date: new Date().toISOString(), // Use current date for summary rows
+                      date: new Date(dateRange.endDate).toISOString(), // Use bill period end date for summary rows
                       department: departmentName,
                       program: 'Guest Meals Summary',
                       meeting: `Breakfast: ${summary.breakfastCount}, Lunch: ${summary.lunchCount}, Dinner: ${summary.dinnerCount}`,
