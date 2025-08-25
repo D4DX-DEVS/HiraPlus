@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const LeadersMeeting = require('../models/leadersMeetng');
 const User = require('../models/User');
-const leaderAuth = require('../middleware/leaderAuth');
+const { leaderAuth, leaderOrSuperLeaderAuth } = require('../middleware/leaderAuth');
 const superLeaderAuth = require('../middleware/superLeaderAuth');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
@@ -191,6 +191,101 @@ function getDuration(start, end) {
     return `${hours}h ${minutes}m`;
 }
 
+// Helper function to create schedules for meeting participants
+async function createSchedulesForParticipants(meeting, participants, creatorRole) {
+    const Schedule = require('../models/schedule');
+    const createdSchedules = [];
+    const overriddenSchedules = [];
+
+    for (const participantData of participants) {
+        const participantId = typeof participantData.participant === 'object' 
+            ? participantData.participant._id 
+            : participantData.participant;
+
+        try {
+            // Check for existing conflicting schedules
+            const conflictingSchedules = await Schedule.find({
+                createdBy: participantId,
+                status: 'active',
+                $or: [
+                    {
+                        startDateTime: { $lt: meeting.endDatetime },
+                        endDateTime: { $gt: meeting.startDatetime }
+                    }
+                ]
+            });
+
+            // Override lower priority schedules
+            for (const conflictingSchedule of conflictingSchedules) {
+                const meetingPriority = creatorRole === 'super leader' ? 'high' : 'medium';
+                const schedulePriority = conflictingSchedule.priority;
+
+                if (meetingPriority === 'high' || 
+                    (meetingPriority === 'medium' && schedulePriority === 'low')) {
+                    
+                    // Mark conflicting schedule as cancelled and track what overrode it
+                    conflictingSchedule.status = 'cancelled';
+                    conflictingSchedule.overriddenBy = {
+                        meetingId: meeting._id,
+                        overriddenAt: new Date()
+                    };
+                    await conflictingSchedule.save();
+                    overriddenSchedules.push(conflictingSchedule);
+
+                    // 🔔 SEND NOTIFICATION TO USER WHOSE SCHEDULE WAS OVERRIDDEN
+                    try {
+                        const user = await User.findById(participantId);
+                        if (user && user.phoneNumber) {
+                            const message = `⚠️ Schedule Override Alert\n\n` +
+                                           `Your schedule "${conflictingSchedule.title}" has been cancelled due to a higher priority meeting.\n\n` +
+                                           `Cancelled Schedule:\n` +
+                                           `📅 Date: ${new Date(conflictingSchedule.startDateTime).toLocaleString()}\n` +
+                                           `⏰ Time: ${new Date(conflictingSchedule.startDateTime).toLocaleTimeString()} - ${new Date(conflictingSchedule.endDateTime).toLocaleTimeString()}\n` +
+                                           `📝 Type: ${conflictingSchedule.scheduleType}\n\n` +
+                                           `New Meeting:\n` +
+                                           `📋 Title: ${meeting.title}\n` +
+                                           `👤 Created by: ${creatorRole === 'super leader' ? 'Super Leader' : 'Leader'}\n` +
+                                           `📅 Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                                           `⏰ Time: ${new Date(meeting.startDatetime).toLocaleTimeString()} - ${new Date(meeting.endDatetime).toLocaleTimeString()}\n\n` +
+                                           `Please check your Hira+ app for more details.`;
+
+                            await sendDXingMessage(user.phoneNumber, message);
+                            console.log(`Override notification sent to user ${user.name} (${user.phoneNumber})`);
+                        }
+                    } catch (notificationError) {
+                        console.error('Error sending override notification:', notificationError);
+                    }
+                }
+            }
+
+            // Create new schedule for the meeting
+            const newSchedule = new Schedule({
+                title: meeting.title,
+                subtitle: meeting.type,
+                scheduleType: 'Meeting',
+                startDateTime: meeting.startDatetime,
+                endDateTime: meeting.endDatetime,
+                description: meeting.description,
+                agendaItems: meeting.agenda ? [meeting.agenda] : [],
+                locationLink: meeting.locationLink,
+                createdBy: participantId,
+                priority: creatorRole === 'super leader' ? 'high' : 'medium',
+                meetingReference: meeting._id,
+                meetingCreatorRole: creatorRole,
+                status: 'active'
+            });
+
+            await newSchedule.save();
+            createdSchedules.push(newSchedule);
+
+        } catch (error) {
+            console.error(`Error creating schedule for participant ${participantId}:`, error);
+        }
+    }
+
+    return { createdSchedules, overriddenSchedules };
+}
+
 // Create a new meeting - accessible by leaders only
 router.post('/create', leaderAuth, async (req, res) => {
     try {
@@ -282,6 +377,13 @@ router.post('/create', leaderAuth, async (req, res) => {
         const populatedMeeting = await LeadersMeeting.findById(savedMeeting._id)
             .populate('participants.participant', 'name phoneNumber')
             .populate('createdBy', 'name phoneNumber');
+
+        // Create schedules for all participants (leader meetings are confirmed at creation)
+        const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
+            populatedMeeting, 
+            populatedMeeting.participants, 
+            'leader'
+        );
 
         // Send DXing notifications to all participants including the creator
         for (const participantData of populatedMeeting.participants) {
@@ -405,6 +507,13 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
         const populatedMeeting = await LeadersMeeting.findById(savedMeeting._id)
             .populate('participants.participant', 'name phoneNumber')
             .populate('createdBy', 'name phoneNumber');
+
+        // Create schedules for all participants (super leader meetings are auto-confirmed)
+        const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
+            populatedMeeting, 
+            populatedMeeting.participants, 
+            'super leader'
+        );
 
         // Send meeting acknowledgment notifications to all participants
         for (const participantData of populatedMeeting.participants) {
@@ -896,6 +1005,18 @@ router.put('/:meetingId', async (req, res) => {
 			.populate('participants.participant', 'name phoneNumber')
 			.populate('createdBy', 'name phoneNumber');
 
+		// Update corresponding schedules if meeting time changed
+		if (startDatetime || endDatetime) {
+			const Schedule = require('../models/schedule');
+			await Schedule.updateMany(
+				{ meetingReference: saved._id },
+				{
+					startDateTime: saved.startDatetime,
+					endDateTime: saved.endDatetime
+				}
+			);
+		}
+
 		return res.status(200).json({ success: true, message: 'Meeting updated successfully', data: populated });
 	} catch (error) {
 		console.error('Error updating meeting:', error);
@@ -991,13 +1112,133 @@ router.delete('/:meetingId', async (req, res) => {
         // Delete the meeting
         await LeadersMeeting.findByIdAndDelete(meetingId);
 
+        // Delete corresponding schedules
+        const Schedule = require('../models/schedule');
+        await Schedule.deleteMany({ meetingReference: meetingId });
+
+        // 🔄 RESTORE OVERRIDDEN SCHEDULES
+        const restoredSchedules = await Schedule.find({
+            'overriddenBy.meetingId': meetingId,
+            status: 'cancelled'
+        });
+
+        const restoredCount = restoredSchedules.length;
+        
+        if (restoredCount > 0) {
+            // Restore all schedules that were overridden by this meeting
+            await Schedule.updateMany(
+                {
+                    'overriddenBy.meetingId': meetingId,
+                    status: 'cancelled'
+                },
+                {
+                    status: 'active',
+                    $unset: { overriddenBy: 1 } // Remove the overriddenBy field
+                }
+            );
+
+            // 🔔 SEND NOTIFICATIONS TO USERS WHOSE SCHEDULES WERE RESTORED
+            for (const schedule of restoredSchedules) {
+                try {
+                    const user = await User.findById(schedule.createdBy);
+                    if (user && user.phoneNumber) {
+                        const message = `🔄 Schedule Restored\n\n` +
+                                       `Your schedule "${schedule.title}" has been restored.\n\n` +
+                                       `Restored Schedule:\n` +
+                                       `📅 Date: ${new Date(schedule.startDateTime).toLocaleString()}\n` +
+                                       `⏰ Time: ${new Date(schedule.startDateTime).toLocaleTimeString()} - ${new Date(schedule.endDateTime).toLocaleTimeString()}\n` +
+                                       `📝 Type: ${schedule.scheduleType}\n\n` +
+                                       `Reason: The meeting that overrode this schedule has been cancelled.\n` +
+                                       `Please check your Hira+ app for details.`;
+
+                        await sendDXingMessage(user.phoneNumber, message);
+                        console.log(`Restoration notification sent to user ${user.name} (${user.phoneNumber})`);
+                    }
+                } catch (notificationError) {
+                    console.error('Error sending restoration notification:', notificationError);
+                }
+            }
+        }
+
         res.status(200).json({
             success: true,
-            message: 'Meeting deleted successfully'
+            message: `Meeting deleted successfully${restoredCount > 0 ? `. ${restoredCount} overridden schedule(s) restored.` : ''}`,
+            data: {
+                deletedMeeting: meetingId,
+                restoredSchedulesCount: restoredCount
+            }
         });
 
     } catch (error) {
         console.error('Error deleting meeting:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+});
+
+// 📋 GET: Get reschedule requests for meetings created by current user
+router.get('/reschedule-requests', async (req, res) => {
+    try {
+        // Authentication check - allow both leaders and super leaders
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: 'No authentication token provided'
+            });
+        }
+
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Get user details
+        const user = await User.findById(decoded.id).populate('department', 'title');
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Check if user is leader or super leader
+        if (user.role !== 'leader' && user.role !== 'super leader') {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Only leaders and super leaders can perform this action.'
+            });
+        }
+
+        const userId = user.id;
+
+        // Get meetings created by the user
+        const userMeetings = await LeadersMeeting.find({
+            createdBy: userId
+        }).select('_id title startDatetime endDatetime');
+
+        const meetingIds = userMeetings.map(meeting => meeting._id);
+
+        // Get reschedule requests for these meetings
+        const Schedule = require('../models/schedule');
+        const rescheduleRequests = await Schedule.find({
+            meetingReference: { $in: meetingIds },
+            'rescheduleRequest.status': 'pending'
+        })
+        .populate('createdBy', 'name phoneNumber')
+        .populate('meetingReference', 'title startDatetime endDatetime')
+        .sort({ 'rescheduleRequest.requestedAt': -1 });
+
+        res.status(200).json({
+            success: true,
+            data: rescheduleRequests
+        });
+
+    } catch (error) {
+        console.error('Error fetching reschedule requests:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',

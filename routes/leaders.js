@@ -4,7 +4,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const leaderAuth = require('../middleware/leaderAuth');
-const superLeaderAuth = require('../middleware/superLeaderAuth');
+const { leaderOrSuperLeaderAuth } = require('../middleware/leaderAuth');
 
 // Store OTPs in memory (in production, use Redis or similar)
 const leaderOtpStore = new Map();
@@ -216,7 +216,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // Get current leader/super leader profile
-router.get('/profile', leaderAuth, async (req, res) => {
+router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('department', 'title');
     
