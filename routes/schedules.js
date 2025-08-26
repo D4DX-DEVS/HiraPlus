@@ -319,6 +319,119 @@ router.get('/', leaderOrSuperLeaderAuth, async (req, res) => {
   }
 });
 
+// 📋 GET RESCHEDULE REQUESTS: Get all reschedule requests for meetings created by the user
+router.get('/reschedule-requests', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    const { status, fromDate, toDate } = req.query;
+
+    // Find all meetings created by the current user that have reschedule requests
+    const LeadersMeeting = require('../models/leadersMeetng');
+    const User = require('../models/User');
+
+    let query = {
+      createdBy: req.user._id,
+      rescheduleRequests: { $exists: true, $ne: [] }
+    };
+
+    // Filter by reschedule request status
+    if (status) {
+      query['rescheduleRequests.status'] = status;
+    }
+
+    // Filter by date range
+    if (fromDate || toDate) {
+      const dateFilter = {};
+      if (fromDate) dateFilter.$gte = new Date(fromDate);
+      if (toDate) dateFilter.$lte = new Date(toDate);
+      query['rescheduleRequests.requestedAt'] = dateFilter;
+    }
+
+    const meetings = await LeadersMeeting.find(query)
+      .populate('createdBy', 'name phoneNumber role')
+      .populate('rescheduleRequests.requestedBy', 'name phoneNumber role')
+      .populate('rescheduleRequests.affectedScheduleId', 'title scheduleType startDateTime endDateTime')
+      .sort({ 'rescheduleRequests.requestedAt': -1 });
+
+    // Transform the data to flatten reschedule requests
+    const rescheduleRequests = [];
+    
+    meetings.forEach(meeting => {
+      meeting.rescheduleRequests.forEach(request => {
+        rescheduleRequests.push({
+          _id: request._id,
+          meeting: {
+            _id: meeting._id,
+            title: meeting.title,
+            startDatetime: meeting.startDatetime,
+            endDatetime: meeting.endDatetime,
+            type: meeting.type,
+            mode: meeting.mode,
+            locationLink: meeting.locationLink,
+            createdBy: meeting.createdBy
+          },
+          requestedBy: request.requestedBy,
+          suggestedTime: request.suggestedTime,
+          reason: request.reason,
+          status: request.status,
+          requestedAt: request.requestedAt,
+          responseDate: request.responseDate,
+          responseMessage: request.responseMessage,
+          affectedSchedule: request.affectedScheduleId
+        });
+      });
+    });
+
+    // Apply additional filtering if needed
+    let filteredRequests = rescheduleRequests;
+
+    // Filter by status (if not already filtered in query)
+    if (status && !query['rescheduleRequests.status']) {
+      filteredRequests = filteredRequests.filter(request => request.status === status);
+    }
+
+    // Filter by date range (if not already filtered in query)
+    if (fromDate || toDate) {
+      const from = fromDate ? new Date(fromDate) : new Date(0);
+      const to = toDate ? new Date(toDate) : new Date('9999-12-31');
+      
+      filteredRequests = filteredRequests.filter(request => 
+        request.requestedAt >= from && request.requestedAt <= to
+      );
+    }
+
+    // Sort by requested date (newest first)
+    filteredRequests.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+
+    // Calculate statistics
+    const stats = {
+      total: filteredRequests.length,
+      pending: filteredRequests.filter(r => r.status === 'pending').length,
+      approved: filteredRequests.filter(r => r.status === 'approved').length,
+      rejected: filteredRequests.filter(r => r.status === 'rejected').length
+    };
+
+    res.json({
+      success: true,
+      data: {
+        rescheduleRequests: filteredRequests,
+        statistics: stats,
+        summary: {
+          totalMeetings: meetings.length,
+          totalRequests: rescheduleRequests.length,
+          filteredRequests: filteredRequests.length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get reschedule requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // 📋 GET: Get specific schedule by ID
 router.get('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
@@ -701,6 +814,276 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
   }
 });
 
+// ✅ MEETING RESCHEDULE APPROVAL: Approve/reject meeting reschedule request
+router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status, responseMessage } = req.body;
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either "approved" or "rejected"'
+      });
+    }
+
+    // Find the meeting that contains this reschedule request
+    const LeadersMeeting = require('../models/leadersMeetng');
+    const User = require('../models/User');
+
+    const meeting = await LeadersMeeting.findOne({
+      'rescheduleRequests._id': requestId
+    }).populate('rescheduleRequests.requestedBy', 'name phoneNumber')
+      .populate('rescheduleRequests.affectedScheduleId', 'title scheduleType startDateTime endDateTime');
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reschedule request not found'
+      });
+    }
+
+    // Find the specific reschedule request
+    const rescheduleRequest = meeting.rescheduleRequests.find(
+      req => req._id.toString() === requestId
+    );
+
+    if (!rescheduleRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reschedule request not found'
+      });
+    }
+
+    // Check if user is the meeting creator or super leader
+    const isMeetingCreator = meeting.createdBy.toString() === req.user._id.toString();
+    const isSuperLeader = req.user.role === 'super leader';
+
+    if (!isMeetingCreator && !isSuperLeader) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only meeting creator or super leaders can approve reschedule requests.'
+      });
+    }
+
+    // Check if request is still pending
+    if (rescheduleRequest.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Reschedule request has already been processed'
+      });
+    }
+
+    // Update the reschedule request
+    rescheduleRequest.status = status;
+    rescheduleRequest.responseDate = new Date();
+    rescheduleRequest.responseMessage = responseMessage || '';
+
+    if (status === 'approved') {
+      // Update meeting time to the suggested time
+      const newStartTime = new Date(rescheduleRequest.suggestedTime);
+      const duration = new Date(meeting.endDatetime) - new Date(meeting.startDatetime);
+      const newEndTime = new Date(newStartTime.getTime() + duration);
+
+      meeting.startDatetime = newStartTime;
+      meeting.endDatetime = newEndTime;
+
+      // Update all participant schedules for this meeting
+      const Schedule = require('../models/schedule');
+      await Schedule.updateMany(
+        { meetingReference: meeting._id },
+        {
+          startDateTime: newStartTime,
+          endDateTime: newEndTime
+        }
+      );
+
+      // Restore overridden schedules if any
+      if (rescheduleRequest.affectedScheduleId) {
+        const affectedSchedule = await Schedule.findById(rescheduleRequest.affectedScheduleId);
+        if (affectedSchedule && affectedSchedule.status === 'cancelled') {
+          affectedSchedule.status = 'active';
+          affectedSchedule.overriddenBy = undefined;
+          await affectedSchedule.save();
+        }
+      }
+
+      // 🔔 NOTIFY ALL PARTICIPANTS ABOUT RESCHEDULE
+      const populatedMeeting = await LeadersMeeting.findById(meeting._id)
+        .populate('participants.participant', 'name phoneNumber')
+        .populate('createdBy', 'name phoneNumber');
+
+      // Send notification to all participants
+      for (const participantData of populatedMeeting.participants) {
+        try {
+          const axios = require('axios');
+          
+          async function sendDXingMessage(phoneNumber, message) {
+            try {
+              if (!phoneNumber) {
+                throw new Error('Phone number is required');
+              }
+
+              const cleanedPhone = phoneNumber.replace(/[\s+\-()]/g, '');
+              const formattedPhone = cleanedPhone.startsWith('91') ? cleanedPhone : `91${cleanedPhone}`;
+
+              const payload = {
+                secret: process.env.DXING_API_KEY,
+                type: "whatsapp",
+                phone: formattedPhone,
+                message: message,
+                account: process.env.DXING_INSTANCE_ID,
+                priority: 1
+              };
+
+              const response = await axios.post('https://app.dxing.in/api/send/otp', payload, {
+                headers: { 'Content-Type': 'application/json' }
+              });
+
+              console.log('WhatsApp notification sent successfully to:', phoneNumber);
+              return response.data;
+            } catch (error) {
+              console.error('DXing notification error:', error);
+              throw error;
+            }
+          }
+
+          const message = `🔄 Meeting Rescheduled: ${populatedMeeting.title}\n\n` +
+                         `📅 New Date: ${newStartTime.toLocaleString()}\n` +
+                         `⏰ New Time: ${newStartTime.toLocaleTimeString()} - ${newEndTime.toLocaleTimeString()}\n` +
+                         `📍 Location: ${populatedMeeting.locationLink || 'TBD'}\n` +
+                         `📝 Description: ${populatedMeeting.description}\n\n` +
+                         `The meeting time has been changed. Please update your calendar.\n` +
+                         `Thank you!`;
+
+          await sendDXingMessage(participantData.participant.phoneNumber, message);
+        } catch (error) {
+          console.error(`Failed to send reschedule notification to ${participantData.participant.phoneNumber}:`, error);
+        }
+      }
+
+      // Send notification to requester about approval
+      try {
+        const axios = require('axios');
+        
+        async function sendDXingMessage(phoneNumber, message) {
+          try {
+            if (!phoneNumber) {
+              throw new Error('Phone number is required');
+            }
+
+            const cleanedPhone = phoneNumber.replace(/[\s+\-()]/g, '');
+            const formattedPhone = cleanedPhone.startsWith('91') ? cleanedPhone : `91${cleanedPhone}`;
+
+            const payload = {
+              secret: process.env.DXING_API_KEY,
+              type: "whatsapp",
+              phone: formattedPhone,
+              message: message,
+              account: process.env.DXING_INSTANCE_ID,
+              priority: 1
+            };
+
+            const response = await axios.post('https://app.dxing.in/api/send/otp', payload, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+
+            console.log('WhatsApp notification sent successfully to:', phoneNumber);
+            return response.data;
+          } catch (error) {
+            console.error('DXing notification error:', error);
+            throw error;
+          }
+        }
+
+        const message = `✅ Reschedule Request Approved\n\n` +
+                       `Meeting: ${populatedMeeting.title}\n` +
+                       `New time: ${newStartTime.toLocaleString()}\n` +
+                       `Response: ${responseMessage || 'Approved'}\n\n` +
+                       `All participants have been notified.`;
+
+        await sendDXingMessage(rescheduleRequest.requestedBy.phoneNumber, message);
+      } catch (error) {
+        console.error(`Failed to send approval notification to requester:`, error);
+      }
+
+    } else if (status === 'rejected') {
+      // Send rejection notification to requester
+      try {
+        const axios = require('axios');
+        
+        async function sendDXingMessage(phoneNumber, message) {
+          try {
+            if (!phoneNumber) {
+              throw new Error('Phone number is required');
+            }
+
+            const cleanedPhone = phoneNumber.replace(/[\s+\-()]/g, '');
+            const formattedPhone = cleanedPhone.startsWith('91') ? cleanedPhone : `91${cleanedPhone}`;
+
+            const payload = {
+              secret: process.env.DXING_API_KEY,
+              type: "whatsapp",
+              phone: formattedPhone,
+              message: message,
+              account: process.env.DXING_INSTANCE_ID,
+              priority: 1
+            };
+
+            const response = await axios.post('https://app.dxing.in/api/send/otp', payload, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+
+            console.log('WhatsApp notification sent successfully to:', phoneNumber);
+            return response.data;
+          } catch (error) {
+            console.error('DXing notification error:', error);
+            throw error;
+          }
+        }
+
+        const message = `❌ Reschedule Request Rejected\n\n` +
+                       `Meeting: ${meeting.title}\n` +
+                       `Response: ${responseMessage || 'Request rejected'}\n\n` +
+                       `The meeting will remain at its original time.`;
+
+        await sendDXingMessage(rescheduleRequest.requestedBy.phoneNumber, message);
+      } catch (error) {
+        console.error(`Failed to send rejection notification to requester:`, error);
+      }
+    }
+
+    await meeting.save();
+
+    res.json({
+      success: true,
+      message: `Reschedule request ${status} successfully`,
+      data: {
+        meeting: {
+          _id: meeting._id,
+          title: meeting.title,
+          startDatetime: meeting.startDatetime,
+          endDatetime: meeting.endDatetime,
+          updatedAt: meeting.updatedAt
+        },
+        rescheduleRequest: {
+          _id: rescheduleRequest._id,
+          status: rescheduleRequest.status,
+          responseDate: rescheduleRequest.responseDate,
+          responseMessage: rescheduleRequest.responseMessage
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Meeting reschedule approval error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // 📝 RESCHEDULE REQUEST: Request reschedule for a schedule
 router.post('/:id/reschedule-request', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
@@ -758,156 +1141,7 @@ router.post('/:id/reschedule-request', leaderOrSuperLeaderAuth, async (req, res)
   }
 });
 
-// ✅ RESCHEDULE APPROVAL: Approve/reject reschedule request
-router.put('/:id/reschedule-approval', leaderOrSuperLeaderAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, newTime } = req.body; // status: 'approved' | 'rejected'
 
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Status must be either "approved" or "rejected"'
-      });
-    }
-
-    const schedule = await Schedule.findById(id);
-    
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Schedule not found'
-      });
-    }
-
-    // Check if user is the meeting creator OR super leader (for meeting-linked schedules)
-    if (schedule.meetingReference) {
-      const LeadersMeeting = require('../models/leadersMeetng');
-      const meeting = await LeadersMeeting.findById(schedule.meetingReference);
-      
-      if (!meeting) {
-        return res.status(404).json({
-          success: false,
-          message: 'Meeting not found'
-        });
-      }
-
-      const isMeetingCreator = meeting.createdBy.toString() === req.user._id.toString();
-      const isSuperLeader = req.user.role === 'super leader';
-
-      if (!isMeetingCreator && !isSuperLeader) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied. Only meeting creator or super leaders can approve reschedule requests.'
-        });
-      }
-    } else {
-      // For non-meeting schedules, only creator can approve
-      if (schedule.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied. Only schedule creator can approve reschedule requests.'
-        });
-      }
-    }
-
-    // Update reschedule request status
-    schedule.rescheduleRequest.status = status;
-
-    if (status === 'approved' && newTime) {
-      // Update schedule time
-      schedule.startDateTime = new Date(newTime);
-      schedule.endDateTime = new Date(new Date(newTime).getTime() + 
-        (schedule.endDateTime - schedule.startDateTime));
-      
-      // If this is a meeting-linked schedule, update the meeting too
-      if (schedule.meetingReference) {
-        const LeadersMeeting = require('../models/leadersMeetng');
-        await LeadersMeeting.findByIdAndUpdate(schedule.meetingReference, {
-          startDatetime: schedule.startDateTime,
-          endDatetime: schedule.endDateTime
-        });
-
-        // Update all participant schedules
-        await Schedule.updateMany(
-          { meetingReference: schedule.meetingReference },
-          {
-            startDateTime: schedule.startDateTime,
-            endDateTime: schedule.endDateTime
-          }
-        );
-
-        // 🔔 NOTIFY ALL PARTICIPANTS ABOUT RESCHEDULE
-        const meeting = await LeadersMeeting.findById(schedule.meetingReference)
-          .populate('participants.participant', 'name phoneNumber')
-          .populate('createdBy', 'name phoneNumber');
-
-        // Send notification to all participants
-        for (const participantData of meeting.participants) {
-          try {
-            const message = `🔄 Meeting Rescheduled: ${meeting.title}\n\n` +
-                           `📅 New Date: ${schedule.startDateTime.toLocaleString()}\n` +
-                           `📍 Location: ${meeting.locationLink || 'TBD'}\n` +
-                           `📝 Description: ${meeting.description}\n\n` +
-                           `The meeting time has been changed. Please update your calendar.\n` +
-                           `Thank you!`;
-
-            await sendDXingMessage(participantData.participant.phoneNumber, message);
-          } catch (error) {
-            console.error(`Failed to send reschedule notification to ${participantData.participant.phoneNumber}:`, error);
-          }
-        }
-
-        // Send notification to meeting creator about approval
-        try {
-          const requester = await User.findById(schedule.rescheduleRequest.requestedBy);
-          const message = `✅ Reschedule Request Approved\n\n` +
-                         `Meeting: ${meeting.title}\n` +
-                         `Requested by: ${requester.name}\n` +
-                         `New time: ${schedule.startDateTime.toLocaleString()}\n` +
-                         `All participants have been notified.`;
-
-          await sendDXingMessage(meeting.createdBy.phoneNumber, message);
-        } catch (error) {
-          console.error(`Failed to send approval notification to meeting creator:`, error);
-        }
-      }
-    } else if (status === 'rejected' && schedule.meetingReference) {
-      // Send rejection notification to requester
-      try {
-        const LeadersMeeting = require('../models/leadersMeetng');
-        const meeting = await LeadersMeeting.findById(schedule.meetingReference)
-          .populate('createdBy', 'name phoneNumber');
-
-        const requester = await User.findById(schedule.rescheduleRequest.requestedBy);
-        const message = `❌ Reschedule Request Rejected\n\n` +
-                       `Meeting: ${meeting.title}\n` +
-                       `Requested by: ${requester.name}\n` +
-                       `Reason: ${schedule.rescheduleRequest.reason}\n` +
-                       `The meeting will remain at the original time.`;
-
-        await sendDXingMessage(requester.phoneNumber, message);
-      } catch (error) {
-        console.error(`Failed to send rejection notification to requester:`, error);
-      }
-    }
-
-    await schedule.save();
-
-    res.json({
-      success: true,
-      message: `Reschedule request ${status} successfully`,
-      data: schedule
-    });
-
-  } catch (error) {
-    console.error('Reschedule approval error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
 
 // Helper function to send DXing message (same as in leadersMeetings.js)
 async function sendDXingMessage(phoneNumber, message) {
