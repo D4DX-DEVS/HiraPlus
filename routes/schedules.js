@@ -272,57 +272,6 @@ router.delete('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-// 🔍 DEBUG: Get schedule override information
-router.get('/debug/:id', leaderOrSuperLeaderAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const schedule = await Schedule.findById(id)
-      .populate('overriddenBy.meetingId', 'title startDatetime endDatetime createdBy')
-      .populate('createdBy', 'name phoneNumber');
-    
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Schedule not found'
-      });
-    }
-
-    // Check if user is the creator or super leader
-    if (schedule.createdBy._id.toString() !== req.user._id.toString() && req.user.role !== 'super leader') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        schedule,
-        overrideInfo: {
-          isOverridden: schedule.status === 'cancelled' && schedule.overriddenBy,
-          overriddenBy: schedule.overriddenBy,
-          canBeRestored: schedule.overriddenBy && schedule.overriddenBy.meetingId
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Debug schedule error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
 // 📊 GET: Get all schedules for the authenticated user
 router.get('/', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
@@ -406,60 +355,345 @@ router.get('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
   }
 });
 
-// 🔍 CHECK CONFLICTS: Check for schedule conflicts
-router.post('/check-conflicts', leaderOrSuperLeaderAuth, async (req, res) => {
+
+// 🔍 GET USER CONFLICTS: Get all conflicts for a specific user
+router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
-    const { startDateTime, endDateTime, userId } = req.body;
-
-    // Validate required fields
-    if (!startDateTime || !endDateTime) {
-      return res.status(400).json({
-        success: false,
-        message: 'Start date and end date are required'
-      });
-    }
-
     // Use provided userId or current user's ID
-    const targetUserId = userId || req.user._id;
+    const targetUserId = req.params.userId || req.user._id;
 
-    // Check for conflicting schedules
-    const conflictingSchedules = await Schedule.find({
+    // Get current date for active conflicts
+    const currentDate = new Date();
+
+    // Find all active schedules for the user
+    const userSchedules = await Schedule.find({
       createdBy: targetUserId,
-      status: 'active',
-      $or: [
-        {
-          startDateTime: { $lt: new Date(endDateTime) },
-          endDateTime: { $gt: new Date(startDateTime) }
-        }
-      ]
-    }).sort({ priority: -1, startDateTime: 1 });
+      status: 'active'
+    }).sort({ startDateTime: 1 });
 
-    // Check for conflicting meetings (user is participant)
+    // Find all meetings where user is a participant
     const LeadersMeeting = require('../models/leadersMeetng');
-    const conflictingMeetings = await LeadersMeeting.find({
+    const userMeetings = await LeadersMeeting.find({
       'participants.participant': targetUserId,
-      status: { $in: ['pending', 'confirmed'] },
-      $or: [
-        {
-          startDatetime: { $lt: new Date(endDateTime) },
-          endDatetime: { $gt: new Date(startDateTime) }
-        }
-      ]
+      status: { $in: ['pending', 'confirmed'] }
     }).populate('participants.participant', 'name phoneNumber')
       .populate('createdBy', 'name phoneNumber role')
       .sort({ startDatetime: 1 });
 
+    // Find conflicts by comparing each schedule with others
+    const conflicts = [];
+
+    // Check schedule vs schedule conflicts
+    for (let i = 0; i < userSchedules.length; i++) {
+      for (let j = i + 1; j < userSchedules.length; j++) {
+        const schedule1 = userSchedules[i];
+        const schedule2 = userSchedules[j];
+
+        // Check if schedules overlap
+        if (schedule1.startDateTime < schedule2.endDateTime && 
+            schedule1.endDateTime > schedule2.startDateTime) {
+          
+          conflicts.push({
+            type: 'schedule_vs_schedule',
+            primary: {
+              id: schedule1._id,
+              title: schedule1.title,
+              scheduleType: schedule1.scheduleType,
+              startDateTime: schedule1.startDateTime,
+              endDateTime: schedule1.endDateTime,
+              priority: schedule1.priority,
+              recurring: schedule1.recurring
+            },
+            conflicting: {
+              id: schedule2._id,
+              title: schedule2.title,
+              scheduleType: schedule2.scheduleType,
+              startDateTime: schedule2.startDateTime,
+              endDateTime: schedule2.endDateTime,
+              priority: schedule2.priority,
+              recurring: schedule2.recurring
+            },
+            conflictPeriod: {
+              start: new Date(Math.max(schedule1.startDateTime, schedule2.startDateTime)),
+              end: new Date(Math.min(schedule1.endDateTime, schedule2.endDateTime))
+            },
+            resolved: false
+          });
+        }
+      }
+    }
+
+    // Check schedule vs meeting conflicts
+    for (const schedule of userSchedules) {
+      for (const meeting of userMeetings) {
+        // Check if schedule and meeting overlap
+        if (schedule.startDateTime < meeting.endDatetime && 
+            schedule.endDateTime > meeting.startDatetime) {
+          
+          conflicts.push({
+            type: 'schedule_vs_meeting',
+            primary: {
+              id: schedule._id,
+              title: schedule.title,
+              scheduleType: schedule.scheduleType,
+              startDateTime: schedule.startDateTime,
+              endDateTime: schedule.endDateTime,
+              priority: schedule.priority,
+              recurring: schedule.recurring
+            },
+            conflicting: {
+              id: meeting._id,
+              title: meeting.title,
+              type: meeting.type,
+              startDatetime: meeting.startDatetime,
+              endDatetime: meeting.endDatetime,
+              createdBy: meeting.createdBy,
+              status: meeting.status
+            },
+            conflictPeriod: {
+              start: new Date(Math.max(schedule.startDateTime, meeting.startDatetime)),
+              end: new Date(Math.min(schedule.endDateTime, meeting.endDatetime))
+            },
+            resolved: schedule.status === 'cancelled' || meeting.status === 'cancelled'
+          });
+        }
+      }
+    }
+
+    // Check meeting vs meeting conflicts
+    for (let i = 0; i < userMeetings.length; i++) {
+      for (let j = i + 1; j < userMeetings.length; j++) {
+        const meeting1 = userMeetings[i];
+        const meeting2 = userMeetings[j];
+
+        // Check if meetings overlap
+        if (meeting1.startDatetime < meeting2.endDatetime && 
+            meeting1.endDatetime > meeting2.startDatetime) {
+          
+          conflicts.push({
+            type: 'meeting_vs_meeting',
+            primary: {
+              id: meeting1._id,
+              title: meeting1.title,
+              type: meeting1.type,
+              startDatetime: meeting1.startDatetime,
+              endDatetime: meeting1.endDatetime,
+              createdBy: meeting1.createdBy,
+              status: meeting1.status
+            },
+            conflicting: {
+              id: meeting2._id,
+              title: meeting2.title,
+              type: meeting2.type,
+              startDatetime: meeting2.startDatetime,
+              endDatetime: meeting2.endDatetime,
+              createdBy: meeting2.createdBy,
+              status: meeting2.status
+            },
+            conflictPeriod: {
+              start: new Date(Math.max(meeting1.startDatetime, meeting2.startDatetime)),
+              end: new Date(Math.min(meeting1.endDatetime, meeting2.endDatetime))
+            },
+            resolved: meeting1.status === 'cancelled' || meeting2.status === 'cancelled'
+          });
+        }
+      }
+    }
+
+    // Filter conflicts based on query parameters
+    const { status, type, fromDate, toDate } = req.query;
+    let filteredConflicts = conflicts;
+
+    // Filter by status (resolved/unresolved)
+    if (status === 'resolved') {
+      filteredConflicts = filteredConflicts.filter(conflict => conflict.resolved);
+    } else if (status === 'unresolved') {
+      filteredConflicts = filteredConflicts.filter(conflict => !conflict.resolved);
+    }
+
+    // Filter by conflict type
+    if (type) {
+      filteredConflicts = filteredConflicts.filter(conflict => conflict.type === type);
+    }
+
+    // Filter by date range
+    if (fromDate || toDate) {
+      const from = fromDate ? new Date(fromDate) : new Date(0);
+      const to = toDate ? new Date(toDate) : new Date('9999-12-31');
+      
+      filteredConflicts = filteredConflicts.filter(conflict => 
+        conflict.conflictPeriod.start >= from && conflict.conflictPeriod.end <= to
+      );
+    }
+
+    // Sort conflicts by conflict period start date
+    filteredConflicts.sort((a, b) => a.conflictPeriod.start - b.conflictPeriod.start);
+
     res.json({
       success: true,
       data: {
-        conflictingSchedules,
-        conflictingMeetings,
-        hasConflicts: conflictingSchedules.length > 0 || conflictingMeetings.length > 0
+        conflicts: filteredConflicts,
+        totalConflicts: filteredConflicts.length,
+        resolvedConflicts: filteredConflicts.filter(c => c.resolved).length,
+        unresolvedConflicts: filteredConflicts.filter(c => !c.resolved).length,
+        summary: {
+          scheduleVsSchedule: filteredConflicts.filter(c => c.type === 'schedule_vs_schedule').length,
+          scheduleVsMeeting: filteredConflicts.filter(c => c.type === 'schedule_vs_meeting').length,
+          meetingVsMeeting: filteredConflicts.filter(c => c.type === 'meeting_vs_meeting').length
+        }
       }
     });
 
   } catch (error) {
-    console.error('Check conflicts error:', error);
+    console.error('Get user conflicts error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// 📝 REQUEST MEETING RESCHEDULE: Request meeting creator to reschedule their meeting
+router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { suggestedTime, reason, affectedScheduleId } = req.body;
+
+    // Validate required fields
+    if (!suggestedTime || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Suggested time and reason are required'
+      });
+    }
+
+    // Find the meeting
+    const LeadersMeeting = require('../models/leadersMeetng');
+    const meeting = await LeadersMeeting.findById(meetingId)
+      .populate('createdBy', 'name phoneNumber role');
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    // Check if user is a participant in this meeting
+    const isParticipant = meeting.participants.some(
+      participant => participant.participant.toString() === req.user._id.toString()
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only request reschedule for meetings you are participating in.'
+      });
+    }
+
+    // Check if user is the meeting creator (they can't request reschedule for their own meeting)
+    if (meeting.createdBy._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot request reschedule for your own meeting. Use the meeting update route instead.'
+      });
+    }
+
+    // Find the affected schedule if provided
+    let affectedSchedule = null;
+    if (affectedScheduleId) {
+      affectedSchedule = await Schedule.findById(affectedScheduleId);
+      if (!affectedSchedule) {
+        return res.status(404).json({
+          success: false,
+          message: 'Affected schedule not found'
+        });
+      }
+    }
+
+    // Create reschedule request object
+    const rescheduleRequest = {
+      suggestedTime: new Date(suggestedTime),
+      reason,
+      requestedBy: req.user._id,
+      requestedAt: new Date(),
+      status: 'pending',
+      affectedScheduleId: affectedScheduleId || null
+    };
+
+    // Add reschedule request to meeting
+    if (!meeting.rescheduleRequests) {
+      meeting.rescheduleRequests = [];
+    }
+
+    meeting.rescheduleRequests.push(rescheduleRequest);
+    await meeting.save();
+
+    // Send WhatsApp notification to meeting creator
+    try {
+      const axios = require('axios');
+      
+      // Helper function to send DXing message (copied from leadersMeetings.js)
+      async function sendDXingMessage(phoneNumber, message) {
+        try {
+          // Validate phone number
+          if (!phoneNumber) {
+            throw new Error('Phone number is required');
+          }
+
+          const cleanedPhone = phoneNumber.replace(/[\s+\-()]/g, '');
+          const formattedPhone = cleanedPhone.startsWith('91') ? cleanedPhone : `91${cleanedPhone}`;
+
+          const payload = {
+            secret: process.env.DXING_API_KEY,
+            type: "whatsapp",
+            phone: formattedPhone,
+            message: message,
+            account: process.env.DXING_INSTANCE_ID,
+            priority: 1
+          };
+
+          const response = await axios.post('https://app.dxing.in/api/send/otp', payload, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          console.log('WhatsApp notification sent successfully to:', phoneNumber);
+          return response.data;
+        } catch (error) {
+          console.error('DXing notification error:', error);
+          throw error;
+        }
+      }
+
+      const message = `🔔 Reschedule Request\n\n${req.user.name} has requested to reschedule your meeting "${meeting.title}" from ${meeting.startDatetime.toLocaleString()} to ${new Date(suggestedTime).toLocaleString()}.\n\nReason: ${reason}\n\nPlease review and respond to this request.`;
+      
+      await sendDXingMessage(meeting.createdBy.phoneNumber, message);
+    } catch (notificationError) {
+      console.error('Failed to send WhatsApp notification:', notificationError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Meeting reschedule request sent successfully',
+      data: {
+        meeting: {
+          _id: meeting._id,
+          title: meeting.title,
+          startDatetime: meeting.startDatetime,
+          endDatetime: meeting.endDatetime,
+          createdBy: meeting.createdBy
+        },
+        rescheduleRequest,
+        affectedSchedule: affectedSchedule ? {
+          _id: affectedSchedule._id,
+          title: affectedSchedule.title,
+          scheduleType: affectedSchedule.scheduleType
+        } : null
+      }
+    });
+
+  } catch (error) {
+    console.error('Request meeting reschedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message

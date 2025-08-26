@@ -74,7 +74,42 @@ const leadersMeetingSchema = new mongoose.Schema({
     // Cancellation reason
     cancellationReason: {
         type: String
-    }
+    },
+    // Reschedule requests from participants
+    rescheduleRequests: [{
+        suggestedTime: {
+            type: Date,
+            required: true
+        },
+        reason: {
+            type: String,
+            required: true
+        },
+        requestedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        requestedAt: {
+            type: Date,
+            default: Date.now
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected'],
+            default: 'pending'
+        },
+        affectedScheduleId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Schedule'
+        },
+        responseDate: {
+            type: Date
+        },
+        responseMessage: {
+            type: String
+        }
+    }]
 }, {
     timestamps: true
 });
