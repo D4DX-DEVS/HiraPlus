@@ -254,5 +254,39 @@ router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
   }
 });
 
+// Get all leaders and super leaders
+router.get('/all', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    const leaders = await User.find({
+      role: { $in: ['leader', 'super leader'] },
+      status: 'active'
+    })
+    .populate('department', 'title')
+    .select('name phoneNumber role department designation isDeptHead isVerified status createdAt')
+    .sort({ role: 1, name: 1 }); // Sort by role (super leader first), then by name
+
+    // Separate leaders and super leaders
+    const superLeaders = leaders.filter(user => user.role === 'super leader');
+    const regularLeaders = leaders.filter(user => user.role === 'leader');
+
+    res.json({
+      success: true,
+      data: {
+        superLeaders,
+        regularLeaders,
+        total: leaders.length,
+        superLeadersCount: superLeaders.length,
+        leadersCount: regularLeaders.length
+      }
+    });
+  } catch (error) {
+    console.error('Get all leaders error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 
 module.exports = router;
