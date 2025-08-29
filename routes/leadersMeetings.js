@@ -722,9 +722,10 @@ router.get('/requests', async (req, res) => {
             });
         }
 
-        const userId = user.id;
+        const userId = user._id; // Use ObjectId instead of string
         req.user = user; // Add user to request for consistency
         
+        // Use aggregation for more precise filtering
         const pendingMeetings = await LeadersMeeting.aggregate([
             {
                 $match: {
@@ -738,14 +739,19 @@ router.get('/requests', async (req, res) => {
                         $filter: {
                             input: '$participants',
                             as: 'participant',
-                            cond: { $eq: ['$$participant.participant', userId] }
+                            cond: { 
+                                $and: [
+                                    { $eq: ['$$participant.participant', userId] },
+                                    { $eq: ['$$participant.status', 'pending'] }
+                                ]
+                            }
                         }
                     }
                 }
             },
             {
                 $match: {
-                    'userParticipation.0.status': 'pending'
+                    'userParticipation.0': { $exists: true } // Only meetings where user has pending status
                 }
             },
             {
@@ -761,7 +767,8 @@ router.get('/requests', async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data: populatedMeetings
+            data: populatedMeetings,
+            count: populatedMeetings.length
         });
 
     } catch (error) {
@@ -832,6 +839,140 @@ router.get('/my-meetings', async (req, res) => {
             success: false,
             message: 'Internal server error',
             error: error.message
+        });
+    }
+});
+
+// 🏢 GET ALL MEETINGS: List all meetings (Super Leaders only)
+router.get('/all-meetings', superLeaderAuth, async (req, res) => {
+    try {
+        const { 
+            page = 1, 
+            limit = 20, 
+            status, 
+            type, 
+            createdBy, 
+            fromDate, 
+            toDate,
+            sortBy = 'startDatetime',
+            sortOrder = 'desc'
+        } = req.query;
+
+        // Build query
+        let query = {};
+
+        // Filter by status
+        if (status) {
+            query.status = status;
+        }
+
+        // Filter by meeting type
+        if (type) {
+            query.type = type;
+        }
+
+        // Filter by creator
+        if (createdBy) {
+            query.createdBy = createdBy;
+        }
+
+        // Filter by date range
+        if (fromDate || toDate) {
+            query.startDatetime = {};
+            if (fromDate) query.startDatetime.$gte = new Date(fromDate);
+            if (toDate) query.startDatetime.$lte = new Date(toDate);
+        }
+
+        // Build sort object
+        const sort = {};
+        sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+        // Find meetings with pagination
+        const meetings = await LeadersMeeting.find(query)
+            .populate('createdBy', 'name phoneNumber role department')
+            .populate('participants.participant', 'name phoneNumber role department')
+            .sort(sort)
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        // Get total count for pagination
+        const total = await LeadersMeeting.countDocuments(query);
+
+        // Calculate statistics
+        const allMeetings = await LeadersMeeting.find(query);
+        const stats = {
+            total: allMeetings.length,
+            pending: allMeetings.filter(m => m.status === 'pending').length,
+            confirmed: allMeetings.filter(m => m.status === 'confirmed').length,
+            cancelled: allMeetings.filter(m => m.status === 'cancelled').length,
+            expired: allMeetings.filter(m => m.status === 'expired').length,
+            byType: {},
+            byCreator: {}
+        };
+
+        // Calculate type statistics
+        allMeetings.forEach(meeting => {
+            stats.byType[meeting.type] = (stats.byType[meeting.type] || 0) + 1;
+        });
+
+        // Calculate creator statistics
+        allMeetings.forEach(meeting => {
+            const creatorRole = meeting.createdBy?.role || 'unknown';
+            stats.byCreator[creatorRole] = (stats.byCreator[creatorRole] || 0) + 1;
+        });
+
+        // Transform meetings data for response
+        const transformedMeetings = meetings.map(meeting => ({
+            _id: meeting._id,
+            title: meeting.title,
+            type: meeting.type,
+            mode: meeting.mode,
+            startDatetime: meeting.startDatetime,
+            endDatetime: meeting.endDatetime,
+            locationLink: meeting.locationLink,
+            description: meeting.description,
+            agenda: meeting.agenda,
+            status: meeting.status,
+            createdBy: meeting.createdBy,
+            participants: meeting.participants,
+            participantCount: meeting.participants.length,
+            acceptedCount: meeting.participants.filter(p => p.status === 'accepted').length,
+            pendingCount: meeting.participants.filter(p => p.status === 'pending').length,
+            declinedCount: meeting.participants.filter(p => p.status === 'declined').length,
+            rescheduleRequestsCount: meeting.rescheduleRequests?.length || 0,
+            createdAt: meeting.createdAt,
+            updatedAt: meeting.updatedAt,
+            requestExpiry: meeting.requestExpiry
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                meetings: transformedMeetings,
+                statistics: stats,
+                pagination: {
+                    current: parseInt(page),
+                    pages: Math.ceil(total / limit),
+                    total,
+                    limit: parseInt(limit)
+                },
+                filters: {
+                    status: status || 'all',
+                    type: type || 'all',
+                    createdBy: createdBy || 'all',
+                    dateRange: {
+                        from: fromDate || null,
+                        to: toDate || null
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get all meetings error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 });
