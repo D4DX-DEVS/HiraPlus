@@ -19,6 +19,19 @@ function generateRecurringSchedules(mainSchedule, recurrencePattern) {
   let count = 0;
   const maxSchedules = 100;
 
+  // Skip the first occurrence as it's already created as the main schedule
+  switch (frequency) {
+    case 'daily':
+      currentDate.setDate(currentDate.getDate() + interval);
+      break;
+    case 'weekly':
+      currentDate.setDate(currentDate.getDate() + (7 * interval));
+      break;
+    case 'monthly':
+      currentDate.setMonth(currentDate.getMonth() + interval);
+      break;
+  }
+
   while (currentDate <= endDateObj && count < maxSchedules) {
     let shouldCreate = false;
 
@@ -47,9 +60,10 @@ function generateRecurringSchedules(mainSchedule, recurrencePattern) {
         description: mainSchedule.description,
         agendaItems: mainSchedule.agendaItems,
         locationLink: mainSchedule.locationLink,
-        recurring: mainSchedule.recurring, // Use the same recurring value as main schedule
-        recurringGroupId: mainSchedule.recurring ? mainSchedule._id : null, // Only set group ID if recurring
-        createdBy: mainSchedule.createdBy
+        recurring: false, // Generated instances are not recurring themselves
+        recurringGroupId: mainSchedule._id, // Link to the main recurring schedule
+        createdBy: mainSchedule.createdBy,
+        priority: mainSchedule.priority || 'low'
       });
 
       schedules.push(schedule);
@@ -95,6 +109,24 @@ router.post('/', leaderOrSuperLeaderAuth, async (req, res) => {
         success: false,
         message: 'Title, schedule type, start date, and end date are required'
       });
+    }
+
+    // If recurring, check for existing recurring schedules with same title and time to prevent duplicates
+    if (recurring && recurrencePattern) {
+      const existingRecurring = await Schedule.findOne({
+        title: title,
+        createdBy: req.user._id,
+        recurring: true,
+        startDateTime: new Date(startDateTime),
+        endDateTime: new Date(endDateTime)
+      });
+
+      if (existingRecurring) {
+        return res.status(400).json({
+          success: false,
+          message: 'A recurring schedule with this title and time already exists'
+        });
+      }
     }
 
     // Validate date range
@@ -432,42 +464,6 @@ router.get('/reschedule-requests', leaderOrSuperLeaderAuth, async (req, res) => 
   }
 });
 
-// 📋 GET: Get specific schedule by ID
-router.get('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const schedule = await Schedule.findById(id);
-    
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Schedule not found'
-      });
-    }
-
-    // Check if user is the creator or super leader
-    if (schedule.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'super leader') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only view your own schedules.'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: schedule
-    });
-
-  } catch (error) {
-    console.error('Get schedule error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
 
 // 🔍 GET USER CONFLICTS: Get all conflicts for a specific user
 router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res) => {
@@ -478,140 +474,96 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
     // Get current date for active conflicts
     const currentDate = new Date();
 
-    // Find all active schedules for the user
+    // Find ALL active schedules for the user (including meeting-generated schedules)
     const userSchedules = await Schedule.find({
       createdBy: targetUserId,
       status: 'active'
     }).sort({ startDateTime: 1 });
 
-    // Find all meetings where user is a participant
-    const LeadersMeeting = require('../models/leadersMeetng');
-    const userMeetings = await LeadersMeeting.find({
-      'participants.participant': targetUserId,
-      status: { $in: ['pending', 'confirmed'] }
-    }).populate('participants.participant', 'name phoneNumber')
-      .populate('createdBy', 'name phoneNumber role')
-      .sort({ startDatetime: 1 });
-
     // Find conflicts by comparing each schedule with others
     const conflicts = [];
 
-    // Check schedule vs schedule conflicts
+    // Helper function to check if two time periods overlap
+    const hasOverlap = (start1, end1, start2, end2) => {
+      return start1 < end2 && end1 > start2;
+    };
+
+    // Helper function to get priority level
+    const getPriorityLevel = (priority) => {
+      switch (priority) {
+        case 'high': return 3;
+        case 'medium': return 2;
+        case 'low': return 1;
+        default: return 1;
+      }
+    };
+
+    // Helper function to create conflict key for deduplication
+    const createConflictKey = (item1, item2, type) => {
+      const ids = [item1.id || item1._id, item2.id || item2._id].sort();
+      return `${type}_${ids[0]}_${ids[1]}`;
+    };
+
+    const conflictKeys = new Set(); // For deduplication
+
+    // Check schedule vs schedule conflicts (only meaningful conflicts)
     for (let i = 0; i < userSchedules.length; i++) {
       for (let j = i + 1; j < userSchedules.length; j++) {
         const schedule1 = userSchedules[i];
         const schedule2 = userSchedules[j];
 
         // Check if schedules overlap
-        if (schedule1.startDateTime < schedule2.endDateTime && 
-            schedule1.endDateTime > schedule2.startDateTime) {
+        if (hasOverlap(schedule1.startDateTime, schedule1.endDateTime, 
+                      schedule2.startDateTime, schedule2.endDateTime)) {
           
-          conflicts.push({
-            type: 'schedule_vs_schedule',
-            primary: {
-              id: schedule1._id,
-              title: schedule1.title,
-              scheduleType: schedule1.scheduleType,
-              startDateTime: schedule1.startDateTime,
-              endDateTime: schedule1.endDateTime,
-              priority: schedule1.priority,
-              recurring: schedule1.recurring
-            },
-            conflicting: {
-              id: schedule2._id,
-              title: schedule2.title,
-              scheduleType: schedule2.scheduleType,
-              startDateTime: schedule2.startDateTime,
-              endDateTime: schedule2.endDateTime,
-              priority: schedule2.priority,
-              recurring: schedule2.recurring
-            },
-            conflictPeriod: {
-              start: new Date(Math.max(schedule1.startDateTime, schedule2.startDateTime)),
-              end: new Date(Math.min(schedule1.endDateTime, schedule2.endDateTime))
-            },
-            resolved: false
-          });
+          // Only create conflict if priorities are different (meaningful conflict)
+          const priority1 = getPriorityLevel(schedule1.priority);
+          const priority2 = getPriorityLevel(schedule2.priority);
+          
+          if (priority1 !== priority2) {
+            const conflictKey = createConflictKey(schedule1, schedule2, 'schedule_vs_schedule');
+            
+            if (!conflictKeys.has(conflictKey)) {
+              conflictKeys.add(conflictKey);
+              
+              // Determine which is primary (higher priority)
+              const [primary, conflicting] = priority1 > priority2 ? 
+                [schedule1, schedule2] : [schedule2, schedule1];
+
+              conflicts.push({
+                type: 'schedule_vs_schedule',
+                primary: {
+                  id: primary._id,
+                  title: primary.title,
+                  scheduleType: primary.scheduleType,
+                  startDateTime: primary.startDateTime,
+                  endDateTime: primary.endDateTime,
+                  priority: primary.priority,
+                  recurring: primary.recurring
+                },
+                conflicting: {
+                  id: conflicting._id,
+                  title: conflicting.title,
+                  scheduleType: conflicting.scheduleType,
+                  startDateTime: conflicting.startDateTime,
+                  endDateTime: conflicting.endDateTime,
+                  priority: conflicting.priority,
+                  recurring: conflicting.recurring
+                },
+                conflictPeriod: {
+                  start: new Date(Math.max(primary.startDateTime, conflicting.startDateTime)),
+                  end: new Date(Math.min(primary.endDateTime, conflicting.endDateTime))
+                },
+                resolved: false,
+                priorityOverride: true
+              });
+            }
+          }
         }
       }
     }
 
-    // Check schedule vs meeting conflicts
-    for (const schedule of userSchedules) {
-      for (const meeting of userMeetings) {
-        // Check if schedule and meeting overlap
-        if (schedule.startDateTime < meeting.endDatetime && 
-            schedule.endDateTime > meeting.startDatetime) {
-          
-          conflicts.push({
-            type: 'schedule_vs_meeting',
-            primary: {
-              id: schedule._id,
-              title: schedule.title,
-              scheduleType: schedule.scheduleType,
-              startDateTime: schedule.startDateTime,
-              endDateTime: schedule.endDateTime,
-              priority: schedule.priority,
-              recurring: schedule.recurring
-            },
-            conflicting: {
-              id: meeting._id,
-              title: meeting.title,
-              type: meeting.type,
-              startDatetime: meeting.startDatetime,
-              endDatetime: meeting.endDatetime,
-              createdBy: meeting.createdBy,
-              status: meeting.status
-            },
-            conflictPeriod: {
-              start: new Date(Math.max(schedule.startDateTime, meeting.startDatetime)),
-              end: new Date(Math.min(schedule.endDateTime, meeting.endDatetime))
-            },
-            resolved: schedule.status === 'cancelled' || meeting.status === 'cancelled'
-          });
-        }
-      }
-    }
 
-    // Check meeting vs meeting conflicts
-    for (let i = 0; i < userMeetings.length; i++) {
-      for (let j = i + 1; j < userMeetings.length; j++) {
-        const meeting1 = userMeetings[i];
-        const meeting2 = userMeetings[j];
-
-        // Check if meetings overlap
-        if (meeting1.startDatetime < meeting2.endDatetime && 
-            meeting1.endDatetime > meeting2.startDatetime) {
-          
-          conflicts.push({
-            type: 'meeting_vs_meeting',
-            primary: {
-              id: meeting1._id,
-              title: meeting1.title,
-              type: meeting1.type,
-              startDatetime: meeting1.startDatetime,
-              endDatetime: meeting1.endDatetime,
-              createdBy: meeting1.createdBy,
-              status: meeting1.status
-            },
-            conflicting: {
-              id: meeting2._id,
-              title: meeting2.title,
-              type: meeting2.type,
-              startDatetime: meeting2.startDatetime,
-              endDatetime: meeting2.endDatetime,
-              createdBy: meeting2.createdBy,
-              status: meeting2.status
-            },
-            conflictPeriod: {
-              start: new Date(Math.max(meeting1.startDatetime, meeting2.startDatetime)),
-              end: new Date(Math.min(meeting1.endDatetime, meeting2.endDatetime))
-            },
-            resolved: meeting1.status === 'cancelled' || meeting2.status === 'cancelled'
-          });
-        }
-      }
-    }
 
     // Filter conflicts based on query parameters
     const { status, type, fromDate, toDate } = req.query;
@@ -651,14 +603,50 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
         unresolvedConflicts: filteredConflicts.filter(c => !c.resolved).length,
         summary: {
           scheduleVsSchedule: filteredConflicts.filter(c => c.type === 'schedule_vs_schedule').length,
-          scheduleVsMeeting: filteredConflicts.filter(c => c.type === 'schedule_vs_meeting').length,
-          meetingVsMeeting: filteredConflicts.filter(c => c.type === 'meeting_vs_meeting').length
+          totalConflicts: filteredConflicts.length
         }
       }
     });
 
   } catch (error) {
     console.error('Get user conflicts error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+
+// 📋 GET: Get specific schedule by ID
+router.get('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const schedule = await Schedule.findById(id);
+    
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        message: 'Schedule not found'
+      });
+    }
+
+    // Check if user is the creator or super leader
+    if (schedule.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'super leader') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only view your own schedules.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: schedule
+    });
+
+  } catch (error) {
+    console.error('Get schedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -742,6 +730,10 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
     meeting.rescheduleRequests.push(rescheduleRequest);
     await meeting.save();
 
+    // Get the generated request ID from the saved meeting
+    const savedRequest = meeting.rescheduleRequests[meeting.rescheduleRequests.length - 1];
+    const requestId = savedRequest._id;
+
     // Send WhatsApp notification to meeting creator
     try {
       const axios = require('axios');
@@ -789,6 +781,7 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
       success: true,
       message: 'Meeting reschedule request sent successfully',
       data: {
+        requestId: requestId, // Return the generated request ID
         meeting: {
           _id: meeting._id,
           title: meeting.title,
@@ -796,7 +789,10 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
           endDatetime: meeting.endDatetime,
           createdBy: meeting.createdBy
         },
-        rescheduleRequest,
+        rescheduleRequest: {
+          ...rescheduleRequest,
+          _id: requestId // Include the ID in the reschedule request object too
+        },
         affectedSchedule: affectedSchedule ? {
           _id: affectedSchedule._id,
           title: affectedSchedule.title,
@@ -1084,62 +1080,65 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
   }
 });
 
-// 📝 RESCHEDULE REQUEST: Request reschedule for a schedule
-router.post('/:id/reschedule-request', leaderOrSuperLeaderAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { suggestedTime, reason } = req.body;
+// // 📝 RESCHEDULE REQUEST: Request reschedule for a schedule
+// router.post('/:id/reschedule-request', leaderOrSuperLeaderAuth, async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { suggestedTime, reason } = req.body;
 
-    // Validate required fields
-    if (!suggestedTime || !reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Suggested time and reason are required'
-      });
-    }
+//     // Validate required fields
+//     if (!suggestedTime || !reason) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Suggested time and reason are required'
+//       });
+//     }
 
-    const schedule = await Schedule.findById(id);
+//     const schedule = await Schedule.findById(id);
     
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Schedule not found'
-      });
-    }
+//     if (!schedule) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Schedule not found'
+//       });
+//     }
 
-    // Check if user is the creator of the schedule
-    if (schedule.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only request reschedule for your own schedules.'
-      });
-    }
+//     // Check if user is the creator of the schedule
+//     if (schedule.createdBy.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({
+//         success: false,
+//         message: 'Access denied. You can only request reschedule for your own schedules.'
+//       });
+//     }
 
-    // Update reschedule request
-    schedule.rescheduleRequest = {
-      suggestedTime: new Date(suggestedTime),
-      reason,
-      status: 'pending',
-      requestedBy: req.user._id,
-      requestedAt: new Date()
-    };
+//     // Update reschedule request
+//     schedule.rescheduleRequest = {
+//       suggestedTime: new Date(suggestedTime),
+//       reason,
+//       status: 'pending',
+//       requestedBy: req.user._id,
+//       requestedAt: new Date()
+//     };
 
-    await schedule.save();
+//     await schedule.save();
 
-    res.json({
-      success: true,
-      message: 'Reschedule request sent successfully',
-      data: schedule
-    });
+//     res.json({
+//       success: true,
+//       message: 'Reschedule request sent successfully',
+//       data: schedule
+//     });
 
-  } catch (error) {
-    console.error('Reschedule request error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
+//   } catch (error) {
+//     console.error('Reschedule request error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: error.message
+//     });
+//   }
+// });
+
+
+
 
 
 
