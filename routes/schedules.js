@@ -325,6 +325,7 @@ router.get('/', leaderOrSuperLeaderAuth, async (req, res) => {
 
     const schedules = await Schedule.find(query)
       .populate('overriddenBy.meetingId', 'title startDatetime endDatetime')
+      .populate('meetingReference', 'title startDatetime endDatetime createdBy')
       .sort({ startDateTime: 1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -478,7 +479,9 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
     const userSchedules = await Schedule.find({
       createdBy: targetUserId,
       status: 'active'
-    }).sort({ startDateTime: 1 });
+    })
+    .populate('meetingReference', 'title startDatetime endDatetime createdBy')
+    .sort({ startDateTime: 1 });
 
     // Find conflicts by comparing each schedule with others
     const conflicts = [];
@@ -539,7 +542,9 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
                   startDateTime: primary.startDateTime,
                   endDateTime: primary.endDateTime,
                   priority: primary.priority,
-                  recurring: primary.recurring
+                  recurring: primary.recurring,
+                  meetingId: primary.meetingReference ? primary.meetingReference._id : null,
+                  isMeetingSchedule: !!primary.meetingReference
                 },
                 conflicting: {
                   id: conflicting._id,
@@ -548,7 +553,9 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
                   startDateTime: conflicting.startDateTime,
                   endDateTime: conflicting.endDateTime,
                   priority: conflicting.priority,
-                  recurring: conflicting.recurring
+                  recurring: conflicting.recurring,
+                  meetingId: conflicting.meetingReference ? conflicting.meetingReference._id : null,
+                  isMeetingSchedule: !!conflicting.meetingReference
                 },
                 conflictPeriod: {
                   start: new Date(Math.max(primary.startDateTime, conflicting.startDateTime)),
@@ -1080,62 +1087,7 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
   }
 });
 
-// // 📝 RESCHEDULE REQUEST: Request reschedule for a schedule
-// router.post('/:id/reschedule-request', leaderOrSuperLeaderAuth, async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { suggestedTime, reason } = req.body;
 
-//     // Validate required fields
-//     if (!suggestedTime || !reason) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Suggested time and reason are required'
-//       });
-//     }
-
-//     const schedule = await Schedule.findById(id);
-    
-//     if (!schedule) {
-//       return res.status(404).json({
-//         success: false,
-//         message: 'Schedule not found'
-//       });
-//     }
-
-//     // Check if user is the creator of the schedule
-//     if (schedule.createdBy.toString() !== req.user._id.toString()) {
-//       return res.status(403).json({
-//         success: false,
-//         message: 'Access denied. You can only request reschedule for your own schedules.'
-//       });
-//     }
-
-//     // Update reschedule request
-//     schedule.rescheduleRequest = {
-//       suggestedTime: new Date(suggestedTime),
-//       reason,
-//       status: 'pending',
-//       requestedBy: req.user._id,
-//       requestedAt: new Date()
-//     };
-
-//     await schedule.save();
-
-//     res.json({
-//       success: true,
-//       message: 'Reschedule request sent successfully',
-//       data: schedule
-//     });
-
-//   } catch (error) {
-//     console.error('Reschedule request error:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: error.message
-//     });
-//   }
-// });
 
 
 

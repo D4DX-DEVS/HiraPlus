@@ -891,6 +891,7 @@ router.get('/all-meetings', superLeaderAuth, async (req, res) => {
         const meetings = await LeadersMeeting.find(query)
             .populate('createdBy', 'name phoneNumber role department')
             .populate('participants.participant', 'name phoneNumber role department')
+            .populate('rescheduleRequests.requestedBy', 'name phoneNumber role') // ✅ Populate reschedule request user data
             .sort(sort)
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -939,6 +940,7 @@ router.get('/all-meetings', superLeaderAuth, async (req, res) => {
             acceptedCount: meeting.participants.filter(p => p.status === 'accepted').length,
             pendingCount: meeting.participants.filter(p => p.status === 'pending').length,
             declinedCount: meeting.participants.filter(p => p.status === 'declined').length,
+            rescheduleRequests: meeting.rescheduleRequests || [], // ✅ Include actual reschedule requests
             rescheduleRequestsCount: meeting.rescheduleRequests?.length || 0,
             createdAt: meeting.createdAt,
             updatedAt: meeting.updatedAt,
