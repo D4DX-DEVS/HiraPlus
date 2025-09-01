@@ -239,6 +239,8 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               <option value="member">Member</option>
               <option value="driver">Driver</option>
               <option value="accountant">Accountant</option>
+              <option value="leader">Leader</option>
+              <option value="super leader">Super Leader</option>
             </select>
           </div>
 

@@ -410,9 +410,13 @@ const AdminDashboard = () => {
                                       ? 'bg-blue-100 text-blue-800'
                                       : user.role === 'accountant'
                                       ? 'bg-green-100 text-green-800'
+                                      : user.role === 'leader'
+                                      ? 'bg-indigo-100 text-indigo-800'
+                                      : user.role === 'super leader'
+                                      ? 'bg-red-100 text-red-800'
                                       : 'bg-gray-100 text-gray-800')
                               }`}>
-                                {user.isDeptHead ? 'Head' : (user.role === 'driver' ? 'Driver 🚗' : (user.role === 'accountant' ? 'Accountant 💰' : 'Member'))}
+                                {user.isDeptHead ? 'Head' : (user.role === 'driver' ? 'Driver 🚗' : (user.role === 'accountant' ? 'Accountant 💰' : (user.role === 'leader' ? 'Leader 👑' : (user.role === 'super leader' ? 'Super Leader 🌟' : 'Member'))))}
                               </span>
                             </td>
                             <td className="px-1 py-1.5 whitespace-nowrap">
