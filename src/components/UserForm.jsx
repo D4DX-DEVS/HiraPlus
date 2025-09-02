@@ -18,11 +18,16 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     isFreeFood: initialData?.isFreeFood || false,
     isIntern: initialData?.isIntern || false,
     role: initialData?.role || '',
-    status: initialData?.status || 'active'
+    status: initialData?.status || 'active',
+    tags: Array.isArray(initialData?.tags)
+      ? initialData.tags.map(t => (typeof t === 'string' ? t : t?._id)).filter(Boolean)
+      : []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
 
   // Check if the selected department should show isIntern field
   const shouldShowInternField = formData.department === 'D4DX Innovations LLP';
@@ -40,6 +45,22 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     fetchDepartments();
   }, []);
 
+  // Fetch tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        setTagsLoading(true);
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/tags`);
+        setAllTags(res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      } finally {
+        setTagsLoading(false);
+      }
+    };
+    fetchTags();
+  }, []);
+
   useEffect(() => {
     if (initialData) {
       const departmentValue = typeof initialData.department === 'string' ? initialData.department : initialData.department?.title || '';
@@ -52,17 +73,39 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         isFreeFood: initialData.isFreeFood || false,
         isIntern: initialData.isIntern || false,
         role: initialData.role || '',
-        status: initialData.status || 'active'
+        status: initialData.status || 'active',
+        tags: Array.isArray(initialData.tags)
+          ? initialData.tags.map(t => (typeof t === 'string' ? t : t?._id)).filter(Boolean)
+          : []
       });
     }
   }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'role') {
+      const isLeaderRole = value === 'leader' || value === 'super leader';
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        tags: isLeaderRole ? prev.tags : []
+      }));
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+  };
+
+  const handleTagToggle = (tagId) => {
+    setFormData(prev => {
+      const exists = prev.tags.includes(tagId);
+      return {
+        ...prev,
+        tags: exists ? prev.tags.filter(id => id !== tagId) : [...prev.tags, tagId]
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -243,6 +286,36 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
               <option value="super leader">Super Leader</option>
             </select>
           </div>
+
+          {(formData.role === 'leader' || formData.role === 'super leader') && (
+            <div className="md:col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tags </label>
+              <div className="rounded-lg border border-gray-200 p-3 max-h-40 overflow-auto">
+                {tagsLoading ? (
+                  <div className="text-sm text-gray-500">Loading tags...</div>
+                ) : allTags.length === 0 ? (
+                  <div className="text-sm text-gray-500">No tags found. Create tags in admin first.</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {allTags.map(tag => (
+                      <label key={tag._id} className="inline-flex items-center space-x-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          checked={formData.tags.includes(tag._id)}
+                          onChange={() => handleTagToggle(tag._id)}
+                        />
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                          {tag.tagName}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Only users with Leader or Super Leader roles can be assigned tags.</p>
+            </div>
+          )}
 
           {shouldShowInternField && (
             <div className="flex items-center space-x-3">

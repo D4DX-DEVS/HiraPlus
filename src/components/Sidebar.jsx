@@ -15,7 +15,8 @@ import {
   MapPinIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  UserIcon
+  UserIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 import HiraPlusIcon from '../assets/HiraPlus.jpg';
 
@@ -31,7 +32,14 @@ const Sidebar = ({ isOpen }) => {
 
   const navigation = [
     { name: 'Users', href: '/admin/dashboard', icon: UsersIcon },
-    { name: 'Departments', href: '/admin/departments', icon: BuildingOfficeIcon },
+    { name: 'Departments',
+      href: '/admin/departments',
+      icon: BuildingOfficeIcon,
+      subItems: [
+        { name: 'Department Management', href: '/admin/departments', icon: BuildingOfficeIcon },
+        { name: 'Tag Management', href: '/admin/tags', icon: TagIcon }
+      ]
+    },
     { 
       name: 'Vehicles', 
       href: '/admin/vehicles', 

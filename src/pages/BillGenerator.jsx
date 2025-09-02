@@ -19,7 +19,7 @@ Font.register({
 // Use default fonts for reliable PDF generation
 // The Malayalam font file is causing compatibility issues with @react-pdf/renderer
 // We'll use default fonts and handle Malayalam text encoding properly
-console.log('Using default fonts for PDF generation');
+//console.log('Using default fonts for PDF generation');
 
 // Helper function to get department share percentage based on department name
 const getDepartmentShareForDept = (departmentName, defaultShare) => {

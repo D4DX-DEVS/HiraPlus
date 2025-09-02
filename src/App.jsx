@@ -11,6 +11,7 @@ import AdminMenus from './pages/AdminMenus';
 import AdminNotifications from './pages/AdminNotifications';
 import AdminMessages from './pages/AdminMessages';
 import AdminBanners from './pages/AdminBanners';
+import AdminTags from './pages/AdminTags';
 import BillGenerator from './pages/BillGenerator';
 import GuestMeals from './pages/GuestMeals';
 import Meetings from './pages/Meetings';
@@ -115,6 +116,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminBanners />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/tags"
+          element={
+            <ProtectedRoute>
+              <AdminTags />
             </ProtectedRoute>
           }
         />

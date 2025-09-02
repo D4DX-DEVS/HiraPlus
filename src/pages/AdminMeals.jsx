@@ -36,6 +36,9 @@ const AdminMeals = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // Add search functionality
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Today's meal totals state
   const [todayTotals, setTodayTotals] = useState({
     breakfast: 0,
@@ -227,7 +230,21 @@ const AdminMeals = () => {
     user.displayName.toLowerCase().includes(userSearch.toLowerCase())
   );
 
-  const displayMeals = filteredMeals || meals;
+  // Filter meals by user name search
+  const getFilteredMeals = () => {
+    if (!searchQuery.trim()) {
+      return filteredMeals || meals;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    const filtered = (filteredMeals || meals).filter(user => 
+      user.name && user.name.toLowerCase().includes(query)
+    );
+    
+    return filtered;
+  };
+
+  const displayMeals = getFilteredMeals();
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
@@ -261,6 +278,12 @@ const AdminMeals = () => {
                           <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></div>
                           {displayMeals.length} Active Users
                         </span>
+                        {searchQuery && (
+                          <span className="flex items-center text-purple-600">
+                            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></div>
+                            Search Results
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -537,6 +560,38 @@ const AdminMeals = () => {
                   </form>
                 </div>
               )}
+
+              {/* Search Bar */}
+              <div className="mb-3 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search users by name..."
+                          className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {/* Meals Table */}
               <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden flex-1 flex flex-col min-h-0">
