@@ -78,7 +78,9 @@ router.post('/request-otp', async (req, res) => {
     }
 
     // Check if user exists and has leader/super leader role
-    const user = await User.findOne({ phoneNumber }).populate('department', 'title');
+    const user = await User.findOne({ phoneNumber })
+      .populate('department', 'title')
+      .populate('tags', 'tagName');
     if (!user) {
       return res.status(404).json({ 
         success: false,
@@ -87,7 +89,7 @@ router.post('/request-otp', async (req, res) => {
     }
 
     // Verify user has leader or super leader role
-    if (user.role !== 'leader' && user.role !== 'super leader') {
+    if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
       return res.status(403).json({ 
         success: false,
         message: 'Access denied. Only leaders and super leaders can access this portal.' 
@@ -99,7 +101,7 @@ router.post('/request-otp', async (req, res) => {
     leaderOtpStore.set(phoneNumber, {
       code: otp,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes expiry
-      role: user.role // Store role for verification
+      role: user.role.name // Store role name for verification
     });
 
     try {
@@ -146,7 +148,9 @@ router.post('/verify-otp', async (req, res) => {
     phoneNumber = String(phoneNumber).trim().replace('+91', '').replace(/\D/g, '');
     
     // Check if user exists and has appropriate role
-    const user = await User.findOne({ phoneNumber }).populate('department', 'title');
+    const user = await User.findOne({ phoneNumber })
+      .populate('department', 'title')
+      .populate('tags', 'tagName');
     if (!user) {
       return res.status(404).json({ 
         success: false,
@@ -155,7 +159,7 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     // Verify user has leader or super leader role
-    if (user.role !== 'leader' && user.role !== 'super leader') {
+    if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
       return res.status(403).json({ 
         success: false,
         message: 'Access denied. Only leaders and super leaders can access this portal.' 
@@ -174,7 +178,7 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     // Verify role matches stored role
-    if (storedOTP.role !== user.role) {
+    if (storedOTP.role !== user.role.name) {
       return res.status(403).json({ 
         success: false,
         message: 'Role mismatch. Please try again.' 
@@ -203,7 +207,7 @@ router.post('/verify-otp', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        role: user.role
+        role: user.role.name
       }
     });
   } catch (error) {
@@ -218,7 +222,9 @@ router.post('/verify-otp', async (req, res) => {
 // Get current leader/super leader profile
 router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('department', 'title');
+    const user = await User.findById(req.user._id)
+      .populate('department', 'title')
+      .populate('tags', 'tagName');
     
     if (!user) {
       return res.status(404).json({
@@ -235,12 +241,13 @@ router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        role: user.role,
+        role: user.role.name,
         isDeptHead: user.isDeptHead,
         isVerified: user.isVerified,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
         status: user.status,
+        tags: user.tags,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
@@ -258,16 +265,18 @@ router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
 router.get('/all', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
     const leaders = await User.find({
+      // Note: This will need to be updated after migration to use ObjectId references
       role: { $in: ['leader', 'super leader'] },
       status: 'active'
     })
     .populate('department', 'title')
-    .select('name phoneNumber role department designation isDeptHead isVerified status createdAt')
+    .populate('tags', 'tagName')
+    .select('name phoneNumber role department designation isDeptHead isVerified status createdAt tags')
     .sort({ role: 1, name: 1 }); // Sort by role (super leader first), then by name
 
     // Separate leaders and super leaders
-    const superLeaders = leaders.filter(user => user.role === 'super leader');
-    const regularLeaders = leaders.filter(user => user.role === 'leader');
+    const superLeaders = leaders.filter(user => user.role && user.role.name === 'super leader');
+    const regularLeaders = leaders.filter(user => user.role && user.role.name === 'leader');
 
     res.json({
       success: true,
@@ -287,6 +296,5 @@ router.get('/all', leaderOrSuperLeaderAuth, async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;

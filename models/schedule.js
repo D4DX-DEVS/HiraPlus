@@ -1,65 +1,65 @@
 const mongoose = require('mongoose');
 
 const scheduleSchema = new mongoose.Schema({
-  title: {
-    type: String,
+    title: {
+        type: String,
     required: true,
     trim: true
-  },
-  subtitle: {
+    },
+    subtitle: {
     type: String,
     trim: true
-  },
-  scheduleType: {
-    type: String,
-    enum: ['Meeting', 'Personal Appointment', 'Work Block', 'Out of Office', 'Visits', 'Other'],
+    },
+    scheduleType: {
+        type: String,
+        enum: ['Meeting', 'Personal Appointment', 'Work Block', 'Out of Office', 'Visits', 'Other'],
     required: true
-  },
-  startDateTime: {
-    type: Date,
-    required: true
-  },
-  endDateTime: {
-    type: Date,
-    required: true
-  },
-  description: {
-    type: String,
-    trim: true
-  },
+    },
+    startDateTime: {
+        type: Date,
+        required: true
+    },
+    endDateTime: {
+        type: Date,
+        required: true
+    },
+    description: {
+        type: String,
+        trim: true
+    },
   agendaItems: [{
-    type: String,
+        type: String,
     trim: true
   }],
-  locationLink: {
-    type: String,
-    trim: true
+    locationLink: {
+        type: String,
+        trim: true
   },
   recurring: {
-    type: Boolean,
-    default: false
-  },
+        type: Boolean,
+        default: false
+    },
   recurringGroupId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Schedule',
     required: false
   },
-  recurrencePattern: {
-    frequency: {
-      type: String,
+    recurrencePattern: {
+        frequency: {
+            type: String,
       enum: ['daily', 'weekly', 'monthly'],
       required: false
-    },
-    interval: {
-      type: Number,
-      default: 1,
+        },
+        interval: {
+            type: Number,
+            default: 1,
       required: false
-    },
-    endDate: {
+        },
+        endDate: {
       type: Date,
       required: false
-    },
-    daysOfWeek: [{
+        },
+        daysOfWeek: [{
       type: Number,  // 0=Sunday, 1=Monday, etc.
       required: false
     }]
@@ -67,41 +67,41 @@ const scheduleSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
-  },
+            required: true
+        },
   // New fields for conflict management
   priority: {
-    type: String,
+            type: String,
     enum: ['low', 'medium', 'high'],
     default: 'low'
   },
   meetingReference: {
-    type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
     ref: 'LeadersMeeting',
     required: false
   },
   meetingCreatorRole: {
-    type: String,
+        type: String,
     enum: ['leader', 'super leader'],
     required: false
-  },
+    },
   status: {
-    type: String,
+        type: String,
     enum: ['active', 'cancelled', 'rescheduled'],
     default: 'active'
   },
   rescheduleRequest: {
     suggestedTime: {
-      type: Date,
-      required: false
+        type: Date,
+        required: false
     },
     reason: {
-      type: String,
+        type: String,
       trim: true,
       required: false
     },
     status: {
-      type: String,
+        type: String,
       enum: ['no_request_sent', 'pending', 'approved', 'rejected'],
       default: 'no_request_sent'
     },
@@ -127,15 +127,15 @@ const scheduleSchema = new mongoose.Schema({
     }
   }
 }, {
-  timestamps: true
+    timestamps: true
 });
 
 // Add validation for end date being after start date
 scheduleSchema.pre('save', function(next) {
-  if (this.endDateTime <= this.startDateTime) {
+    if (this.endDateTime <= this.startDateTime) {
     next(new Error('End date must be after start date'));
   }
-  next();
+    next();
 });
 
 // Method to check if schedule conflicts with given time range

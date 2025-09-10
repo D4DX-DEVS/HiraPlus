@@ -17,7 +17,7 @@ const superLeaderAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user details and check if they are a super leader
-    const user = await User.findById(decoded.id).populate('department', 'title');
+    const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
     
     if (!user) {
       return res.status(404).json({
@@ -26,7 +26,7 @@ const superLeaderAuth = async (req, res, next) => {
       });
     }
 
-    if (user.role !== 'super leader') {
+    if (!user.role || user.role.name !== 'super leader') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Only super leaders can perform this action.'

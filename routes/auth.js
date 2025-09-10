@@ -345,7 +345,7 @@ router.get('/me', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user details
-    const user = await User.findById(decoded.id).select('-__v');
+    const user = await User.findById(decoded.id).populate('role', 'name').select('-__v');
     
     if (!user) {
       return res.status(404).json({
@@ -420,6 +420,7 @@ router.get('/users', async (req, res) => {
     // Get all users, excluding sensitive information
     const users = await User.find()
       .populate('department', 'title')
+      .populate('role', 'name')
       .select('name phoneNumber department designation isIntern role')
       .sort({ name: 1 });
 
@@ -1104,8 +1105,16 @@ router.get('/travels', driverAuth, async (req, res) => {
 // Get list of drivers (no authentication required)
 router.get('/drivers', async (req, res) => {
   try {
-    const drivers = await User.find({ role: 'driver' })
+    // Get driver role first
+    const Role = require('../models/Roles');
+    const driverRole = await Role.findOne({ name: 'driver' });
+    if (!driverRole) {
+      return res.status(404).json({ message: 'Driver role not found' });
+    }
+    
+    const drivers = await User.find({ role: driverRole._id })
       .populate('department', 'title')
+      .populate('role', 'name')
       .select('name phoneNumber department designation status role')
       .sort({ name: 1 });
 

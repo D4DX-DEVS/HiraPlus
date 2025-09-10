@@ -87,6 +87,15 @@ function generateRecurringSchedules(mainSchedule, recurrencePattern) {
   return schedules;
 }
 
+// 🧪 TEST ROUTE - Remove this after testing
+router.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Schedules API is working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // 🎯 CREATE: Add new schedule entries
 router.post('/', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
@@ -216,7 +225,7 @@ router.put('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
     }
 
     // Check if user is the creator or super leader
-    if (schedule.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'super leader') {
+    if (schedule.createdBy.toString() !== req.user._id.toString() && (!req.user.role || req.user.role.name !== 'super leader')) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. You can only edit your own schedules.'
@@ -281,7 +290,7 @@ router.delete('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
     }
 
     // Check if user is the creator or super leader
-    if (schedule.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'super leader') {
+    if (schedule.createdBy.toString() !== req.user._id.toString() && (!req.user.role || req.user.role.name !== 'super leader')) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. You can only delete your own schedules.'
@@ -480,7 +489,14 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
       createdBy: targetUserId,
       status: 'active'
     })
-    .populate('meetingReference', 'title startDatetime endDatetime createdBy')
+    .populate({
+      path: 'meetingReference',
+      select: 'title startDatetime endDatetime createdBy',
+      populate: {
+        path: 'createdBy',
+        select: 'name phoneNumber role department'
+      }
+    })
     .sort({ startDateTime: 1 });
 
     // Find conflicts by comparing each schedule with others
@@ -501,15 +517,7 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
       }
     };
 
-    // Helper function to create conflict key for deduplication
-    const createConflictKey = (item1, item2, type) => {
-      const ids = [item1.id || item1._id, item2.id || item2._id].sort();
-      return `${type}_${ids[0]}_${ids[1]}`;
-    };
-
-    const conflictKeys = new Set(); // For deduplication
-
-    // Check schedule vs schedule conflicts (only meaningful conflicts)
+    // Check schedule vs schedule conflicts
     for (let i = 0; i < userSchedules.length; i++) {
       for (let j = i + 1; j < userSchedules.length; j++) {
         const schedule1 = userSchedules[i];
@@ -519,52 +527,66 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
         if (hasOverlap(schedule1.startDateTime, schedule1.endDateTime, 
                       schedule2.startDateTime, schedule2.endDateTime)) {
           
-          // Only create conflict if priorities are different (meaningful conflict)
+          // Get priorities
           const priority1 = getPriorityLevel(schedule1.priority);
           const priority2 = getPriorityLevel(schedule2.priority);
           
-          if (priority1 !== priority2) {
-            const conflictKey = createConflictKey(schedule1, schedule2, 'schedule_vs_schedule');
-            
-            if (!conflictKeys.has(conflictKey)) {
-              conflictKeys.add(conflictKey);
-              
-              // Determine which is primary (higher priority)
-              const [primary, conflicting] = priority1 > priority2 ? 
-                [schedule1, schedule2] : [schedule2, schedule1];
+          // Create conflict object
+          const [primary, conflicting] = priority1 > priority2 ? 
+            [schedule1, schedule2] : [schedule2, schedule1];
 
-              conflicts.push({
-                type: 'schedule_vs_schedule',
-                primary: {
-                  id: primary._id,
-                  title: primary.title,
-                  scheduleType: primary.scheduleType,
-                  startDateTime: primary.startDateTime,
-                  endDateTime: primary.endDateTime,
-                  priority: primary.priority,
-                  recurring: primary.recurring,
-                  meetingId: primary.meetingReference ? primary.meetingReference._id : null,
-                  isMeetingSchedule: !!primary.meetingReference
-                },
-                conflicting: {
-                  id: conflicting._id,
-                  title: conflicting.title,
-                  scheduleType: conflicting.scheduleType,
-                  startDateTime: conflicting.startDateTime,
-                  endDateTime: conflicting.endDateTime,
-                  priority: conflicting.priority,
-                  recurring: conflicting.recurring,
-                  meetingId: conflicting.meetingReference ? conflicting.meetingReference._id : null,
-                  isMeetingSchedule: !!conflicting.meetingReference
-                },
-                conflictPeriod: {
-                  start: new Date(Math.max(primary.startDateTime, conflicting.startDateTime)),
-                  end: new Date(Math.min(primary.endDateTime, conflicting.endDateTime))
-                },
-                resolved: false,
-                priorityOverride: true
-              });
-            }
+          // Calculate conflict period
+          const conflictStart = new Date(Math.max(primary.startDateTime, conflicting.startDateTime));
+          const conflictEnd = new Date(Math.min(primary.endDateTime, conflicting.endDateTime));
+
+          // Only include future conflicts
+          if (conflictEnd >= currentDate) {
+            conflicts.push({
+              type: 'schedule_vs_schedule',
+              primary: {
+                id: primary._id,
+                title: primary.title,
+                scheduleType: primary.scheduleType,
+                startDateTime: primary.startDateTime,
+                endDateTime: primary.endDateTime,
+                priority: primary.priority,
+                recurring: primary.recurring,
+                meetingId: primary.meetingReference ? primary.meetingReference._id : null,
+                isMeetingSchedule: !!primary.meetingReference,
+                meetingCreator: primary.meetingReference ? {
+                  id: primary.meetingReference.createdBy._id,
+                  name: primary.meetingReference.createdBy.name,
+                  phoneNumber: primary.meetingReference.createdBy.phoneNumber,
+                  role: primary.meetingReference.createdBy.role,
+                  department: primary.meetingReference.createdBy.department
+                } : null
+              },
+              conflicting: {
+                id: conflicting._id,
+                title: conflicting.title,
+                scheduleType: conflicting.scheduleType,
+                startDateTime: conflicting.startDateTime,
+                endDateTime: conflicting.endDateTime,
+                priority: conflicting.priority,
+                recurring: conflicting.recurring,
+                meetingId: conflicting.meetingReference ? conflicting.meetingReference._id : null,
+                isMeetingSchedule: !!conflicting.meetingReference,
+                meetingCreator: conflicting.meetingReference ? {
+                  id: conflicting.meetingReference.createdBy._id,
+                  name: conflicting.meetingReference.createdBy.name,
+                  phoneNumber: conflicting.meetingReference.createdBy.phoneNumber,
+                  role: conflicting.meetingReference.createdBy.role,
+                  department: conflicting.meetingReference.createdBy.department
+                } : null
+              },
+              conflictPeriod: {
+                start: conflictStart,
+                end: conflictEnd
+              },
+              resolved: false,
+              priorityOverride: true,
+              isPastConflict: false
+            });
           }
         }
       }
@@ -610,7 +632,12 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
         unresolvedConflicts: filteredConflicts.filter(c => !c.resolved).length,
         summary: {
           scheduleVsSchedule: filteredConflicts.filter(c => c.type === 'schedule_vs_schedule').length,
-          totalConflicts: filteredConflicts.length
+          totalConflicts: filteredConflicts.length,
+          // ✅ Show filtering information
+          conflictsFiltered: {
+            pastConflictsExcluded: 'Past conflicts automatically filtered out (considered resolved)',
+            onlyCurrentFuture: 'Only showing current and future conflicts'
+          }
         }
       }
     });
@@ -640,7 +667,7 @@ router.get('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
     }
 
     // Check if user is the creator or super leader
-    if (schedule.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'super leader') {
+    if (schedule.createdBy.toString() !== req.user._id.toString() && (!req.user.role || req.user.role.name !== 'super leader')) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. You can only view your own schedules.'
@@ -769,7 +796,6 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
             headers: { 'Content-Type': 'application/json' }
           });
 
-          console.log('WhatsApp notification sent successfully to:', phoneNumber);
           return response.data;
         } catch (error) {
           console.error('DXing notification error:', error);
@@ -777,7 +803,7 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
         }
       }
 
-      const message = `🔔 Reschedule Request\n\n${req.user.name} has requested to reschedule your meeting "${meeting.title}" from ${meeting.startDatetime.toLocaleString()} to ${new Date(suggestedTime).toLocaleString()}.\n\nReason: ${reason}\n\nPlease review and respond to this request.`;
+      const message = `🔔 Reschedule Request\n\n${req.user.name} has requested to reschedule your meeting ${meeting.title} from ${meeting.startDatetime.toLocaleString()} to ${new Date(suggestedTime).toLocaleString()}.\n\nReason: ${reason}\n\nPlease review and respond to this request.`;
       
       await sendDXingMessage(meeting.createdBy.phoneNumber, message);
     } catch (notificationError) {
@@ -860,7 +886,7 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
 
     // Check if user is the meeting creator or super leader
     const isMeetingCreator = meeting.createdBy.toString() === req.user._id.toString();
-    const isSuperLeader = req.user.role === 'super leader';
+    const isSuperLeader = req.user.role && req.user.role.name === 'super leader';
 
     if (!isMeetingCreator && !isSuperLeader) {
       return res.status(403).json({

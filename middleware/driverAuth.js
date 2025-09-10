@@ -17,7 +17,7 @@ const driverAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user details and check if they are a driver
-    const user = await User.findById(decoded.id).populate('department', 'title');
+    const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
     
     if (!user) {
       return res.status(404).json({
@@ -26,7 +26,7 @@ const driverAuth = async (req, res, next) => {
       });
     }
 
-    if (user.role !== 'driver') {
+    if (!user.role || user.role.name !== 'driver') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Only drivers can perform this action.'

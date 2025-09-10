@@ -17,7 +17,7 @@ const leaderAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user details and check if they are a leader
-    const user = await User.findById(decoded.id).populate('department', 'title');
+    const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
     
     if (!user) {
       return res.status(404).json({
@@ -26,7 +26,7 @@ const leaderAuth = async (req, res, next) => {
       });
     }
 
-    if (user.role !== 'leader') {
+    if (!user.role || user.role.name !== 'leader') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Only leaders can perform this action.'
@@ -68,7 +68,7 @@ const leaderOrSuperLeaderAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user details and check if they are a leader or super leader
-    const user = await User.findById(decoded.id).populate('department', 'title');
+    const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
     
     if (!user) {
       return res.status(404).json({
@@ -77,7 +77,7 @@ const leaderOrSuperLeaderAuth = async (req, res, next) => {
       });
     }
 
-    if (user.role !== 'leader' && user.role !== 'super leader') {
+    if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Only leaders and super leaders can perform this action.'
