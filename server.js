@@ -9,9 +9,12 @@ const messStaffRoutes = require('./routes/messStaff');
 const bannerRoutes = require('./routes/banner');
 const receptionRoutes = require('./routes/reception');
 const departmentRoutes = require('./routes/departments');
+const tagRoutes = require('./routes/tags');
 const leadersRoutes = require('./routes/leaders');
 const leadersMeetingsRoutes = require('./routes/leadersMeetings');
 const scheduleRoutes = require('./routes/schedules');
+const generalSecretaryRoutes = require('./routes/generalSecretary');
+const roleRoutes = require('./routes/roles');
 
 const app = express();
 
@@ -39,9 +42,12 @@ app.use('/api/mess-staff', messStaffRoutes);
 app.use('/api/banner', bannerRoutes);
 app.use('/api/reception', receptionRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/tags', tagRoutes);
 app.use('/api/testing/leaders', leadersRoutes);
 app.use('/api/testing/leaders-meetings', leadersMeetingsRoutes);
 app.use('/api/testing/schedules', scheduleRoutes);
+app.use('/api/testing/general-secretary', generalSecretaryRoutes);
+app.use('/api/roles', roleRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

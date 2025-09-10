@@ -16,6 +16,7 @@ const { sendPushNotification } = require('../utils/oneSignalService');
 const Menu = require('../models/Menu');
 const Vehicle = require('../models/Vehicle');
 const Travel = require('../models/Travel');
+const Tag = require('../models/Tags');
 
 // Helper function to check for meeting conflicts
 const checkMeetingConflict = async (startDatetime, endDatetime, hall, excludeMeetingId = null) => {
@@ -94,7 +95,7 @@ router.post('/login', async (req, res) => {
 // Admin: Add user
 router.post('/users', adminAuth, async (req, res) => {
   try {
-    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern, role } = req.body;
+    let { phoneNumber, name, department, designation, isDeptHead, status, isFreeFood, isIntern, role, tags } = req.body;
 
     // Validate all required fields are present and not empty
     if (!phoneNumber || !name || !department || !designation) {
@@ -144,6 +145,29 @@ router.post('/users', adminAuth, async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Validate tags if provided
+    let validatedTags = [];
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      // Only allow tags for leader and super leader roles
+      // Note: role is now ObjectId, so we need to check role name
+      const Role = require('../models/Roles');
+      const roleDoc = await Role.findById(role);
+      if (!roleDoc || (roleDoc.name !== 'leader' && roleDoc.name !== 'super leader')) {
+        return res.status(400).json({ 
+          message: 'Tags can only be assigned to users with leader or super leader roles' 
+        });
+      }
+
+      // Validate that all tag IDs exist
+      const existingTags = await Tag.find({ _id: { $in: tags } });
+      if (existingTags.length !== tags.length) {
+        return res.status(400).json({ 
+          message: 'One or more tag IDs are invalid' 
+        });
+      }
+      validatedTags = tags;
+    }
+
     const user = new User({ 
       phoneNumber,
       name,
@@ -153,12 +177,14 @@ router.post('/users', adminAuth, async (req, res) => {
       status: status || 'active',
       isFreeFood: isFreeFood || false,
       isIntern: isIntern || false,
-      role: role
+      role: role,
+      tags: validatedTags
     });
     await user.save();
 
-    // Populate department for response
+    // Populate department and tags for response
     await user.populate('department', 'title');
+    await user.populate('tags', 'tagName');
 
     res.status(201).json({ 
       message: 'User added successfully',
@@ -172,7 +198,8 @@ router.post('/users', adminAuth, async (req, res) => {
         status: user.status,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
-        role: user.role
+        role: user.role,
+        tags: user.tags
       }
     });
   } catch (error) {
@@ -186,7 +213,9 @@ router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find()
       .populate('department', 'title')
-      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern role')
+      .populate('tags', 'tagName')
+      .populate('role', 'name')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern role tags')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -202,7 +231,8 @@ router.get('/users', adminAuth, async (req, res) => {
       createdAt: user.createdAt,
       isFreeFood: user.isFreeFood,
       isIntern: user.isIntern,
-      role: user.role
+      role: user.role,
+      tags: user.tags || []
     }));
 
     res.json(mappedUsers);
@@ -217,7 +247,8 @@ router.get('/drivers', async (req, res) => {
   try {
     const drivers = await User.find({ role: 'driver' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation status role')
+      .populate('tags', 'tagName')
+      .select('name phoneNumber department designation status role tags')
       .sort({ name: 1 });
 
     const mappedDrivers = drivers.map(driver => ({
@@ -227,7 +258,8 @@ router.get('/drivers', async (req, res) => {
       department: driver.department || '',
       designation: driver.designation || '',
       status: driver.status || 'active',
-      role: driver.role
+      role: driver.role,
+      tags: driver.tags || []
     }));
 
     res.json(mappedDrivers);
@@ -242,7 +274,9 @@ router.get('/users/list', adminAuth, async (req, res) => {
   try {
     const users = await User.find({ status: 'active' })
       .populate('department', 'title')
-      .select('name phoneNumber department designation isIntern role')
+      .populate('tags', 'tagName')
+      .populate('role', 'name')
+      .select('name phoneNumber department designation isIntern role tags')
       .sort({ name: 1 });
 
     const usersList = users.map(user => ({
@@ -253,6 +287,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
       designation: user.designation || '',
       isIntern: user.isIntern,
       role: user.role,
+      tags: user.tags || [],
       displayName: `${user.name || 'Unknown'} (${user.phoneNumber}) - ${user.department ? user.department.title : 'N/A'}`
     }));
 
@@ -279,7 +314,7 @@ router.delete('/users/:userId', adminAuth, async (req, res) => {
 // Admin: Edit user details
 router.put('/users/:userId', adminAuth, async (req, res) => {
   try {
-    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern, role } = req.body;
+    let { name, department, designation, phoneNumber, isDeptHead, status, isFreeFood, isIntern, role, tags } = req.body;
 
     // Find the user first
     const user = await User.findById(req.params.userId);
@@ -343,6 +378,32 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (typeof isIntern !== 'undefined') user.isIntern = isIntern;
     if (typeof role !== 'undefined') user.role = role;
 
+    // Handle tags if provided
+    if (tags !== undefined) {
+      if (tags && Array.isArray(tags) && tags.length > 0) {
+        // Only allow tags for leader and super leader roles
+        const currentRoleId = role || user.role;
+        const Role = require('../models/Roles');
+        const currentRoleDoc = await Role.findById(currentRoleId);
+        if (!currentRoleDoc || (currentRoleDoc.name !== 'leader' && currentRoleDoc.name !== 'super leader')) {
+          return res.status(400).json({ 
+            message: 'Tags can only be assigned to users with leader or super leader roles' 
+          });
+        }
+
+        // Validate that all tag IDs exist
+        const existingTags = await Tag.find({ _id: { $in: tags } });
+        if (existingTags.length !== tags.length) {
+          return res.status(400).json({ 
+            message: 'One or more tag IDs are invalid' 
+          });
+        }
+        user.tags = tags;
+      } else {
+        user.tags = [];
+      }
+    }
+
     // Validate that required fields are not empty after trimming
     if (user.name && !user.name.trim()) {
       return res.status(400).json({ message: 'Name cannot be empty' });
@@ -353,8 +414,10 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
 
     await user.save();
 
-    // Populate department for response
+    // Populate department, tags, and role for response
     await user.populate('department', 'title');
+    await user.populate('tags', 'tagName');
+    await user.populate('role', 'name');
 
     res.json({
       message: 'User updated successfully',
@@ -369,7 +432,8 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         status: user.status,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
-        role: user.role
+        role: user.role,
+        tags: user.tags
       }
     });
   } catch (error) {
@@ -898,7 +962,10 @@ router.get('/meals/counts/summary', adminAuth, async (req, res) => {
 // Admin: Get single user by ID
 router.get('/users/:userId', adminAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).populate('department', 'title');
+    const user = await User.findById(req.params.userId)
+      .populate('department', 'title')
+      .populate('tags', 'tagName')
+      .populate('role', 'name');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -914,7 +981,8 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
       updatedAt: user.updatedAt,
       isFreeFood: user.isFreeFood,
       isIntern: user.isIntern,
-      role: user.role
+      role: user.role,
+      tags: user.tags || []
     });
   } catch (error) {
     if (error.name === 'CastError') {
@@ -3900,7 +3968,10 @@ router.post('/travel', adminAuth, async (req, res) => {
       });
     }
 
-    if (foundUser.role !== 'driver') {
+    // Check if user is a driver
+    const Role = require('../models/Roles');
+    const driverRole = await Role.findOne({ name: 'driver' });
+    if (!driverRole || foundUser.role.toString() !== driverRole._id.toString()) {
       return res.status(400).json({
         success: false,
         message: 'Only drivers can be assigned to travel records'
@@ -4011,8 +4082,16 @@ router.put('/travel/:travelId', adminAuth, async (req, res) => {
 // Get all drivers for admin travel creation
 router.get('/drivers', adminAuth, async (req, res) => {
   try {
-    const drivers = await User.find({ role: 'driver' })
+    // Get driver role first
+    const Role = require('../models/Roles');
+    const driverRole = await Role.findOne({ name: 'driver' });
+    if (!driverRole) {
+      return res.status(404).json({ message: 'Driver role not found' });
+    }
+    
+    const drivers = await User.find({ role: driverRole._id })
       .populate('department', 'title')
+      .populate('role', 'name')
       .select('name phoneNumber department designation status role')
       .sort({ name: 1 });
     

@@ -16,7 +16,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
         
         if (isCreator) {
             message = `Meeting Created: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Description: ${meeting.description}\n\n` +
                      `You have created this meeting and are automatically accepted as a participant.\n` +
@@ -24,7 +24,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
                      `Meeting requests have been sent to all other participants.\n`;
         } else {
             message = `Meeting Request: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Description: ${meeting.description}\n\n` +
                      `Please update your response in Hira+ app.\n` +
@@ -51,7 +51,7 @@ async function sendMeetingConfirmationToParticipant(meeting, participant) {
         }
         
         const message = `Meeting Confirmed: ${meeting.title}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
                        `Mode: ${meeting.mode}\n` +
                        `Location: ${meeting.locationLink || 'TBD'}\n` +
                        `Description: ${meeting.description}\n\n` +
@@ -78,7 +78,7 @@ async function sendMeetingCancellationToParticipant(meeting, participant) {
         }
         
         const message = `Meeting Response Recorded: ${meeting.title}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
                        `Mode: ${meeting.mode}\n` +
                        `Description: ${meeting.description}\n\n` +
                        `Your response has been recorded as DECLINED.\n` +
@@ -100,7 +100,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
         
         if (isCreator) {
             message = `Meeting Scheduled: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Description: ${meeting.description}\n\n` +
                      `You have scheduled this meeting as a Super Leader.\n` +
@@ -108,7 +108,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
                      `Meeting is confirmed and will proceed as scheduled.`;
         } else {
             message = `Meeting Scheduled: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Location: ${meeting.locationLink || 'TBD'}\n` +
                      `Description: ${meeting.description}\n\n` +
@@ -220,8 +220,13 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                 const meetingPriority = creatorRole === 'super leader' ? 'high' : 'medium';
                 const schedulePriority = conflictingSchedule.priority;
 
+                console.log(`🔍 Conflict Check: Meeting Priority: ${meetingPriority}, Schedule Priority: ${schedulePriority}`);
+                console.log(`🔍 Creator Role: ${creatorRole}, Schedule: ${conflictingSchedule.title}`);
+
                 if (meetingPriority === 'high' || 
                     (meetingPriority === 'medium' && schedulePriority === 'low')) {
+                    
+                    console.log(`✅ Schedule will be overridden: ${conflictingSchedule.title}`);
                     
                     // Mark conflicting schedule as cancelled and track what overrode it
                     conflictingSchedule.status = 'cancelled';
@@ -239,22 +244,28 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                             const message = `⚠️ Schedule Override Alert\n\n` +
                                            `Your schedule "${conflictingSchedule.title}" has been cancelled due to a higher priority meeting.\n\n` +
                                            `Cancelled Schedule:\n` +
-                                           `📅 Date: ${new Date(conflictingSchedule.startDateTime).toLocaleString()}\n` +
-                                           `⏰ Time: ${new Date(conflictingSchedule.startDateTime).toLocaleTimeString()} - ${new Date(conflictingSchedule.endDateTime).toLocaleTimeString()}\n` +
+                                           `📅 Date: ${new Date(conflictingSchedule.startDateTime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                                           `⏰ Time: ${new Date(conflictingSchedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(conflictingSchedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n` +
                                            `📝 Type: ${conflictingSchedule.scheduleType}\n\n` +
                                            `New Meeting:\n` +
                                            `📋 Title: ${meeting.title}\n` +
                                            `👤 Created by: ${creatorRole === 'super leader' ? 'Super Leader' : 'Leader'}\n` +
-                                           `📅 Date: ${new Date(meeting.startDatetime).toLocaleString()}\n` +
-                                           `⏰ Time: ${new Date(meeting.startDatetime).toLocaleTimeString()} - ${new Date(meeting.endDatetime).toLocaleTimeString()}\n\n` +
+                                           `📅 Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                                           `⏰ Time: ${new Date(meeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(meeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n\n` +
+                                           `⚠️ IMPORTANT: You already had a schedule at this time, but it has been replaced by this meeting.\n` +
                                            `Please check your Hira+ app for more details.`;
 
                             await sendDXingMessage(user.phoneNumber, message);
-                            console.log(`Override notification sent to user ${user.name} (${user.phoneNumber})`);
+                            console.log(`✅ Override notification sent to user ${user.name} (${user.phoneNumber})`);
+                            console.log(`📱 Message: ${message}`);
+                        } else {
+                            console.log(`❌ User not found or no phone number for participant: ${participantId}`);
                         }
                     } catch (notificationError) {
-                        console.error('Error sending override notification:', notificationError);
+                        console.error('❌ Error sending override notification:', notificationError);
                     }
+                } else {
+                    console.log(`❌ Schedule NOT overridden: ${conflictingSchedule.title} (Priority: ${schedulePriority} >= Meeting Priority: ${meetingPriority})`);
                 }
             }
 
@@ -283,6 +294,7 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
         }
     }
 
+    console.log(`📊 Schedule Override Summary: ${overriddenSchedules.length} schedules overridden for meeting: ${meeting.title}`);
     return { createdSchedules, overriddenSchedules };
 }
 
@@ -332,6 +344,7 @@ router.post('/create', leaderAuth, async (req, res) => {
         // Validate that all participants exist and are leaders or super leaders
         const participantUsers = await User.find({
             _id: { $in: participants },
+            // Note: This will need to be updated after migration to use ObjectId references
             role: { $in: ['leader', 'super leader'] }
         });
 
@@ -375,8 +388,16 @@ router.post('/create', leaderAuth, async (req, res) => {
 
         // Populate participants and createdBy for response
         const populatedMeeting = await LeadersMeeting.findById(savedMeeting._id)
-            .populate('participants.participant', 'name phoneNumber')
-            .populate('createdBy', 'name phoneNumber');
+            .populate({
+                path: 'participants.participant',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            })
+            .populate({
+                path: 'createdBy',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            });
 
         // Create schedules for all participants (leader meetings are confirmed at creation)
         const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
@@ -460,6 +481,7 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
         // Validate that all participants exist and are leaders or super leaders
         const participantUsers = await User.find({
             _id: { $in: participants },
+            // Note: This will need to be updated after migration to use ObjectId references
             role: { $in: ['leader', 'super leader'] }
         });
 
@@ -505,8 +527,16 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
 
         // Populate participants and createdBy for response
         const populatedMeeting = await LeadersMeeting.findById(savedMeeting._id)
-            .populate('participants.participant', 'name phoneNumber')
-            .populate('createdBy', 'name phoneNumber');
+            .populate({
+                path: 'participants.participant',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            })
+            .populate({
+                path: 'createdBy',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            });
 
         // Create schedules for all participants (super leader meetings are auto-confirmed)
         const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
@@ -574,7 +604,7 @@ router.post('/:meetingId/respond', async (req, res) => {
         }
 
         // Check if user is leader or super leader
-        if (user.role !== 'leader' && user.role !== 'super leader') {
+        if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. Only leaders and super leaders can perform this action.'
@@ -593,8 +623,16 @@ router.post('/:meetingId/respond', async (req, res) => {
         }
 
         const meeting = await LeadersMeeting.findById(meetingId)
-            .populate('participants.participant', 'name phoneNumber role department')
-            .populate('createdBy', 'name phoneNumber role department');
+            .populate({
+                path: 'participants.participant',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            })
+            .populate({
+                path: 'createdBy',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            });
 
         if (!meeting) {
             return res.status(404).json({
@@ -715,7 +753,7 @@ router.get('/requests', async (req, res) => {
         }
 
         // Check if user is leader or super leader
-        if (user.role !== 'leader' && user.role !== 'super leader') {
+        if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. Only leaders and super leaders can perform this action.'
@@ -761,8 +799,8 @@ router.get('/requests', async (req, res) => {
 
         // Populate the results
         const populatedMeetings = await LeadersMeeting.populate(pendingMeetings, [
-            { path: 'participants.participant', select: 'name phoneNumber role department' },
-            { path: 'createdBy', select: 'name phoneNumber role department' }
+            { path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } },
+            { path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } }
         ]);
 
         res.status(200).json({
@@ -808,7 +846,7 @@ router.get('/my-meetings', async (req, res) => {
         }
 
         // Check if user is leader or super leader
-        if (user.role !== 'leader' && user.role !== 'super leader') {
+        if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. Only leaders and super leaders can perform this action.'
@@ -824,8 +862,8 @@ router.get('/my-meetings', async (req, res) => {
                 { 'participants.participant': userId }
             ]
         })
-        .populate('participants.participant', 'name phoneNumber role department')
-        .populate('createdBy', 'name phoneNumber role department')
+        .populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
+        .populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
         .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -889,9 +927,21 @@ router.get('/all-meetings', superLeaderAuth, async (req, res) => {
 
         // Find meetings with pagination
         const meetings = await LeadersMeeting.find(query)
-            .populate('createdBy', 'name phoneNumber role department')
-            .populate('participants.participant', 'name phoneNumber role department')
-            .populate('rescheduleRequests.requestedBy', 'name phoneNumber role') // ✅ Populate reschedule request user data
+            .populate({
+                path: 'createdBy',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            })
+            .populate({
+                path: 'participants.participant',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            })
+            .populate({
+                path: 'rescheduleRequests.requestedBy',
+                select: 'name phoneNumber role department tags',
+                populate: { path: 'tags', select: 'tagName' }
+            }) // ✅ Populate reschedule request user data
             .sort(sort)
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -989,8 +1039,8 @@ router.get('/:meetingId', async (req, res) => {
 		}
 
 		const meeting = await LeadersMeeting.findById(meetingId)
-			.populate('participants.participant', 'name phoneNumber')
-			.populate('createdBy', 'name phoneNumber');
+			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
+			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } });
 
 		if (!meeting) {
 			return res.status(404).json({ success: false, message: 'Meeting not found' });
@@ -1025,7 +1075,7 @@ router.get('/:meetingId', async (req, res) => {
 	}
 });
 
-// Update a meeting - creator (leader) or any super leader can update
+// Update a meeting - ONLY the creator can update their meeting
 router.put('/:meetingId', async (req, res) => {
 	try {
 		const { meetingId } = req.params;
@@ -1041,7 +1091,7 @@ router.put('/:meetingId', async (req, res) => {
 		if (!user) {
 			return res.status(404).json({ success: false, message: 'User not found' });
 		}
-		if (user.role !== 'leader' && user.role !== 'super leader') {
+		if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
 			return res.status(403).json({ success: false, message: 'Access denied. Only leaders and super leaders can perform this action.' });
 		}
 
@@ -1050,29 +1100,22 @@ router.put('/:meetingId', async (req, res) => {
 			return res.status(400).json({ success: false, message: 'Invalid meeting ID' });
 		}
 
-		// Load meeting with creator role
+		// Load meeting with creator details
 		const meeting = await LeadersMeeting.findById(meetingId).populate('createdBy', 'name phoneNumber role');
 		if (!meeting) {
 			return res.status(404).json({ success: false, message: 'Meeting not found' });
 		}
 
+		// ✅ ONLY THE CREATOR CAN UPDATE - regardless of their role (leader or super leader)
 		const isCreator = meeting.createdBy._id.toString() === user.id;
-		const isSuperLeader = user.role === 'super leader';
-		const creatorIsLeader = meeting.createdBy.role === 'leader';
-
-		// Permission: if creator is leader → creator or super leader can update; if creator is super leader → only creator can update
-		let canUpdate = false;
-		if (creatorIsLeader) {
-			canUpdate = isCreator || isSuperLeader;
-		} else {
-			canUpdate = isCreator;
-		}
-		if (!canUpdate) {
+		if (!isCreator) {
 			return res.status(403).json({
 				success: false,
-				message: creatorIsLeader ? 'Only the meeting creator or super leaders can update this meeting' : 'Only the meeting creator can update this meeting'
+				message: 'Access denied. Only the meeting creator can update this meeting.'
 			});
 		}
+
+		console.log(`✅ Meeting update authorized for creator: ${user.name} (${user.role.name})`);
 
 		// Collect updatable fields
 		const {
@@ -1099,6 +1142,7 @@ router.put('/:meetingId', async (req, res) => {
 			meeting.endDatetime = newEnd;
 		}
 
+		// Update fields if provided
 		if (typeof title === 'string') meeting.title = title;
 		if (typeof type === 'string') meeting.type = type;
 		if (typeof mode === 'string') meeting.mode = mode;
@@ -1110,6 +1154,7 @@ router.put('/:meetingId', async (req, res) => {
 		// Optionally update participants list
 		if (Array.isArray(participants)) {
 			// Validate all participants exist and are leaders/super leaders
+			// Note: This will need to be updated after migration to use ObjectId references
 			const participantUsers = await User.find({ _id: { $in: participants }, role: { $in: ['leader', 'super leader'] } });
 			if (participantUsers.length !== participants.length) {
 				return res.status(400).json({ success: false, message: 'Some participants are not valid leaders or super leaders' });
@@ -1121,7 +1166,7 @@ router.put('/:meetingId', async (req, res) => {
 			);
 
 			const creatorId = meeting.createdBy._id.toString();
-			const meetingIsAutoConfirmed = meeting.status === 'confirmed' && meeting.createdBy.role === 'super leader';
+			const meetingIsAutoConfirmed = meeting.status === 'confirmed' && meeting.createdBy.role && meeting.createdBy.role.name === 'super leader';
 
 			const rebuilt = participants.map(pid => {
 				const pidStr = pid.toString();
@@ -1145,8 +1190,8 @@ router.put('/:meetingId', async (req, res) => {
 
 		const saved = await meeting.save();
 		const populated = await LeadersMeeting.findById(saved._id)
-			.populate('participants.participant', 'name phoneNumber')
-			.populate('createdBy', 'name phoneNumber');
+			.populate('participants.participant', 'name phoneNumber role department tags')
+			.populate('createdBy', 'name phoneNumber role department tags');
 
 		// Update corresponding schedules if meeting time changed
 		if (startDatetime || endDatetime) {
@@ -1158,9 +1203,52 @@ router.put('/:meetingId', async (req, res) => {
 					endDateTime: saved.endDatetime
 				}
 			);
+			console.log(`📅 Updated schedules for meeting: ${saved.title}`);
 		}
 
-		return res.status(200).json({ success: true, message: 'Meeting updated successfully', data: populated });
+		// 🔔 SEND NOTIFICATION TO ALL PARTICIPANTS ABOUT MEETING UPDATE
+		try {
+			const populatedMeeting = await LeadersMeeting.findById(saved._id)
+				.populate({
+					path: 'participants.participant',
+					select: 'name phoneNumber role department tags',
+					populate: { path: 'tags', select: 'tagName' }
+				})
+				.populate({
+					path: 'createdBy',
+					select: 'name phoneNumber role department tags',
+					populate: { path: 'tags', select: 'tagName' }
+				});
+
+			for (const participantData of populatedMeeting.participants) {
+				try {
+					const isCreator = participantData.participant._id.toString() === user.id;
+					if (!isCreator) { // Don't send notification to the creator
+						                        const message = `📝 Meeting Updated: ${populatedMeeting.title}\n\n` +
+									   `The meeting has been updated by ${user.name}.\n\n` +
+									   `Updated Details:\n` +
+									   `📅 Date: ${new Date(populatedMeeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+									   `⏰ Time: ${new Date(populatedMeeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(populatedMeeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n` +
+									   `📍 Mode: ${populatedMeeting.mode}\n` +
+									   `📝 Description: ${populatedMeeting.description}\n\n` +
+									   `Please check your Hira+ app for the latest details.`;
+
+						await sendDXingMessage(participantData.participant.phoneNumber, message);
+						console.log(`📱 Update notification sent to: ${participantData.participant.name}`);
+					}
+				} catch (error) {
+					console.error(`Failed to send update notification to ${participantData.participant.phoneNumber}:`, error);
+				}
+			}
+		} catch (notificationError) {
+			console.error('Error sending meeting update notifications:', notificationError);
+		}
+
+		return res.status(200).json({ 
+			success: true, 
+			message: 'Meeting updated successfully', 
+			data: populated 
+		});
 	} catch (error) {
 		console.error('Error updating meeting:', error);
 		return res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
@@ -1196,7 +1284,7 @@ router.delete('/:meetingId', async (req, res) => {
         }
 
         // Check if user is leader or super leader
-        if (user.role !== 'leader' && user.role !== 'super leader') {
+        if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. Only leaders and super leaders can perform this action.'
@@ -1227,8 +1315,8 @@ router.delete('/:meetingId', async (req, res) => {
 
         // Check if user is the creator of the meeting
         const isCreator = meeting.createdBy._id.toString() === userId;
-        const isSuperLeader = user.role === 'super leader';
-        const creatorIsLeader = meeting.createdBy.role === 'leader';
+        const isSuperLeader = user.role && user.role.name === 'super leader';
+        const creatorIsLeader = meeting.createdBy.role && meeting.createdBy.role.name === 'leader';
 
         // Permission logic:
         // 1. If creator is leader: only creator AND super leaders can delete
@@ -1288,8 +1376,8 @@ router.delete('/:meetingId', async (req, res) => {
                         const message = `🔄 Schedule Restored\n\n` +
                                        `Your schedule "${schedule.title}" has been restored.\n\n` +
                                        `Restored Schedule:\n` +
-                                       `📅 Date: ${new Date(schedule.startDateTime).toLocaleString()}\n` +
-                                       `⏰ Time: ${new Date(schedule.startDateTime).toLocaleTimeString()} - ${new Date(schedule.endDateTime).toLocaleTimeString()}\n` +
+                                       `📅 Date: ${new Date(schedule.startDateTime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                                       `⏰ Time: ${new Date(schedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(schedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n` +
                                        `📝 Type: ${schedule.scheduleType}\n\n` +
                                        `Reason: The meeting that overrode this schedule has been cancelled.\n` +
                                        `Please check your Hira+ app for details.`;
@@ -1349,7 +1437,7 @@ router.get('/reschedule-requests', async (req, res) => {
         }
 
         // Check if user is leader or super leader
-        if (user.role !== 'leader' && user.role !== 'super leader') {
+        if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. Only leaders and super leaders can perform this action.'

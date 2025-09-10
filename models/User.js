@@ -45,18 +45,22 @@ const userSchema = new mongoose.Schema({
     default: false,
     required: false
   },
-  role:{
-    type: String,
-    enum: ['driver', 'accountant', 'member', 'leader', 'super leader'],
-    default: 'member'
+  role: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Role',
+    required: true
   },
   status: {
     type: String,
     enum: ['active', 'inactive'],
     default: 'active'
-  }
+  },
+  tags: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tag'
+  }]
 }, {
-  timestamps: true
-});
+    timestamps: true
+  });
 
 module.exports = mongoose.model('User', userSchema); 
