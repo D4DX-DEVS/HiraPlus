@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const Message = require('../models/Message');
 const GuestMeal = require('../models/GuestMeal');
 const CustomList = require('../models/CustomList');
+const Role = require('../models/Roles');
 const jwt = require('jsonwebtoken');
 const adminAuth = require('../middleware/adminAuth');
 const axios = require('axios');
@@ -145,13 +146,24 @@ router.post('/users', adminAuth, async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Handle role - convert role name to ObjectId if needed
+    let roleId = role;
+    if (role && typeof role === 'string' && !mongoose.Types.ObjectId.isValid(role)) {
+      // If role is a string (role name), find the corresponding ObjectId
+      const roleDoc = await Role.findOne({ name: role.trim() });
+      if (!roleDoc) {
+        return res.status(400).json({ 
+          message: `Invalid role name: ${role}. Available roles: member, driver, accountant, leader, super leader` 
+        });
+      }
+      roleId = roleDoc._id;
+    }
+
     // Validate tags if provided
     let validatedTags = [];
     if (tags && Array.isArray(tags) && tags.length > 0) {
       // Only allow tags for leader and super leader roles
-      // Note: role is now ObjectId, so we need to check role name
-      const Role = require('../models/Roles');
-      const roleDoc = await Role.findById(role);
+      const roleDoc = await Role.findById(roleId);
       if (!roleDoc || (roleDoc.name !== 'leader' && roleDoc.name !== 'super leader')) {
         return res.status(400).json({ 
           message: 'Tags can only be assigned to users with leader or super leader roles' 
@@ -177,14 +189,15 @@ router.post('/users', adminAuth, async (req, res) => {
       status: status || 'active',
       isFreeFood: isFreeFood || false,
       isIntern: isIntern || false,
-      role: role,
+      role: roleId,
       tags: validatedTags
     });
     await user.save();
 
-    // Populate department and tags for response
+    // Populate department, tags, and role for response
     await user.populate('department', 'title');
     await user.populate('tags', 'tagName');
+    await user.populate('role', 'name');
 
     res.status(201).json({ 
       message: 'User added successfully',
@@ -245,9 +258,16 @@ router.get('/users', adminAuth, async (req, res) => {
 // Get list of drivers (no authentication required)
 router.get('/drivers', async (req, res) => {
   try {
-    const drivers = await User.find({ role: 'driver' })
+    // Get driver role first
+    const driverRole = await Role.findOne({ name: 'driver' });
+    if (!driverRole) {
+      return res.status(404).json({ message: 'Driver role not found' });
+    }
+    
+    const drivers = await User.find({ role: driverRole._id })
       .populate('department', 'title')
       .populate('tags', 'tagName')
+      .populate('role', 'name')
       .select('name phoneNumber department designation status role tags')
       .sort({ name: 1 });
 
@@ -376,14 +396,27 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     if (status && ['active', 'inactive'].includes(status)) user.status = status;
     if (typeof isFreeFood !== 'undefined') user.isFreeFood = isFreeFood;
     if (typeof isIntern !== 'undefined') user.isIntern = isIntern;
-    if (typeof role !== 'undefined') user.role = role;
+    if (typeof role !== 'undefined') {
+      // Handle role - convert role name to ObjectId if needed
+      let roleId = role;
+      if (role && typeof role === 'string' && !mongoose.Types.ObjectId.isValid(role)) {
+        // If role is a string (role name), find the corresponding ObjectId
+        const roleDoc = await Role.findOne({ name: role.trim() });
+        if (!roleDoc) {
+          return res.status(400).json({ 
+            message: `Invalid role name: ${role}. Available roles: member, driver, accountant, leader, super leader` 
+          });
+        }
+        roleId = roleDoc._id;
+      }
+      user.role = roleId;
+    }
 
     // Handle tags if provided
     if (tags !== undefined) {
       if (tags && Array.isArray(tags) && tags.length > 0) {
         // Only allow tags for leader and super leader roles
-        const currentRoleId = role || user.role;
-        const Role = require('../models/Roles');
+        const currentRoleId = (typeof role !== 'undefined' ? roleId : user.role);
         const currentRoleDoc = await Role.findById(currentRoleId);
         if (!currentRoleDoc || (currentRoleDoc.name !== 'leader' && currentRoleDoc.name !== 'super leader')) {
           return res.status(400).json({ 
@@ -3969,7 +4002,6 @@ router.post('/travel', adminAuth, async (req, res) => {
     }
 
     // Check if user is a driver
-    const Role = require('../models/Roles');
     const driverRole = await Role.findOne({ name: 'driver' });
     if (!driverRole || foundUser.role.toString() !== driverRole._id.toString()) {
       return res.status(400).json({
@@ -4083,7 +4115,6 @@ router.put('/travel/:travelId', adminAuth, async (req, res) => {
 router.get('/drivers', adminAuth, async (req, res) => {
   try {
     // Get driver role first
-    const Role = require('../models/Roles');
     const driverRole = await Role.findOne({ name: 'driver' });
     if (!driverRole) {
       return res.status(404).json({ message: 'Driver role not found' });

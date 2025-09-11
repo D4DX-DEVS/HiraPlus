@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Role = require('../models/Roles');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const leaderAuth = require('../middleware/leaderAuth');
@@ -80,7 +81,8 @@ router.post('/request-otp', async (req, res) => {
     // Check if user exists and has leader/super leader role
     const user = await User.findOne({ phoneNumber })
       .populate('department', 'title')
-      .populate('tags', 'tagName');
+      .populate('tags', 'tagName')
+      .populate('role', 'name');
     if (!user) {
       return res.status(404).json({ 
         success: false,
@@ -150,7 +152,8 @@ router.post('/verify-otp', async (req, res) => {
     // Check if user exists and has appropriate role
     const user = await User.findOne({ phoneNumber })
       .populate('department', 'title')
-      .populate('tags', 'tagName');
+      .populate('tags', 'tagName')
+      .populate('role', 'name');
     if (!user) {
       return res.status(404).json({ 
         success: false,
@@ -224,7 +227,8 @@ router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
       .populate('department', 'title')
-      .populate('tags', 'tagName');
+      .populate('tags', 'tagName')
+      .populate('role', 'name');
     
     if (!user) {
       return res.status(404).json({
@@ -264,13 +268,24 @@ router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
 // Get all leaders and super leaders
 router.get('/all', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
+    // Get leader and super leader role ObjectIds
+    const leaderRole = await Role.findOne({ name: 'leader' });
+    const superLeaderRole = await Role.findOne({ name: 'super leader' });
+    
+    if (!leaderRole || !superLeaderRole) {
+      return res.status(500).json({
+        success: false,
+        message: 'Leader roles not found in database'
+      });
+    }
+
     const leaders = await User.find({
-      // Note: This will need to be updated after migration to use ObjectId references
-      role: { $in: ['leader', 'super leader'] },
+      role: { $in: [leaderRole._id, superLeaderRole._id] },
       status: 'active'
     })
     .populate('department', 'title')
     .populate('tags', 'tagName')
+    .populate('role', 'name')
     .select('name phoneNumber role department designation isDeptHead isVerified status createdAt tags')
     .sort({ role: 1, name: 1 }); // Sort by role (super leader first), then by name
 

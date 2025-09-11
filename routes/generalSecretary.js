@@ -61,6 +61,7 @@ router.get('/users', generalSecretaryAuth, async (req, res) => {
   try {
     const users = await User.find({})
       .populate('department', 'title')
+      .populate('role', 'name')
       .populate('tags', 'tagName')
       .select('-__v')
       .sort({ createdAt: -1 });
@@ -86,6 +87,7 @@ router.get('/users/:id', generalSecretaryAuth, async (req, res) => {
 
     const user = await User.findById(id)
       .populate('department', 'title')
+      .populate('role', 'name')
       .populate('tags', 'tagName')
       .select('-__v');
 
@@ -132,6 +134,7 @@ router.put('/users/:id', generalSecretaryAuth, async (req, res) => {
       { new: true, runValidators: true }
     )
       .populate('department', 'title')
+      .populate('role', 'name')
       .populate('tags', 'tagName')
       .select('-__v');
 
