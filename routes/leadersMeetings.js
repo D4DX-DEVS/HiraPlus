@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const LeadersMeeting = require('../models/leadersMeetng');
 const User = require('../models/User');
+const Role = require('../models/Roles');
 const { leaderAuth, leaderOrSuperLeaderAuth } = require('../middleware/leaderAuth');
 const superLeaderAuth = require('../middleware/superLeaderAuth');
 const axios = require('axios');
@@ -342,10 +343,20 @@ router.post('/create', leaderAuth, async (req, res) => {
         }
 
         // Validate that all participants exist and are leaders or super leaders
+        // Get leader and super leader role ObjectIds
+        const leaderRole = await Role.findOne({ name: 'leader' });
+        const superLeaderRole = await Role.findOne({ name: 'super leader' });
+        
+        if (!leaderRole || !superLeaderRole) {
+            return res.status(500).json({
+                success: false,
+                message: 'Leader roles not found in database'
+            });
+        }
+
         const participantUsers = await User.find({
             _id: { $in: participants },
-            // Note: This will need to be updated after migration to use ObjectId references
-            role: { $in: ['leader', 'super leader'] }
+            role: { $in: [leaderRole._id, superLeaderRole._id] }
         });
 
         if (participantUsers.length !== participants.length) {
@@ -391,12 +402,12 @@ router.post('/create', leaderAuth, async (req, res) => {
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             })
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             });
 
         // Create schedules for all participants (leader meetings are confirmed at creation)
@@ -479,10 +490,20 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
         }
 
         // Validate that all participants exist and are leaders or super leaders
+        // Get leader and super leader role ObjectIds
+        const leaderRole = await Role.findOne({ name: 'leader' });
+        const superLeaderRole = await Role.findOne({ name: 'super leader' });
+        
+        if (!leaderRole || !superLeaderRole) {
+            return res.status(500).json({
+                success: false,
+                message: 'Leader roles not found in database'
+            });
+        }
+
         const participantUsers = await User.find({
             _id: { $in: participants },
-            // Note: This will need to be updated after migration to use ObjectId references
-            role: { $in: ['leader', 'super leader'] }
+            role: { $in: [leaderRole._id, superLeaderRole._id] }
         });
 
         if (participantUsers.length !== participants.length) {
@@ -530,12 +551,12 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             })
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             });
 
         // Create schedules for all participants (super leader meetings are auto-confirmed)
@@ -594,7 +615,7 @@ router.post('/:meetingId/respond', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Get user details
-        const user = await User.findById(decoded.id).populate('department', 'title');
+        const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
         
         if (!user) {
             return res.status(404).json({
@@ -626,12 +647,12 @@ router.post('/:meetingId/respond', async (req, res) => {
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             })
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             });
 
         if (!meeting) {
@@ -743,7 +764,7 @@ router.get('/requests', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Get user details
-        const user = await User.findById(decoded.id).populate('department', 'title');
+        const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
         
         if (!user) {
             return res.status(404).json({
@@ -836,7 +857,7 @@ router.get('/my-meetings', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Get user details
-        const user = await User.findById(decoded.id).populate('department', 'title');
+        const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
         
         if (!user) {
             return res.status(404).json({
@@ -862,8 +883,8 @@ router.get('/my-meetings', async (req, res) => {
                 { 'participants.participant': userId }
             ]
         })
-        .populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
-        .populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
+        .populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }] })
+        .populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }] })
         .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -930,17 +951,17 @@ router.get('/all-meetings', superLeaderAuth, async (req, res) => {
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             })
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             })
             .populate({
                 path: 'rescheduleRequests.requestedBy',
                 select: 'name phoneNumber role department tags',
-                populate: { path: 'tags', select: 'tagName' }
+                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
             }) // ✅ Populate reschedule request user data
             .sort(sort)
             .limit(limit * 1)
@@ -1039,8 +1060,8 @@ router.get('/:meetingId', async (req, res) => {
 		}
 
 		const meeting = await LeadersMeeting.findById(meetingId)
-			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
-			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } });
+			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }] })
+			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }] });
 
 		if (!meeting) {
 			return res.status(404).json({ success: false, message: 'Meeting not found' });
@@ -1101,7 +1122,7 @@ router.put('/:meetingId', async (req, res) => {
 		}
 
 		// Load meeting with creator details
-		const meeting = await LeadersMeeting.findById(meetingId).populate('createdBy', 'name phoneNumber role');
+		const meeting = await LeadersMeeting.findById(meetingId).populate('createdBy', 'name phoneNumber role').populate('createdBy.role', 'name');
 		if (!meeting) {
 			return res.status(404).json({ success: false, message: 'Meeting not found' });
 		}
@@ -1154,8 +1175,18 @@ router.put('/:meetingId', async (req, res) => {
 		// Optionally update participants list
 		if (Array.isArray(participants)) {
 			// Validate all participants exist and are leaders/super leaders
-			// Note: This will need to be updated after migration to use ObjectId references
-			const participantUsers = await User.find({ _id: { $in: participants }, role: { $in: ['leader', 'super leader'] } });
+			// Get leader and super leader role ObjectIds
+			const leaderRole = await Role.findOne({ name: 'leader' });
+			const superLeaderRole = await Role.findOne({ name: 'super leader' });
+			
+			if (!leaderRole || !superLeaderRole) {
+				return res.status(500).json({
+					success: false,
+					message: 'Leader roles not found in database'
+				});
+			}
+
+			const participantUsers = await User.find({ _id: { $in: participants }, role: { $in: [leaderRole._id, superLeaderRole._id] } });
 			if (participantUsers.length !== participants.length) {
 				return res.status(400).json({ success: false, message: 'Some participants are not valid leaders or super leaders' });
 			}
@@ -1190,8 +1221,8 @@ router.put('/:meetingId', async (req, res) => {
 
 		const saved = await meeting.save();
 		const populated = await LeadersMeeting.findById(saved._id)
-			.populate('participants.participant', 'name phoneNumber role department tags')
-			.populate('createdBy', 'name phoneNumber role department tags');
+			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'role', select: 'name' } })
+			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'role', select: 'name' } });
 
 		// Update corresponding schedules if meeting time changed
 		if (startDatetime || endDatetime) {
@@ -1274,7 +1305,7 @@ router.delete('/:meetingId', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Get user details
-        const user = await User.findById(decoded.id).populate('department', 'title');
+        const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
         
         if (!user) {
             return res.status(404).json({
@@ -1304,7 +1335,7 @@ router.delete('/:meetingId', async (req, res) => {
 
         // Find the meeting with creator details
         const meeting = await LeadersMeeting.findById(meetingId)
-            .populate('createdBy', 'name phoneNumber role');
+            .populate('createdBy', 'name phoneNumber role').populate('createdBy.role', 'name');
         
         if (!meeting) {
             return res.status(404).json({
@@ -1427,7 +1458,7 @@ router.get('/reschedule-requests', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Get user details
-        const user = await User.findById(decoded.id).populate('department', 'title');
+        const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
         
         if (!user) {
             return res.status(404).json({
@@ -1459,7 +1490,7 @@ router.get('/reschedule-requests', async (req, res) => {
             meetingReference: { $in: meetingIds },
             'rescheduleRequest.status': 'pending'
         })
-        .populate('createdBy', 'name phoneNumber')
+        .populate('createdBy', 'name phoneNumber role').populate('createdBy.role', 'name')
         .populate('meetingReference', 'title startDatetime endDatetime')
         .sort({ 'rescheduleRequest.requestedAt': -1 });
 
