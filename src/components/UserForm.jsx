@@ -8,6 +8,8 @@ import {
   UserGroupIcon 
 } from '@heroicons/react/24/outline';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
@@ -18,19 +20,31 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     isFreeFood: initialData?.isFreeFood || false,
     isIntern: initialData?.isIntern || false,
     role: initialData?.role || '',
-    status: initialData?.status || 'active',
-    tags: Array.isArray(initialData?.tags)
-      ? initialData.tags.map(t => (typeof t === 'string' ? t : t?._id)).filter(Boolean)
-      : []
+    status: initialData?.status || 'active'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState([]);
-  const [allTags, setAllTags] = useState([]);
-  const [tagsLoading, setTagsLoading] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
   // Check if the selected department should show isIntern field
   const shouldShowInternField = formData.department === 'D4DX Innovations LLP';
+
+  // Get authentication token
+  const getAuthToken = () => {
+    return localStorage.getItem('adminToken');
+  };
+
+  // Role utility functions
+  const formatRoleName = (name) => {
+    if (!name) return '';
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  };
+
+  const isLeaderRole = (roleName) => {
+    return roleName === 'leader' || roleName === 'super leader';
+  };
 
   // Fetch departments
   useEffect(() => {
@@ -45,21 +59,30 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     fetchDepartments();
   }, []);
 
-  // Fetch tags
+  // Fetch roles
   useEffect(() => {
-    const fetchTags = async () => {
+    const fetchRoles = async () => {
       try {
-        setTagsLoading(true);
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/tags`);
-        setAllTags(res.data || []);
+        setRolesLoading(true);
+        const token = getAuthToken();
+        const response = await axios.get(`${API_URL}/roles`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success) {
+          setRoles(response.data.roles || []);
+        } else {
+          console.error('Failed to fetch roles:', response.data.message);
+        }
       } catch (err) {
-        console.error('Failed to fetch tags:', err);
+        console.error('Failed to fetch roles:', err);
       } finally {
-        setTagsLoading(false);
+        setRolesLoading(false);
       }
     };
-    fetchTags();
+    fetchRoles();
   }, []);
+
 
   useEffect(() => {
     if (initialData) {
@@ -72,41 +95,20 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         isDeptHead: initialData.isDeptHead || false,
         isFreeFood: initialData.isFreeFood || false,
         isIntern: initialData.isIntern || false,
-        role: initialData.role || '',
-        status: initialData.status || 'active',
-        tags: Array.isArray(initialData.tags)
-          ? initialData.tags.map(t => (typeof t === 'string' ? t : t?._id)).filter(Boolean)
-          : []
+        role: typeof initialData.role === 'object' ? initialData.role?._id || '' : initialData.role || '',
+        status: initialData.status || 'active'
       });
     }
   }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name === 'role') {
-      const isLeaderRole = value === 'leader' || value === 'super leader';
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        tags: isLeaderRole ? prev.tags : []
-      }));
-      return;
-    }
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   };
 
-  const handleTagToggle = (tagId) => {
-    setFormData(prev => {
-      const exists = prev.tags.includes(tagId);
-      return {
-        ...prev,
-        tags: exists ? prev.tags.filter(id => id !== tagId) : [...prev.tags, tagId]
-      };
-    });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -271,51 +273,48 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
             <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
               Role
             </label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-            >
-              <option value="">None</option>
-              <option value="member">Member</option>
-              <option value="driver">Driver</option>
-              <option value="accountant">Accountant</option>
-              <option value="leader">Leader</option>
-              <option value="super leader">Super Leader</option>
-            </select>
+            {(() => {
+              // Check if user has a leadership role
+              const currentRole = roles.find(role => role.id === formData.role);
+              const hasLeadershipRole = currentRole && isLeaderRole(currentRole.name);
+              
+              if (hasLeadershipRole) {
+                // Show read-only field for leadership roles
+                return (
+                  <div className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-gray-50 text-sm text-gray-600">
+                    {formatRoleName(currentRole.name)} (Read-only - Leadership role)
+                  </div>
+                );
+              }
+              
+              // Show editable dropdown for non-leadership roles
+              return (
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                >
+                  <option value="">Select Role</option>
+                  {rolesLoading ? (
+                    <option disabled>Loading roles...</option>
+                  ) : roles.length === 0 ? (
+                    <option disabled>No roles found</option>
+                  ) : (
+                    roles
+                      .filter(role => !isLeaderRole(role.name)) // Hide leader and super leader roles
+                      .map(role => (
+                        <option key={role.id} value={role.id}>
+                          {formatRoleName(role.name)}
+                        </option>
+                      ))
+                  )}
+                </select>
+              );
+            })()}
           </div>
 
-          {(formData.role === 'leader' || formData.role === 'super leader') && (
-            <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tags </label>
-              <div className="rounded-lg border border-gray-200 p-3 max-h-40 overflow-auto">
-                {tagsLoading ? (
-                  <div className="text-sm text-gray-500">Loading tags...</div>
-                ) : allTags.length === 0 ? (
-                  <div className="text-sm text-gray-500">No tags found. Create tags in admin first.</div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {allTags.map(tag => (
-                      <label key={tag._id} className="inline-flex items-center space-x-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                          checked={formData.tags.includes(tag._id)}
-                          onChange={() => handleTagToggle(tag._id)}
-                        />
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                          {tag.tagName}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Only users with Leader or Super Leader roles can be assigned tags.</p>
-            </div>
-          )}
 
           {shouldShowInternField && (
             <div className="flex items-center space-x-3">

@@ -37,7 +37,8 @@ const Sidebar = ({ isOpen }) => {
       icon: BuildingOfficeIcon,
       subItems: [
         { name: 'Department Management', href: '/admin/departments', icon: BuildingOfficeIcon },
-        { name: 'Tag Management', href: '/admin/tags', icon: TagIcon }
+        { name: 'Tag Management', href: '/admin/tags', icon: TagIcon },
+        { name: 'Role Management', href: '/admin/roles', icon: UserGroupIcon }
       ]
     },
     { 
