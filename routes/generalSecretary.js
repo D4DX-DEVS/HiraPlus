@@ -56,6 +56,86 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Create user (only leader and super leader roles)
+router.post('/users', generalSecretaryAuth, async (req, res) => {
+  try {
+    const { name, phoneNumber, department, designation, role, isDeptHead, isFreeFood, isIntern, tags } = req.body;
+
+    // Validate required fields
+    if (!name || !phoneNumber || !department || !designation || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, phone number, department, designation, and role are required'
+      });
+    }
+
+    // Validate role - only allow leader and super leader
+    if (role !== 'leader' && role !== 'super leader') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only leader and super leader roles are allowed'
+      });
+    }
+
+    // Check if phone number already exists
+    const existingUser = await User.findOne({ phoneNumber });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number already exists'
+      });
+    }
+
+    // Create new user
+    const user = new User({
+      name,
+      phoneNumber,
+      department,
+      designation,
+      role,
+      isDeptHead: isDeptHead || false,
+      isFreeFood: isFreeFood || false,
+      isIntern: isIntern || false,
+      status: 'active',
+      isVerified: false,
+      tags: tags || []
+    });
+
+    await user.save();
+
+    // Populate the created user with department, role, and tags
+    const populatedUser = await User.findById(user._id)
+      .populate('department', 'title')
+      .populate('role', 'name')
+      .populate('tags', 'tagName')
+      .select('-__v');
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: populatedUser
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number already exists'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Get all users
 router.get('/users', generalSecretaryAuth, async (req, res) => {
   try {
