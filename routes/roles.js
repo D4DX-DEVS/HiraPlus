@@ -1,38 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Role = require('../models/Roles');
-const adminAuth = require('../middleware/adminAuth');
-const generalSecretaryAuth = require('../middleware/generalSecretaryAuth');
-
-// Middleware to allow both admin and general secretary access
-const adminOrGeneralSecretaryAuth = async (req, res, next) => {
-  try {
-    // Try admin authentication first
-    await new Promise((resolve, reject) => {
-      adminAuth(req, res, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-    next();
-  } catch (adminError) {
-    // If admin auth fails, try general secretary auth
-    try {
-      await new Promise((resolve, reject) => {
-        generalSecretaryAuth(req, res, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-      next();
-    } catch (generalSecretaryError) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Only admin or general secretary can perform this action.'
-      });
-    }
-  }
-};
+const adminOrGeneralSecretaryAuth = require('../middleware/adminOrGeneralSecretaryAuth');
 
 // Get all roles
 router.get('/', adminOrGeneralSecretaryAuth, async (req, res) => {
@@ -197,7 +166,7 @@ router.put('/:id', adminOrGeneralSecretaryAuth, async (req, res) => {
 });
 
 // Delete role
-router.delete('/:id', adminAuth, async (req, res) => {
+router.delete('/:id', adminOrGeneralSecretaryAuth, async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);
     

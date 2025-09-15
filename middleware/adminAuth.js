@@ -18,6 +18,6 @@ module.exports = (req, res, next) => {
 
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Admin authentication required' });
+    throw new Error('Admin authentication required');
   }
 }; 

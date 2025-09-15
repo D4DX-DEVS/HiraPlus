@@ -389,8 +389,8 @@ router.get('/reschedule-requests', leaderOrSuperLeaderAuth, async (req, res) => 
     }
 
     const meetings = await LeadersMeeting.find(query)
-      .populate('createdBy', 'name phoneNumber role')
-      .populate('rescheduleRequests.requestedBy', 'name phoneNumber role')
+      .populate({ path: 'createdBy', select: 'name phoneNumber role', populate: { path: 'role', select: 'name' } })
+      .populate({ path: 'rescheduleRequests.requestedBy', select: 'name phoneNumber role', populate: { path: 'role', select: 'name' } })
       .populate('rescheduleRequests.affectedScheduleId', 'title scheduleType startDateTime endDateTime')
       .sort({ 'rescheduleRequests.requestedAt': -1 });
 
@@ -705,7 +705,7 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
     // Find the meeting
     const LeadersMeeting = require('../models/leadersMeetng');
     const meeting = await LeadersMeeting.findById(meetingId)
-      .populate('createdBy', 'name phoneNumber role');
+      .populate({ path: 'createdBy', select: 'name phoneNumber role', populate: { path: 'role', select: 'name' } });
 
     if (!meeting) {
       return res.status(404).json({
