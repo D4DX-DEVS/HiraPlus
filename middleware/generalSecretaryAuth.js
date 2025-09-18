@@ -6,7 +6,10 @@ const generalSecretaryAuth = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-      throw new Error('No authentication token provided');
+      return res.status(401).json({
+        success: false,
+        message: 'No authentication token provided'
+      });
     }
 
     // Verify token
@@ -14,7 +17,10 @@ const generalSecretaryAuth = async (req, res, next) => {
     
     // Check if token has general secretary role
     if (decoded.role !== 'general secretary') {
-      throw new Error('Access denied. Only general secretary can perform this action.');
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only general secretary can perform this action.'
+      });
     }
 
     // Add decoded info to request
@@ -22,7 +28,16 @@ const generalSecretaryAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('General Secretary authentication error:', error);
-    throw error;
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication token'
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: 'Authentication error'
+    });
   }
 };
 

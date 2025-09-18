@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const generalSecretaryAuth = require('../middleware/generalSecretaryAuth');
 const User = require('../models/User');
+const Role = require('../models/Roles');
 
 // General Secretary Login Route
 router.post('/login', async (req, res) => {
@@ -77,6 +78,15 @@ router.post('/users', generalSecretaryAuth, async (req, res) => {
       });
     }
 
+    // Find role by name to get the ObjectId
+    const roleDoc = await Role.findOne({ name: role });
+    if (!roleDoc) {
+      return res.status(400).json({
+        success: false,
+        message: `Role '${role}' not found in database`
+      });
+    }
+
     // Check if phone number already exists
     const existingUser = await User.findOne({ phoneNumber });
     if (existingUser) {
@@ -86,19 +96,32 @@ router.post('/users', generalSecretaryAuth, async (req, res) => {
       });
     }
 
+    // Process tags - ensure it's an array of ObjectIds
+    let processedTags = [];
+    if (tags && Array.isArray(tags)) {
+      processedTags = tags;
+    } else if (tags && typeof tags === 'string') {
+      // If tags is a string, try to parse it as JSON array
+      try {
+        processedTags = JSON.parse(tags);
+      } catch (e) {
+        processedTags = [];
+      }
+    }
+
     // Create new user
     const user = new User({
       name,
       phoneNumber,
       department,
       designation,
-      role,
+      role: roleDoc._id, // Use the ObjectId from the role document
       isDeptHead: isDeptHead || false,
       isFreeFood: isFreeFood || false,
       isIntern: isIntern || false,
       status: 'active',
       isVerified: false,
-      tags: tags || []
+      tags: processedTags
     });
 
     await user.save();
