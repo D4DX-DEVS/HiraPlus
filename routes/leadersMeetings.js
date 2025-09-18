@@ -17,7 +17,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
         
         if (isCreator) {
             message = `Meeting Created: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Description: ${meeting.description}\n\n` +
                      `You have created this meeting and are automatically accepted as a participant.\n` +
@@ -25,7 +25,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
                      `Meeting requests have been sent to all other participants.\n`;
         } else {
             message = `Meeting Request: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Description: ${meeting.description}\n\n` +
                      `Please update your response in Hira+ app.\n` +
@@ -52,7 +52,7 @@ async function sendMeetingConfirmationToParticipant(meeting, participant) {
         }
         
         const message = `Meeting Confirmed: ${meeting.title}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                        `Mode: ${meeting.mode}\n` +
                        `Location: ${meeting.locationLink || 'TBD'}\n` +
                        `Description: ${meeting.description}\n\n` +
@@ -79,7 +79,7 @@ async function sendMeetingCancellationToParticipant(meeting, participant) {
         }
         
         const message = `Meeting Response Recorded: ${meeting.title}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                        `Mode: ${meeting.mode}\n` +
                        `Description: ${meeting.description}\n\n` +
                        `Your response has been recorded as DECLINED.\n` +
@@ -101,7 +101,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
         
         if (isCreator) {
             message = `Meeting Scheduled: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Description: ${meeting.description}\n\n` +
                      `You have scheduled this meeting as a Super Leader.\n` +
@@ -109,7 +109,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
                      `Meeting is confirmed and will proceed as scheduled.`;
         } else {
             message = `Meeting Scheduled: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
+                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                      `Mode: ${meeting.mode}\n` +
                      `Location: ${meeting.locationLink || 'TBD'}\n` +
                      `Description: ${meeting.description}\n\n` +
@@ -245,14 +245,14 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                             const message = `⚠️ Schedule Override Alert\n\n` +
                                            `Your schedule "${conflictingSchedule.title}" has been cancelled due to a higher priority meeting.\n\n` +
                                            `Cancelled Schedule:\n` +
-                                           `📅 Date: ${new Date(conflictingSchedule.startDateTime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
-                                           `⏰ Time: ${new Date(conflictingSchedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(conflictingSchedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n` +
+                                           `📅 Date: ${new Date(conflictingSchedule.startDateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
+                                           `⏰ Time: ${new Date(conflictingSchedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(conflictingSchedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                                            `📝 Type: ${conflictingSchedule.scheduleType}\n\n` +
                                            `New Meeting:\n` +
                                            `📋 Title: ${meeting.title}\n` +
                                            `👤 Created by: ${creatorRole === 'super leader' ? 'Super Leader' : 'Leader'}\n` +
-                                           `📅 Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
-                                           `⏰ Time: ${new Date(meeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(meeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n\n` +
+                                           `📅 Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
+                                           `⏰ Time: ${new Date(meeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(meeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n\n` +
                                            `⚠️ IMPORTANT: You already had a schedule at this time, but it has been replaced by this meeting.\n` +
                                            `Please check your Hira+ app for more details.`;
 
@@ -342,22 +342,22 @@ router.post('/create', leaderAuth, async (req, res) => {
             });
         }
 
-        // Validate that all participants exist and are leaders or super leaders
-        // Get leader and super leader role ObjectIds
+        // Find the role ObjectIds for leader and super leader
         const leaderRole = await Role.findOne({ name: 'leader' });
         const superLeaderRole = await Role.findOne({ name: 'super leader' });
         
         if (!leaderRole || !superLeaderRole) {
             return res.status(500).json({
                 success: false,
-                message: 'Leader roles not found in database'
+                message: 'Role configuration error: leader or super leader roles not found'
             });
         }
 
+        // Validate that all participants exist and are leaders or super leaders
         const participantUsers = await User.find({
             _id: { $in: participants },
             role: { $in: [leaderRole._id, superLeaderRole._id] }
-        });
+        }).populate('role', 'name');
 
         if (participantUsers.length !== participants.length) {
             return res.status(400).json({
@@ -381,8 +381,13 @@ router.post('/create', leaderAuth, async (req, res) => {
             status: 'pending'
         });
 
-        // Initialize participants with pending status
-        newMeeting.participants = participants.map(participantId => ({
+        // Filter out the creator from participants to avoid duplication
+        const otherParticipants = participants.filter(participantId => 
+            participantId.toString() !== req.user.id.toString()
+        );
+
+        // Initialize other participants with pending status
+        newMeeting.participants = otherParticipants.map(participantId => ({
             participant: participantId,
             status: 'pending'
         }));
@@ -402,12 +407,12 @@ router.post('/create', leaderAuth, async (req, res) => {
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             })
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             });
 
         // Create schedules for all participants (leader meetings are confirmed at creation)
@@ -489,22 +494,22 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             });
         }
 
-        // Validate that all participants exist and are leaders or super leaders
-        // Get leader and super leader role ObjectIds
+        // Find the role ObjectIds for leader and super leader
         const leaderRole = await Role.findOne({ name: 'leader' });
         const superLeaderRole = await Role.findOne({ name: 'super leader' });
         
         if (!leaderRole || !superLeaderRole) {
             return res.status(500).json({
                 success: false,
-                message: 'Leader roles not found in database'
+                message: 'Role configuration error: leader or super leader roles not found'
             });
         }
 
+        // Validate that all participants exist and are leaders or super leaders
         const participantUsers = await User.find({
             _id: { $in: participants },
             role: { $in: [leaderRole._id, superLeaderRole._id] }
-        });
+        }).populate('role', 'name');
 
         if (participantUsers.length !== participants.length) {
             return res.status(400).json({
@@ -528,8 +533,13 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             status: 'confirmed' // Super leader meetings are automatically confirmed
         });
 
-        // Initialize participants with accepted status (all participants are automatically accepted)
-        newMeeting.participants = participants.map(participantId => ({
+        // Filter out the creator from participants to avoid duplication
+        const otherParticipants = participants.filter(participantId => 
+            participantId.toString() !== req.user.id.toString()
+        );
+
+        // Initialize other participants with accepted status (all participants are automatically accepted)
+        newMeeting.participants = otherParticipants.map(participantId => ({
             participant: participantId,
             status: 'accepted',
             responseDate: new Date(),
@@ -551,12 +561,12 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             })
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             });
 
         // Create schedules for all participants (super leader meetings are auto-confirmed)
@@ -647,12 +657,12 @@ router.post('/:meetingId/respond', async (req, res) => {
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             })
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             });
 
         if (!meeting) {
@@ -951,17 +961,17 @@ router.get('/all-meetings', superLeaderAuth, async (req, res) => {
             .populate({
                 path: 'createdBy',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             })
             .populate({
                 path: 'participants.participant',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             })
             .populate({
                 path: 'rescheduleRequests.requestedBy',
                 select: 'name phoneNumber role department tags',
-                populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }]
+                populate: { path: 'tags', select: 'tagName' }
             }) // ✅ Populate reschedule request user data
             .sort(sort)
             .limit(limit * 1)
@@ -1060,8 +1070,8 @@ router.get('/:meetingId', async (req, res) => {
 		}
 
 		const meeting = await LeadersMeeting.findById(meetingId)
-			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }] })
-			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: [{ path: 'tags', select: 'tagName' }, { path: 'role', select: 'name' }] });
+			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } })
+			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'tags', select: 'tagName' } });
 
 		if (!meeting) {
 			return res.status(404).json({ success: false, message: 'Meeting not found' });
@@ -1108,7 +1118,7 @@ router.put('/:meetingId', async (req, res) => {
 		}
 
 		const decoded = jwt.verify(token, process.env.JWT_SECRET);
-		const user = await User.findById(decoded.id).populate('department', 'title');
+		const user = await User.findById(decoded.id).populate('department', 'title').populate('role', 'name');
 		if (!user) {
 			return res.status(404).json({ success: false, message: 'User not found' });
 		}
@@ -1122,7 +1132,7 @@ router.put('/:meetingId', async (req, res) => {
 		}
 
 		// Load meeting with creator details
-		const meeting = await LeadersMeeting.findById(meetingId).populate('createdBy', 'name phoneNumber role').populate('createdBy.role', 'name');
+		const meeting = await LeadersMeeting.findById(meetingId).populate('createdBy', 'name phoneNumber role');
 		if (!meeting) {
 			return res.status(404).json({ success: false, message: 'Meeting not found' });
 		}
@@ -1175,18 +1185,8 @@ router.put('/:meetingId', async (req, res) => {
 		// Optionally update participants list
 		if (Array.isArray(participants)) {
 			// Validate all participants exist and are leaders/super leaders
-			// Get leader and super leader role ObjectIds
-			const leaderRole = await Role.findOne({ name: 'leader' });
-			const superLeaderRole = await Role.findOne({ name: 'super leader' });
-			
-			if (!leaderRole || !superLeaderRole) {
-				return res.status(500).json({
-					success: false,
-					message: 'Leader roles not found in database'
-				});
-			}
-
-			const participantUsers = await User.find({ _id: { $in: participants }, role: { $in: [leaderRole._id, superLeaderRole._id] } });
+			// Note: This will need to be updated after migration to use ObjectId references
+			const participantUsers = await User.find({ _id: { $in: participants }, role: { $in: ['leader', 'super leader'] } });
 			if (participantUsers.length !== participants.length) {
 				return res.status(400).json({ success: false, message: 'Some participants are not valid leaders or super leaders' });
 			}
@@ -1221,8 +1221,8 @@ router.put('/:meetingId', async (req, res) => {
 
 		const saved = await meeting.save();
 		const populated = await LeadersMeeting.findById(saved._id)
-			.populate({ path: 'participants.participant', select: 'name phoneNumber role department tags', populate: { path: 'role', select: 'name' } })
-			.populate({ path: 'createdBy', select: 'name phoneNumber role department tags', populate: { path: 'role', select: 'name' } });
+			.populate('participants.participant', 'name phoneNumber role department tags')
+			.populate('createdBy', 'name phoneNumber role department tags');
 
 		// Update corresponding schedules if meeting time changed
 		if (startDatetime || endDatetime) {
@@ -1258,8 +1258,8 @@ router.put('/:meetingId', async (req, res) => {
 						                        const message = `📝 Meeting Updated: ${populatedMeeting.title}\n\n` +
 									   `The meeting has been updated by ${user.name}.\n\n` +
 									   `Updated Details:\n` +
-									   `📅 Date: ${new Date(populatedMeeting.startDatetime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
-									   `⏰ Time: ${new Date(populatedMeeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(populatedMeeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n` +
+									   `📅 Date: ${new Date(populatedMeeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
+									   `⏰ Time: ${new Date(populatedMeeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(populatedMeeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
 									   `📍 Mode: ${populatedMeeting.mode}\n` +
 									   `📝 Description: ${populatedMeeting.description}\n\n` +
 									   `Please check your Hira+ app for the latest details.`;
@@ -1335,7 +1335,7 @@ router.delete('/:meetingId', async (req, res) => {
 
         // Find the meeting with creator details
         const meeting = await LeadersMeeting.findById(meetingId)
-            .populate('createdBy', 'name phoneNumber role').populate('createdBy.role', 'name');
+            .populate('createdBy', 'name phoneNumber role');
         
         if (!meeting) {
             return res.status(404).json({
@@ -1407,8 +1407,8 @@ router.delete('/:meetingId', async (req, res) => {
                         const message = `🔄 Schedule Restored\n\n` +
                                        `Your schedule "${schedule.title}" has been restored.\n\n` +
                                        `Restored Schedule:\n` +
-                                       `📅 Date: ${new Date(schedule.startDateTime).toLocaleString('en-US', { timeZone: 'UTC' })}\n` +
-                                       `⏰ Time: ${new Date(schedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })} - ${new Date(schedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'UTC' })}\n` +
+                                       `📅 Date: ${new Date(schedule.startDateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
+                                       `⏰ Time: ${new Date(schedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(schedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
                                        `📝 Type: ${schedule.scheduleType}\n\n` +
                                        `Reason: The meeting that overrode this schedule has been cancelled.\n` +
                                        `Please check your Hira+ app for details.`;
@@ -1490,7 +1490,7 @@ router.get('/reschedule-requests', async (req, res) => {
             meetingReference: { $in: meetingIds },
             'rescheduleRequest.status': 'pending'
         })
-        .populate('createdBy', 'name phoneNumber role').populate('createdBy.role', 'name')
+        .populate('createdBy', 'name phoneNumber')
         .populate('meetingReference', 'title startDatetime endDatetime')
         .sort({ 'rescheduleRequest.requestedAt': -1 });
 
