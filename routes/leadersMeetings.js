@@ -153,6 +153,36 @@ async function sendMeetingCancelledNotification(meeting) {
     }
 }
 
+// Send meeting decline notification to meeting creator
+async function sendMeetingDeclineNotificationToCreator(meeting, participant, declineReason) {
+    try {
+        console.log('Decline notification function - meeting:', meeting.title);
+        console.log('Decline notification function - participant:', participant.name);
+        console.log('Decline notification function - decline reason:', declineReason);
+        
+        // Get meeting creator details
+        const creator = await User.findById(meeting.createdBy);
+        
+        if (!creator || !creator.phoneNumber) {
+            console.error('No phone number found for meeting creator:', creator);
+            return;
+        }
+        
+        const message = `Meeting Response Update: ${meeting.title}\n\n` +
+                       `${participant.name} has declined the meeting request.\n\n` +
+                       `Reason: ${declineReason || 'No reason provided'}\n\n` +
+                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
+                       `Time: ${new Date(meeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(meeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n\n` +
+                       `The meeting will still proceed as scheduled.`;
+        
+        console.log('Sending decline notification to creator:', creator.phoneNumber);
+        await sendDXingMessage(creator.phoneNumber, message);
+        console.log('Decline notification sent to creator successfully');
+    } catch (error) {
+        console.error('Error sending meeting decline notification to creator:', error);
+    }
+}
+
 // Helper function to send DXing message
 async function sendDXingMessage(phoneNumber, message) {
     try {
@@ -725,6 +755,11 @@ router.post('/:meetingId/respond', async (req, res) => {
                 console.log('Sending cancellation to participant...');
                 await sendMeetingCancellationToParticipant(meeting, req.user);
                 console.log('Cancellation sent successfully');
+                
+                // Send decline notification to meeting creator
+                console.log('Sending decline notification to meeting creator...');
+                await sendMeetingDeclineNotificationToCreator(meeting, req.user, message);
+                console.log('Decline notification sent to creator successfully');
             }
         } catch (error) {
             console.error('Error sending response notification:', error);

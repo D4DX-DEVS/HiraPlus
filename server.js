@@ -1,4 +1,16 @@
 require('dotenv').config();
+
+// Prevent app crashes from unhandled errors
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't crash the app
+});
+
+process.on('uncaughtException', (error) => {
+  console.log('Uncaught Exception:', error);
+  // Don't crash the app
+});
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
