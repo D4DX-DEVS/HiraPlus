@@ -16,20 +16,9 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
         let message;
         
         if (isCreator) {
-            message = `Meeting Created: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                     `Mode: ${meeting.mode}\n` +
-                     `Description: ${meeting.description}\n\n` +
-                     `You have created this meeting and are automatically accepted as a participant.\n` +
-                     `Location: ${meeting.locationLink || 'TBD'}\n` +
-                     `Meeting requests have been sent to all other participants.\n`;
+            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
         } else {
-            message = `Meeting Request: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                     `Mode: ${meeting.mode}\n` +
-                     `Description: ${meeting.description}\n\n` +
-                     `Please update your response in Hira+ app.\n` +
-                     `Thank you!\n`;
+            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
@@ -51,13 +40,7 @@ async function sendMeetingConfirmationToParticipant(meeting, participant) {
             return;
         }
         
-        const message = `Meeting Confirmed: ${meeting.title}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                       `Mode: ${meeting.mode}\n` +
-                       `Location: ${meeting.locationLink || 'TBD'}\n` +
-                       `Description: ${meeting.description}\n\n` +
-                       `Your response has been recorded as ACCEPTED.\n` +
-                       `Thank you for confirming your attendance!`;
+        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
         
         console.log('Sending confirmation message to:', participant.phoneNumber);
         await sendDXingMessage(participant.phoneNumber, message);
@@ -78,13 +61,7 @@ async function sendMeetingCancellationToParticipant(meeting, participant) {
             return;
         }
         
-        const message = `Meeting Response Recorded: ${meeting.title}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                       `Mode: ${meeting.mode}\n` +
-                       `Description: ${meeting.description}\n\n` +
-                       `Your response has been recorded as DECLINED.\n` +
-                       `Note: The meeting will still proceed as scheduled.\n` +
-                       `Thank you for your response.`;
+        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
         
         console.log('Sending cancellation message to:', participant.phoneNumber);
         await sendDXingMessage(participant.phoneNumber, message);
@@ -100,23 +77,18 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
         let message;
         
         if (isCreator) {
-            message = `Meeting Scheduled: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                     `Mode: ${meeting.mode}\n` +
-                     `Description: ${meeting.description}\n\n` +
-                     `You have scheduled this meeting as a Super Leader.\n` +
-                     `All participants have been automatically accepted and notified.\n` +
-                     `Meeting is confirmed and will proceed as scheduled.`;
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
         } else {
-            message = `Meeting Scheduled: ${meeting.title}\n\n` +
-                     `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                     `Mode: ${meeting.mode}\n` +
-                     `Location: ${meeting.locationLink || 'TBD'}\n` +
-                     `Description: ${meeting.description}\n\n` +
-                     `A Super Leader has scheduled this meeting.\n` +
-                     `You have been automatically accepted as a participant.\n` +
-                     `Please ensure your attendance.\n` +
-                     `Thank you!`;
+            // Debug: Log the actual meeting data
+            console.log('🔍 DEBUG - Meeting data for notification:');
+            console.log('Meeting title:', meeting.title);
+            console.log('Raw startDatetime:', meeting.startDatetime);
+            console.log('startDatetime type:', typeof meeting.startDatetime);
+            console.log('startDatetime as Date:', new Date(meeting.startDatetime));
+            console.log('startDatetime UTC:', new Date(meeting.startDatetime).toISOString());
+            console.log('startDatetime Asia/Kolkata:', new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+            
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
@@ -128,8 +100,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
 // Send meeting cancelled notification
 async function sendMeetingCancelledNotification(meeting) {
     try {
-        const message = `Meeting Cancelled: ${meeting.title}\n\n` +
-                       `Some participants declined the meeting request.`;
+        const message = `**❌ MEETING CANCELLED**\n\n**Meeting:** ${meeting.title}\n**Reason:** Some participants declined the meeting request.\n\nPlease check your Hira+ app for more details.\n\nThank you for your understanding.`;
         
         // Send to all participants
         for (const participant of meeting.participants) {
@@ -168,12 +139,7 @@ async function sendMeetingDeclineNotificationToCreator(meeting, participant, dec
             return;
         }
         
-        const message = `Meeting Response Update: ${meeting.title}\n\n` +
-                       `${participant.name} has declined the meeting request.\n\n` +
-                       `Reason: ${declineReason || 'No reason provided'}\n\n` +
-                       `Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                       `Time: ${new Date(meeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(meeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n\n` +
-                       `The meeting will still proceed as scheduled.`;
+        const message = `**📝 MEETING RESPONSE UPDATE**\n\n**Meeting:** ${meeting.title}\n**Participant:** ${participant.name} has declined the meeting request.\n**Reason:** ${declineReason || 'No reason provided'}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]} - ${new Date(meeting.endDatetime).toISOString().split('T')[1].split('.')[0]}\n\n**Status:** The meeting will still proceed as scheduled.\n\nPlease check your Hira+ app for more details.`;
         
         console.log('Sending decline notification to creator:', creator.phoneNumber);
         await sendDXingMessage(creator.phoneNumber, message);
@@ -234,7 +200,10 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
             : participantData.participant;
 
         try {
-            // Check for existing conflicting schedules
+            // Check for existing conflicting schedules (for notification purposes only)
+            console.log(`🔍 Checking for conflicts for participant ${participantId}:`);
+            console.log(`   - New Meeting Time: ${meeting.startDatetime} - ${meeting.endDatetime}`);
+            
             const conflictingSchedules = await Schedule.find({
                 createdBy: participantId,
                 status: 'active',
@@ -245,62 +214,46 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                     }
                 ]
             });
+            
+            console.log(`🔍 Found ${conflictingSchedules.length} conflicting schedules:`);
+            conflictingSchedules.forEach((schedule, index) => {
+                console.log(`   ${index + 1}. "${schedule.title}" | Priority: ${schedule.priority} | Time: ${schedule.startDateTime} - ${schedule.endDateTime} | Meeting Ref: ${schedule.meetingReference || 'N/A'}`);
+            });
 
-            // Override lower priority schedules
-            for (const conflictingSchedule of conflictingSchedules) {
-                const meetingPriority = creatorRole === 'super leader' ? 'high' : 'medium';
-                const schedulePriority = conflictingSchedule.priority;
+            // Send conflict notification if conflicts are found (but don't override - let the main conflict detection system handle it)
+            if (conflictingSchedules.length > 0) {
+                console.log(`⚠️ CONFLICTS DETECTED: ${conflictingSchedules.length} conflicting schedules found`);
+                console.log(`📋 All schedules will remain active - conflicts will be shown in the conflicts section`);
+                
+                // Send conflict notification to the user
+                try {
+                    const user = await User.findById(participantId);
+                    if (user && user.phoneNumber) {
+                        const conflictList = conflictingSchedules.map(schedule => 
+                            `📅 ${schedule.title} (${new Date(schedule.startDateTime).toISOString().split('T')[0]} ${new Date(schedule.startDateTime).toISOString().split('T')[1].split('.')[0]})`
+                        ).join('\n');
+                        
+                        const message = `**⚠️ SCHEDULE CONFLICT DETECTED**\n\n**New Meeting:**\n**Title:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Created by:** ${creatorRole === 'super leader' ? 'Super Leader' : 'Leader'}\n\n**Conflicting Schedules:**\n${conflictList}\n\n**Status:** All schedules remain active.\n**Action Required:** Please check the Conflicts section in your Hira+ app to resolve these conflicts.\n\nThank you for your attention!`;
 
-                console.log(`🔍 Conflict Check: Meeting Priority: ${meetingPriority}, Schedule Priority: ${schedulePriority}`);
-                console.log(`🔍 Creator Role: ${creatorRole}, Schedule: ${conflictingSchedule.title}`);
-
-                if (meetingPriority === 'high' || 
-                    (meetingPriority === 'medium' && schedulePriority === 'low')) {
-                    
-                    console.log(`✅ Schedule will be overridden: ${conflictingSchedule.title}`);
-                    
-                    // Mark conflicting schedule as cancelled and track what overrode it
-                    conflictingSchedule.status = 'cancelled';
-                    conflictingSchedule.overriddenBy = {
-                        meetingId: meeting._id,
-                        overriddenAt: new Date()
-                    };
-                    await conflictingSchedule.save();
-                    overriddenSchedules.push(conflictingSchedule);
-
-                    // 🔔 SEND NOTIFICATION TO USER WHOSE SCHEDULE WAS OVERRIDDEN
-                    try {
-                        const user = await User.findById(participantId);
-                        if (user && user.phoneNumber) {
-                            const message = `⚠️ Schedule Override Alert\n\n` +
-                                           `Your schedule "${conflictingSchedule.title}" has been cancelled due to a higher priority meeting.\n\n` +
-                                           `Cancelled Schedule:\n` +
-                                           `📅 Date: ${new Date(conflictingSchedule.startDateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                                           `⏰ Time: ${new Date(conflictingSchedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(conflictingSchedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                                           `📝 Type: ${conflictingSchedule.scheduleType}\n\n` +
-                                           `New Meeting:\n` +
-                                           `📋 Title: ${meeting.title}\n` +
-                                           `👤 Created by: ${creatorRole === 'super leader' ? 'Super Leader' : 'Leader'}\n` +
-                                           `📅 Date: ${new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                                           `⏰ Time: ${new Date(meeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(meeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n\n` +
-                                           `⚠️ IMPORTANT: You already had a schedule at this time, but it has been replaced by this meeting.\n` +
-                                           `Please check your Hira+ app for more details.`;
-
-                            await sendDXingMessage(user.phoneNumber, message);
-                            console.log(`✅ Override notification sent to user ${user.name} (${user.phoneNumber})`);
-                            console.log(`📱 Message: ${message}`);
-                        } else {
-                            console.log(`❌ User not found or no phone number for participant: ${participantId}`);
-                        }
-                    } catch (notificationError) {
-                        console.error('❌ Error sending override notification:', notificationError);
+                        await sendDXingMessage(user.phoneNumber, message);
+                        console.log(`✅ Conflict notification sent to user ${user.name} (${user.phoneNumber})`);
+                        console.log(`📱 Message: ${message}`);
+                    } else {
+                        console.log(`❌ User not found or no phone number for participant: ${participantId}`);
                     }
-                } else {
-                    console.log(`❌ Schedule NOT overridden: ${conflictingSchedule.title} (Priority: ${schedulePriority} >= Meeting Priority: ${meetingPriority})`);
+                } catch (notificationError) {
+                    console.error('❌ Error sending conflict notification:', notificationError);
                 }
             }
 
             // Create new schedule for the meeting
+            const schedulePriority = creatorRole === 'super leader' ? 'high' : 'medium';
+            console.log(`📅 Creating new schedule for participant ${participantId}:`);
+            console.log(`   - Meeting: "${meeting.title}"`);
+            console.log(`   - Creator Role: ${creatorRole}`);
+            console.log(`   - Schedule Priority: ${schedulePriority}`);
+            console.log(`   - Time: ${meeting.startDatetime} - ${meeting.endDatetime}`);
+            
             const newSchedule = new Schedule({
                 title: meeting.title,
                 subtitle: meeting.type,
@@ -311,7 +264,7 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                 agendaItems: meeting.agenda ? [meeting.agenda] : [],
                 locationLink: meeting.locationLink,
                 createdBy: participantId,
-                priority: creatorRole === 'super leader' ? 'high' : 'medium',
+                priority: schedulePriority,
                 meetingReference: meeting._id,
                 meetingCreatorRole: creatorRole,
                 status: 'active'
@@ -325,8 +278,8 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
         }
     }
 
-    console.log(`📊 Schedule Override Summary: ${overriddenSchedules.length} schedules overridden for meeting: ${meeting.title}`);
-    return { createdSchedules, overriddenSchedules };
+    console.log(`📊 Schedule Creation Summary: ${createdSchedules.length} schedules created for meeting: ${meeting.title}`);
+    return { createdSchedules, overriddenSchedules: [] }; // No overrides - conflicts are handled by the main conflict detection system
 }
 
 // Create a new meeting - accessible by leaders only
@@ -353,7 +306,7 @@ router.post('/create', leaderAuth, async (req, res) => {
             });
         }
 
-        // Validate datetime
+        // Validate datetime - input is already in UTC timezone
         const startDate = new Date(startDatetime);
         const endDate = new Date(endDatetime);
         
@@ -497,6 +450,13 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             participants
         } = req.body;
 
+        // Debug: Log the incoming datetime data
+        console.log('🔍 DEBUG - Super Leader meeting creation:');
+        console.log('Raw startDatetime from request:', startDatetime);
+        console.log('Raw endDatetime from request:', endDatetime);
+        console.log('startDatetime type:', typeof startDatetime);
+        console.log('endDatetime type:', typeof endDatetime);
+
         // Validate required fields
         if (!title || !type || !startDatetime || !endDatetime || !mode || !description) {
             return res.status(400).json({
@@ -505,9 +465,16 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             });
         }
 
-        // Validate datetime
+        // Validate datetime - input is already in UTC timezone
         const startDate = new Date(startDatetime);
         const endDate = new Date(endDatetime);
+        
+        console.log('Parsed startDate:', startDate);
+        console.log('Parsed endDate:', endDate);
+        console.log('startDate UTC:', startDate.toISOString());
+        console.log('endDate UTC:', endDate.toISOString());
+        console.log('startDate Asia/Kolkata:', startDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+        console.log('endDate Asia/Kolkata:', endDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
         
         if (startDate >= endDate) {
             return res.status(400).json({
@@ -1290,14 +1257,7 @@ router.put('/:meetingId', async (req, res) => {
 				try {
 					const isCreator = participantData.participant._id.toString() === user.id;
 					if (!isCreator) { // Don't send notification to the creator
-						                        const message = `📝 Meeting Updated: ${populatedMeeting.title}\n\n` +
-									   `The meeting has been updated by ${user.name}.\n\n` +
-									   `Updated Details:\n` +
-									   `📅 Date: ${new Date(populatedMeeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-									   `⏰ Time: ${new Date(populatedMeeting.startDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(populatedMeeting.endDatetime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-									   `📍 Mode: ${populatedMeeting.mode}\n` +
-									   `📝 Description: ${populatedMeeting.description}\n\n` +
-									   `Please check your Hira+ app for the latest details.`;
+						                        const message = `**📝 MEETING UPDATED**\n\n**Meeting:** ${populatedMeeting.title}\n**Updated by:** ${user.name}\n\n**Updated Details:**\n**Date:** ${new Date(populatedMeeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(populatedMeeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${new Date(populatedMeeting.startDatetime).toISOString().split('T')[1].split('.')[0]} - ${new Date(populatedMeeting.endDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${populatedMeeting.mode}\n**Description:** ${populatedMeeting.description}\n\n**Action Required:** Please check your Hira+ app for the latest details.\n\nThank you for your attention!`;
 
 						await sendDXingMessage(participantData.participant.phoneNumber, message);
 						console.log(`📱 Update notification sent to: ${participantData.participant.name}`);
@@ -1439,14 +1399,7 @@ router.delete('/:meetingId', async (req, res) => {
                 try {
                     const user = await User.findById(schedule.createdBy);
                     if (user && user.phoneNumber) {
-                        const message = `🔄 Schedule Restored\n\n` +
-                                       `Your schedule "${schedule.title}" has been restored.\n\n` +
-                                       `Restored Schedule:\n` +
-                                       `📅 Date: ${new Date(schedule.startDateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                                       `⏰ Time: ${new Date(schedule.startDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })} - ${new Date(schedule.endDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}\n` +
-                                       `📝 Type: ${schedule.scheduleType}\n\n` +
-                                       `Reason: The meeting that overrode this schedule has been cancelled.\n` +
-                                       `Please check your Hira+ app for details.`;
+                        const message = `**🔄 SCHEDULE RESTORED**\n\n**Schedule:** "${schedule.title}" has been restored.\n\n**Restored Schedule Details:**\n**Date:** ${new Date(schedule.startDateTime).toISOString().split('T')[0]}\n**Time:** ${new Date(schedule.startDateTime).toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${new Date(schedule.startDateTime).toISOString().split('T')[1].split('.')[0]} - ${new Date(schedule.endDateTime).toISOString().split('T')[1].split('.')[0]}\n**Type:** ${schedule.scheduleType}\n\n**Reason:** The meeting that overrode this schedule has been cancelled.\n**Action Required:** Please check your Hira+ app for details.\n\nThank you for your understanding!`;
 
                         await sendDXingMessage(user.phoneNumber, message);
                         console.log(`Restoration notification sent to user ${user.name} (${user.phoneNumber})`);
