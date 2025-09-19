@@ -26,13 +26,16 @@ const CreateMeeting = () => {
     const [meetingData, setMeetingData] = useState(null);
     const [showTagSelection, setShowTagSelection] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showAlertModal, setShowAlertModal] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
     
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
     const [formData, setFormData] = useState({
         title: '',
         type: '',
-        startDatetime: '',
-        endDatetime: '',
+        date: '',
+        startTime: '',
+        endTime: '',
         mode: '',
         locationLink: '',
         description: '',
@@ -56,12 +59,24 @@ const CreateMeeting = () => {
         }
     }, [id, location.state]);
 
+    // Auto-select creator when user is loaded and not editing
+    useEffect(() => {
+        if (user && user._id && !isEditing && !formData.participants.includes(user._id)) {
+            setFormData(prev => ({
+                ...prev,
+                participants: [user._id, ...prev.participants]
+            }));
+        }
+    }, [user, isEditing]);
+
     const fetchUserData = async () => {
         try {
             const token = localStorage.getItem('leaderToken');
             const response = await axios.get(`${API_BASE_URL}/leaders/profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            console.log('User data fetched:', response.data.user);
+            console.log('User role:', response.data.user?.role);
             setUser(response.data.user);
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -82,22 +97,32 @@ const CreateMeeting = () => {
             }
         } catch (error) {
             console.error('Error fetching meeting data:', error);
-            alert('Failed to load meeting data');
-            navigate('/leaders/meetings');
+            showCustomAlert('Failed to load meeting data');
+            setTimeout(() => {
+                navigate('/leaders/meetings');
+            }, 2000);
         }
     };
 
     const populateFormData = (meeting) => {
-        // Convert ISO datetime to datetime-local format
-        const formatDateTimeForInput = (isoString) => {
+        // Convert ISO datetime to separate date and time fields
+        const formatDateForInput = (isoString) => {
             if (!isoString) return '';
             const date = new Date(isoString);
+            // Use UTC methods to get the date as stored in backend
             const year = date.getUTCFullYear();
             const month = String(date.getUTCMonth() + 1).padStart(2, '0');
             const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const formatTimeForInput = (isoString) => {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            // Use UTC methods to get the time as stored in backend
             const hours = String(date.getUTCHours()).padStart(2, '0');
             const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
+            return `${hours}:${minutes}`;
         };
 
         // Extract participant IDs (excluding the creator)
@@ -108,8 +133,9 @@ const CreateMeeting = () => {
         setFormData({
             title: meeting.title || '',
             type: meeting.type || '',
-            startDatetime: formatDateTimeForInput(meeting.startDatetime),
-            endDatetime: formatDateTimeForInput(meeting.endDatetime),
+            date: formatDateForInput(meeting.startDatetime),
+            startTime: formatTimeForInput(meeting.startDatetime),
+            endTime: formatTimeForInput(meeting.endDatetime),
             mode: meeting.mode || '',
             locationLink: meeting.locationLink || '',
             description: meeting.description || '',
@@ -128,7 +154,13 @@ const CreateMeeting = () => {
                 ...(response.data.data.superLeaders || []),
                 ...(response.data.data.regularLeaders || [])
             ];
-            setParticipants(allLeaders);
+            
+            // Include the creator in the participants list
+            const participantsWithCreator = user ? [user, ...allLeaders] : allLeaders;
+            
+            setParticipants(participantsWithCreator);
+            console.log('Participants fetched successfully (including creator):', participantsWithCreator);
+            console.log('First participant structure:', participantsWithCreator[0]);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching participants:', error);
@@ -140,30 +172,17 @@ const CreateMeeting = () => {
         try {
             const token = localStorage.getItem('leaderToken');
             
-            // Try different possible endpoints
-            let response;
-            try {
-                // First try the original endpoint
-                response = await axios.get(`${API_BASE_URL}/tags`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-            } catch (firstError) {
-                // If that fails, try without /testing/
-                try {
-                    response = await axios.get(`${API_BASE_URL}/tags`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                } catch (secondError) {
-                    // If both fail, try with /leaders/ prefix
-                    response = await axios.get(`${API_BASE_URL}/leaders/tags`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                }
-            }
+            // Use the correct tags endpoint - tags are mounted at /api/tags (not under /testing)
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+            const response = await axios.get(`${baseUrl}/tags`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             
-            // The tags API returns tags directly in response.data, not in response.data.data
-            setTags(response.data || []);
-            console.log('Tags fetched successfully:', response.data);
+            // The tags API returns tags directly in response.data
+            const tagsData = response.data || [];
+            setTags(tagsData);
+            console.log('Tags fetched successfully:', tagsData);
+            console.log('First tag structure:', tagsData[0]);
         } catch (error) {
             console.error('Error fetching tags:', error);
             console.log('Full error details:', {
@@ -185,12 +204,24 @@ const CreateMeeting = () => {
         try {
             const token = localStorage.getItem('leaderToken');
             
-            // Convert datetime-local values to UTC ISO strings
+            // Combine date and time fields into datetime strings
+            // Create proper ISO strings that represent UTC time (backend timezone)
+            const startDatetime = formData.date && formData.startTime ? `${formData.date}T${formData.startTime}:00.000Z` : '';
+            const endDatetime = formData.date && formData.endTime ? `${formData.date}T${formData.endTime}:00.000Z` : '';
+            
             const processedFormData = {
-                ...formData,
-                startDatetime: formData.startDatetime ? new Date(formData.startDatetime + 'Z').toISOString() : '',
-                endDatetime: formData.endDatetime ? new Date(formData.endDatetime + 'Z').toISOString() : ''
+                title: formData.title,
+                type: formData.type,
+                startDatetime,
+                endDatetime,
+                mode: formData.mode,
+                locationLink: formData.locationLink,
+                description: formData.description,
+                agenda: formData.agenda,
+                // Filter out any null/undefined values from participants
+                participants: formData.participants.filter(participantId => participantId != null)
             };
+
 
             let response;
             
@@ -202,9 +233,18 @@ const CreateMeeting = () => {
                 });
             } else {
                 // Create new meeting
-                const endpoint = user?.role === 'super leader'
+                console.log('User role check:', {
+                    user: user,
+                    role: user?.role,
+                    roleName: user?.role?.name,
+                    isSuperLeader: user?.role?.name === 'super leader'
+                });
+                
+                const endpoint = user?.role?.name === 'super leader'
                     ? `${API_BASE_URL}/leaders-meetings/super-leader/create`
                     : `${API_BASE_URL}/leaders-meetings/create`;
+                
+                console.log('Selected endpoint:', endpoint);
                 
                 response = await axios.post(endpoint, processedFormData, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -220,7 +260,7 @@ const CreateMeeting = () => {
             }
         } catch (error) {
             console.error(`Error ${isEditing ? 'updating' : 'creating'} meeting:`, error);
-            alert(error.response?.data?.message || `Failed to ${isEditing ? 'update' : 'create'} meeting`);
+            showCustomAlert(error.response?.data?.message || `Failed to ${isEditing ? 'update' : 'create'} meeting`);
         } finally {
             setIsSubmitting(false);
         }
@@ -229,6 +269,9 @@ const CreateMeeting = () => {
     const handleTagSelection = (tagId) => {
         const tag = tags.find(t => t._id === tagId);
         if (tag) {
+            console.log('Tag selected:', tag);
+            console.log('Current participants:', participants);
+            
             // Find all participants who have this tag
             const participantsWithTag = participants.filter(participant => 
                 participant.tags && participant.tags.some(participantTag => 
@@ -236,14 +279,19 @@ const CreateMeeting = () => {
                 )
             );
             
+            console.log('Participants with tag:', participantsWithTag);
+            
             // Get their IDs
             const participantIds = participantsWithTag.map(p => p._id);
             
-            // Add them to selected participants (avoiding duplicates)
-            const newParticipants = [...new Set([...formData.participants, ...participantIds])];
+            // Add them to selected participants (avoiding duplicates) and ensure creator is always included
+            const creatorId = user?._id;
+            const allParticipantIds = creatorId ? [creatorId, ...participantIds] : participantIds;
+            const newParticipants = [...new Set([...formData.participants, ...allParticipantIds])];
             setFormData({ ...formData, participants: newParticipants });
             
-            console.log(`Selected tag "${tag.tagName}": ${participantIds.length} participants added`);
+            console.log(`Selected tag "${tag.tagName || tag.name}": ${participantIds.length} participants added`);
+            console.log('New participants list:', newParticipants);
         }
     };
 
@@ -260,11 +308,14 @@ const CreateMeeting = () => {
             // Get their IDs
             const participantIds = participantsWithTag.map(p => p._id);
             
-            // Remove them from selected participants
-            const newParticipants = formData.participants.filter(id => !participantIds.includes(id));
+            // Remove them from selected participants, but always keep the creator
+            const creatorId = user?._id;
+            const newParticipants = formData.participants.filter(id => 
+                !participantIds.includes(id) || (creatorId && id === creatorId)
+            );
             setFormData({ ...formData, participants: newParticipants });
             
-            console.log(`Deselected tag "${tag.tagName}": ${participantIds.length} participants removed`);
+            console.log(`Deselected tag "${tag.tagName || tag.name}": ${participantIds.length} participants removed`);
         }
     };
 
@@ -278,9 +329,12 @@ const CreateMeeting = () => {
                 )
             );
             
-            // Check if ALL participants with this tag are selected
+            // Check if ALL participants with this tag are selected (excluding creator as they're always selected)
             const participantIds = participantsWithTag.map(p => p._id);
-            return participantIds.length > 0 && participantIds.every(id => formData.participants.includes(id));
+            const creatorId = user?._id;
+            const nonCreatorParticipants = participantIds.filter(id => id !== creatorId);
+            
+            return nonCreatorParticipants.length > 0 && nonCreatorParticipants.every(id => formData.participants.includes(id));
         }
         return false;
     };
@@ -305,6 +359,11 @@ const CreateMeeting = () => {
         localStorage.removeItem('leaderToken');
         localStorage.removeItem('leaderUser');
         window.location.href = '/';
+    };
+
+    const showCustomAlert = (message) => {
+        setAlertMessage(message);
+        setShowAlertModal(true);
     };
 
     if (loading) {
@@ -401,29 +460,42 @@ const CreateMeeting = () => {
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold text-gray-900">Date & Time</h3>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Start Date & Time *
+                                            Meeting Date *
                                         </label>
                                         <input
-                                            type="datetime-local"
+                                            type="date"
                                             required
-                                            value={formData.startDatetime}
-                                            onChange={(e) => setFormData({ ...formData, startDatetime: e.target.value })}
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
                                         />
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            End Date & Time *
+                                            Start Time *
                                         </label>
                                         <input
-                                            type="datetime-local"
+                                            type="time"
                                             required
-                                            value={formData.endDatetime}
-                                            onChange={(e) => setFormData({ ...formData, endDatetime: e.target.value })}
+                                            value={formData.startTime}
+                                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            End Time *
+                                        </label>
+                                        <input
+                                            type="time"
+                                            required
+                                            value={formData.endTime}
+                                            onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
                                         />
                                     </div>
@@ -565,7 +637,7 @@ const CreateMeeting = () => {
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <span className="text-sm font-medium block truncate">
-                                                    {tag.tagName}
+                                                    {tag.tagName || tag.name || 'Unknown Tag'}
                                                 </span>
                                             </div>
                                         </label>
@@ -586,36 +658,65 @@ const CreateMeeting = () => {
                     </h4>
                     <div className="max-h-48 overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {participants.map((participant) => (
-                                <label key={participant._id} className="flex items-center gap-3 p-3 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-all cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.participants.includes(participant._id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setFormData({
-                                                    ...formData,
-                                                    participants: [...formData.participants, participant._id]
-                                                });
-                                            } else {
-                                                setFormData({
-                                                    ...formData,
-                                                    participants: formData.participants.filter(id => id !== participant._id)
-                                                });
-                                            }
-                                        }}
-                                        className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 w-4 h-4"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                         <span className="text-sm font-medium text-gray-900 block truncate">
-                                             {participant.name}
-                                         </span>
-                                         <span className="text-xs text-gray-500 capitalize">
-                                             {participant.role}
-                                         </span>
-                                     </div>
-                                </label>
-                            ))}
+                            {participants.map((participant) => {
+                                const isCreator = user && participant._id === user._id;
+                                const isSelected = formData.participants.includes(participant._id);
+                                
+                                return (
+                                    <label 
+                                        key={participant._id} 
+                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                                            isCreator 
+                                                ? 'bg-blue-50 border-blue-200 cursor-not-allowed' 
+                                                : 'hover:bg-white border-transparent hover:border-gray-200 cursor-pointer'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            disabled={isCreator}
+                                            onChange={(e) => {
+                                                if (!isCreator) {
+                                                    if (e.target.checked) {
+                                                        setFormData({
+                                                            ...formData,
+                                                            participants: [...formData.participants, participant._id]
+                                                        });
+                                                    } else {
+                                                        setFormData({
+                                                            ...formData,
+                                                            participants: formData.participants.filter(id => id !== participant._id)
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                            className={`rounded border-gray-300 text-gray-900 focus:ring-gray-900 w-4 h-4 ${
+                                                isCreator ? 'opacity-50 cursor-not-allowed' : ''
+                                            }`}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium text-gray-900 block truncate">
+                                                    {participant.name}
+                                                </span>
+                                                {isCreator && (
+                                                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                        Creator
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-gray-500 capitalize">
+                                                {participant.role?.name || 'No Role'}
+                                            </span>
+                                            {isCreator && (
+                                                <div className="text-xs text-blue-600 mt-1">
+                                                    
+                                                </div>
+                                            )}
+                                        </div>
+                                    </label>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -680,6 +781,56 @@ const CreateMeeting = () => {
                             </div>
                             
                             <p className="text-sm text-gray-500">Redirecting to meetings page...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Alert Modal */}
+            {showAlertModal && (
+                <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50">
+                    <div className="bg-white/95 backdrop-blur-md rounded-xl w-full max-w-md mx-4 shadow-2xl border border-gray-200/50 transform transition-all duration-300 scale-100">
+                        {/* Header with Project Theme */}
+                        <div className="bg-[#080325] text-white px-6 py-4 rounded-t-xl">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-bold text-white">Alert</h2>
+                                <button
+                                    onClick={() => setShowAlertModal(false)}
+                                    className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="p-6">
+                            <div className="text-center">
+                                {/* Warning Icon */}
+                                <div className="mx-auto flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4">
+                                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                </div>
+                                
+                                {/* Alert Message */}
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                    Error
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    {alertMessage}
+                                </p>
+                                
+                                {/* Action Button */}
+                                <button
+                                    onClick={() => setShowAlertModal(false)}
+                                    className="w-full bg-[#080325] text-white px-4 py-2 rounded-lg hover:bg-[#0a0a2a] transition-all duration-200 font-medium"
+                                >
+                                    OK
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

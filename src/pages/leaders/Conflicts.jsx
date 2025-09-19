@@ -736,7 +736,7 @@ const Conflicts = () => {
                               <div>
                                 <p className="text-xs text-gray-500 mb-0.5">Requested by</p>
                                 <p className="text-xs font-medium text-gray-900">{request.requestedBy.name}</p>
-                                <p className="text-xs text-gray-500 capitalize">{request.requestedBy.role}</p>
+                                <p className="text-xs text-gray-500 capitalize">{request.requestedBy.role?.name || 'No Role'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-500 mb-0.5">Meeting Details</p>

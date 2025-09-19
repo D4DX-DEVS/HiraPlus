@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   UserIcon, 
   CalendarIcon,
@@ -12,12 +12,27 @@ import HiraPlus from '../assets/HiraPlus.jpg';
 import D4DXLogoWhite from '../assets/dxLogoWhite.png';
 
 const LeadersSidebar = ({ isOpen, onToggle, activePage, onPageChange, onLogout }) => {
-            const menuItems = [
-            { id: 'profile', name: 'Profile', icon: UserIcon },
-            { id: 'meetings', name: 'Meetings', icon: CalendarIcon },
-            { id: 'schedules', name: 'Schedules', icon: ClockIcon },
-            { id: 'conflicts', name: 'Conflicts', icon: ExclamationTriangleIcon },
-          ];
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setShowLogoutModal(false);
+    onLogout();
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutModal(false);
+  };
+
+  const menuItems = [
+    { id: 'profile', name: 'Profile', icon: UserIcon },
+    { id: 'meetings', name: 'Meetings', icon: CalendarIcon },
+    { id: 'schedules', name: 'Schedules', icon: ClockIcon },
+    { id: 'conflicts', name: 'Conflicts', icon: ExclamationTriangleIcon },
+  ];
 
   return (
     <>
@@ -89,7 +104,7 @@ const LeadersSidebar = ({ isOpen, onToggle, activePage, onPageChange, onLogout }
            ${isOpen ? 'left-4 right-4' : 'left-2 right-2'}
          `}>
            <button
-             onClick={onLogout}
+             onClick={handleLogoutClick}
              className={`
                w-full flex items-center py-2 rounded-lg transition-all duration-200
                ${isOpen ? 'px-4' : 'px-2'} justify-center
@@ -123,8 +138,49 @@ const LeadersSidebar = ({ isOpen, onToggle, activePage, onPageChange, onLogout }
            </div>
          </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-lg border border-gray-200">
+            <div className="text-center">
+              {/* Warning Icon */}
+              <div className="mx-auto flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4">
+                <ArrowRightOnRectangleIcon className="w-6 h-6 text-red-600" />
+              </div>
+              
+              {/* Confirmation Message */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Logout?
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to logout?
+              </p>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelLogout}
+                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmLogout}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
 export default LeadersSidebar;
+
+
+

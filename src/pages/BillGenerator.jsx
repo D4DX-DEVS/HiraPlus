@@ -36,6 +36,47 @@ const getDepartmentShareForDept = (departmentName, defaultShare) => {
   return defaultShare;
 };
 
+// Helper function to expand hierarchical departments into individual sub-department entries
+const expandHierarchicalDepartments = (departments, fullDepartments) => {
+  const expandedData = [];
+  
+  departments.forEach(dept => {
+    const department = fullDepartments.find(d => d.title === dept.department);
+    if (department && department.isHierarchical && department.subDepartments) {
+      // For hierarchical departments, create individual entries for each sub-department
+      department.subDepartments.forEach(subDept => {
+        // Calculate sub-department specific amounts by distributing equally
+        const subDeptCount = department.subDepartments.length;
+        expandedData.push({
+          ...dept,
+          department: subDept.title, // Use sub-department name
+          parentDepartment: dept.department, // Keep reference to parent
+          isSubDepartment: true,
+          // Distribute amounts equally among sub-departments
+          foodShare: (dept.foodShare || 0) / subDeptCount,
+          rentTotal: (dept.rentTotal || 0) / subDeptCount,
+          meetingFoodTotal: (dept.meetingFoodTotal || 0) / subDeptCount,
+          guestMealTotal: (dept.guestMealTotal || 0) / subDeptCount,
+          total: (dept.total || 0) / subDeptCount,
+          amount: (dept.amount || 0) / subDeptCount,
+          breakfastCount: Math.round((dept.breakfastCount || 0) / subDeptCount),
+          lunchCount: Math.round((dept.lunchCount || 0) / subDeptCount),
+          dinnerCount: Math.round((dept.dinnerCount || 0) / subDeptCount),
+          meetingCount: Math.round((dept.meetingCount || 0) / subDeptCount),
+          auditoriumCount: Math.round((dept.auditoriumCount || 0) / subDeptCount),
+          conferenceHallCount: Math.round((dept.conferenceHallCount || 0) / subDeptCount),
+          meetingSpaceCount: Math.round((dept.meetingSpaceCount || 0) / subDeptCount)
+        });
+      });
+    } else {
+      // For regular departments, add as is
+      expandedData.push(dept);
+    }
+  });
+  
+  return expandedData.sort((a, b) => a.department.localeCompare(b.department));
+};
+
 // Define styles for PDF with updated styling and Malayalam font support
 const styles = StyleSheet.create({
   page: {
@@ -2522,7 +2563,9 @@ const BillGenerator = () => {
 
         // Ensure we have valid data before setting state
         if (deptResponse.data && deptResponse.data.departments) {
-          setDepartmentData(deptResponse.data);
+          // Expand hierarchical departments for display
+          const expandedDepartments = expandHierarchicalDepartments(deptResponse.data.departments, fullDepartments);
+          setDepartmentData({ ...deptResponse.data, departments: expandedDepartments });
 
           // Calculate total amount with separate handling for interns and regular employees
           let internTotal = 0;
@@ -2629,8 +2672,10 @@ const BillGenerator = () => {
             meetingSpaceCount: selectedVenue === 'Meeting Space [1st Floor]' ? dept.meetingCount : 0
           }));
           
-          setRentData({ departments: enhancedDepartments });
-          const total = enhancedDepartments
+          // Expand hierarchical departments for display
+          const expandedDepartments = expandHierarchicalDepartments(enhancedDepartments, fullDepartments);
+          setRentData({ departments: expandedDepartments });
+          const total = expandedDepartments
             .filter(dept => !selectedDepartment || dept.department === selectedDepartment)
             .reduce((acc, dept) => acc + dept.amount, 0);
 
@@ -2901,7 +2946,8 @@ const BillGenerator = () => {
             dept.total = dept.foodShare + dept.rentTotal + dept.meetingFoodTotal + dept.guestMealTotal;
           });
 
-          const combinedData = Object.values(deptMap).sort((a, b) => a.department.localeCompare(b.department));
+          // Expand hierarchical departments into individual sub-department entries
+          const combinedData = expandHierarchicalDepartments(Object.values(deptMap), fullDepartments);
           setDepartmentBillData({ departments: combinedData });
 
           const grandTotal = combinedData.reduce((acc, dept) => acc + dept.total, 0);

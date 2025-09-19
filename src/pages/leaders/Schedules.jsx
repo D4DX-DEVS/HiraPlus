@@ -29,14 +29,22 @@ const Schedules = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Pagination state for list view
+  const [currentPage, setCurrentPage] = useState(1);
+  const [daysPerPage] = useState(7);
   
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
     scheduleType: '',
-    startDateTime: '',
-    endDateTime: '',
+    date: '',
+    startTime: '',
+    endTime: '',
     description: '',
     agendaItems: [],
     locationLink: '',
@@ -53,6 +61,11 @@ const Schedules = () => {
   useEffect(() => {
     fetchSchedules();
   }, []);
+
+  // Reset to first page when schedules data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [schedules.length]);
 
   const fetchSchedules = async () => {
     try {
@@ -89,12 +102,22 @@ const Schedules = () => {
     try {
       const token = localStorage.getItem('leaderToken');
       
+      // Combine date and time fields into UTC datetime strings
+      const startDateTime = formData.date && formData.startTime ? `${formData.date}T${formData.startTime}:00.000Z` : '';
+      const endDateTime = formData.date && formData.endTime ? `${formData.date}T${formData.endTime}:00.000Z` : '';
+      
       // Prepare the data to send
       const scheduleData = {
-        ...formData,
-        // Convert date strings to proper format if needed
-        startDateTime: formData.startDateTime,
-        endDateTime: formData.endDateTime,
+        title: formData.title,
+        subtitle: formData.subtitle,
+        scheduleType: formData.scheduleType,
+        startDateTime,
+        endDateTime,
+        description: formData.description,
+        agendaItems: formData.agendaItems,
+        locationLink: formData.locationLink,
+        priority: formData.priority,
+        recurring: formData.recurring,
         // Only include recurrencePattern if recurring is true
         recurrencePattern: formData.recurring ? formData.recurrencePattern : null
       };
@@ -109,8 +132,9 @@ const Schedules = () => {
           title: '',
           subtitle: '',
           scheduleType: '',
-          startDateTime: '',
-          endDateTime: '',
+          date: '',
+          startTime: '',
+          endTime: '',
           description: '',
           agendaItems: [],
           locationLink: '',
@@ -124,7 +148,11 @@ const Schedules = () => {
           }
         });
         fetchSchedules();
-        alert(response.data.message || 'Schedule created successfully!');
+        setShowSuccessModal(true);
+        // Auto-hide modal after 2 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+        }, 2000);
       }
     } catch (error) {
       console.error('Error creating schedule:', error);
@@ -258,10 +286,6 @@ const Schedules = () => {
   };
 
   const formatTime = (date) => {
-    // Debug logging to check UTC conversion
-    console.log('Schedules - Original date:', date);
-    console.log('Schedules - UTC time:', date.toUTCString());
-    
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -351,6 +375,46 @@ const Schedules = () => {
       weekday: 'long',
       timeZone: 'UTC'
     });
+  };
+
+  // Pagination logic for list view
+  const getPaginatedSchedules = () => {
+    const groupedSchedules = groupSchedulesByDate();
+    const sortedDates = Object.keys(groupedSchedules).sort((a, b) => new Date(a) - new Date(b));
+    
+    const totalPages = Math.ceil(sortedDates.length / daysPerPage);
+    const startIndex = (currentPage - 1) * daysPerPage;
+    const endIndex = startIndex + daysPerPage;
+    const currentDates = sortedDates.slice(startIndex, endIndex);
+    
+    return {
+      currentDates,
+      totalPages,
+      startIndex,
+      endIndex,
+      totalDays: sortedDates.length
+    };
+  };
+
+  const handlePaginationPageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleNextPage = () => {
+    const { totalPages } = getPaginatedSchedules();
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const renderCalendar = () => {
@@ -511,6 +575,7 @@ const Schedules = () => {
 
   const renderListView = () => {
     const groupedSchedules = groupSchedulesByDate();
+    const { currentDates, totalPages, startIndex, endIndex, totalDays } = getPaginatedSchedules();
     
     if (Object.keys(groupedSchedules).length === 0) {
       return (
@@ -531,79 +596,146 @@ const Schedules = () => {
     }
 
     return (
-      <div className="space-y-3">
-        {Object.entries(groupedSchedules).map(([dateKey, daySchedules]) => (
-          <div key={dateKey} className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-            <div className="bg-[#080325] px-4 py-2 border-b border-[#080325]">
-              <h3 className="text-base font-bold text-white">
-                {getDayName(dateKey)}, {formatDateFromString(dateKey)}
-              </h3>
-              <p className="text-xs text-white/80">
-                {daySchedules.length} schedule{daySchedules.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {daySchedules.map((schedule) => (
-                <div key={schedule._id} className="p-3 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-[#080325]">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-sm font-bold text-gray-900 truncate">{schedule.title}</h4>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getPriorityColor(schedule.priority)}`}>
-                          {schedule.priority}
-                        </span>
-                        {schedule.recurring && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                            Recurring
-                          </span>
-                        )}
-                      </div>
-                      
-                      {schedule.subtitle && (
-                        <p className="text-xs text-gray-600 mb-1 truncate font-medium">{schedule.subtitle}</p>
-                      )}
-                      
-                      <div className="flex items-center gap-3 text-xs text-gray-600 mb-1">
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="w-3 h-3 text-[#080325]" />
-                          <span className="font-medium">{formatTime(new Date(schedule.startDateTime))} - {formatTime(new Date(schedule.endDateTime))}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <CalendarIcon className="w-3 h-3 text-[#080325]" />
-                          <span className="font-medium">{schedule.scheduleType}</span>
-                        </div>
-                      </div>
-                      
-                      {schedule.description && (
-                        <p className="text-xs text-gray-700 line-clamp-1 leading-relaxed">{schedule.description}</p>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1 ml-3 flex-shrink-0">
-                      <button
-                        onClick={() => handleViewSchedule(schedule)}
-                        className="p-1.5 text-gray-500 hover:text-[#080325] hover:bg-gray-100 rounded-lg transition-all duration-200 hover:shadow-sm"
-                        title="View Details"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                      </button>
-                      {schedule.priority === 'low' && (
-                        <button
-                          onClick={() => handleDeleteSchedule(schedule)}
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:shadow-sm"
-                          title="Delete Schedule"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+      <>
+        <div className="space-y-3">
+          {currentDates.map((dateKey) => {
+            const daySchedules = groupedSchedules[dateKey];
+            return (
+              <div key={dateKey} className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div className="bg-[#080325] px-4 py-2 border-b border-[#080325]">
+                  <h3 className="text-base font-bold text-white">
+                    {getDayName(dateKey)}, {formatDateFromString(dateKey)}
+                  </h3>
+                  <p className="text-xs text-white/80">
+                    {daySchedules.length} schedule{daySchedules.length !== 1 ? 's' : ''}
+                  </p>
                 </div>
-              ))}
+                <div className="divide-y divide-gray-100">
+                  {daySchedules.map((schedule) => (
+                    <div key={schedule._id} className="p-3 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-[#080325]">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-sm font-bold text-gray-900 truncate">{schedule.title}</h4>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getPriorityColor(schedule.priority)}`}>
+                              {schedule.priority}
+                            </span>
+                            {schedule.recurring && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                          
+                          {schedule.subtitle && (
+                            <p className="text-xs text-gray-600 mb-1 truncate font-medium">{schedule.subtitle}</p>
+                          )}
+                          
+                          <div className="flex items-center gap-3 text-xs text-gray-600 mb-1">
+                            <div className="flex items-center gap-1">
+                              <ClockIcon className="w-3 h-3 text-[#080325]" />
+                              <span className="font-medium">{formatTime(new Date(schedule.startDateTime))} - {formatTime(new Date(schedule.endDateTime))}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3 text-[#080325]" />
+                              <span className="font-medium">{schedule.scheduleType}</span>
+                            </div>
+                          </div>
+                          
+                          {schedule.description && (
+                            <p className="text-xs text-gray-700 line-clamp-1 leading-relaxed">{schedule.description}</p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+                          <button
+                            onClick={() => handleViewSchedule(schedule)}
+                            className="p-1.5 text-gray-500 hover:text-[#080325] hover:bg-gray-100 rounded-lg transition-all duration-200 hover:shadow-sm"
+                            title="View Details"
+                          >
+                            <EyeIcon className="w-4 h-4" />
+                          </button>
+                          {schedule.priority === 'low' && (
+                            <button
+                              onClick={() => handleDeleteSchedule(schedule)}
+                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:shadow-sm"
+                              title="Delete Schedule"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center gap-2">
+              {/* Previous Button */}
+              <button
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first page, last page, current page, and pages around current page
+                  const shouldShow = 
+                    page === 1 || 
+                    page === totalPages || 
+                    (page >= currentPage - 1 && page <= currentPage + 1);
+                  
+                  if (!shouldShow) {
+                    // Show ellipsis for gaps
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span key={page} className="px-2 py-1 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handlePaginationPageChange(page)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        currentPage === page
+                          ? 'bg-[#080325] text-white'
+                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        )}
+      </>
     );
   };
 
@@ -811,32 +943,43 @@ const Schedules = () => {
                 </div>
               </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-0.5">
-                      Start Date & Time *
+                      Schedule Date *
                     </label>
                     <input
-                      type="datetime-local"
+                      type="date"
                       required
-                      value={formData.startDateTime}
-                      onChange={(e) => setFormData({...formData, startDateTime: e.target.value})}
+                      value={formData.date}
+                      onChange={(e) => setFormData({...formData, date: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
-                      placeholder="dd/mm/yyyy --:--"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-0.5">
-                      End Date & Time *
+                      Start Time *
                     </label>
                     <input
-                      type="datetime-local"
+                      type="time"
                       required
-                      value={formData.endDateTime}
-                      onChange={(e) => setFormData({...formData, endDateTime: e.target.value})}
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({...formData, startTime: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
-                      placeholder="dd/mm/yyyy --:--"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-0.5">
+                      End Time *
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
                     />
                   </div>
                 </div>
@@ -1159,6 +1302,37 @@ const Schedules = () => {
         confirmText="Delete Schedule"
         cancelText="Cancel"
       />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-200/50 transform transition-all duration-300 scale-100">
+            <div className="text-center">
+              {/* Success Icon */}
+              <div className="mx-auto flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-6">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              
+              {/* Success Message */}
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                Schedule Created!
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Your schedule has been successfully created and added to your calendar.
+              </p>
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+                <div className="bg-green-500 h-2 rounded-full transition-all duration-2000 ease-linear" style={{ width: '100%' }}></div>
+              </div>
+              
+              <p className="text-sm text-gray-500">Refreshing schedule list...</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
