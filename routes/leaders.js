@@ -240,12 +240,13 @@ router.get('/profile', leaderOrSuperLeaderAuth, async (req, res) => {
     res.json({
       success: true,
       user: {
+        _id: user._id,
         id: user._id,
         name: user.name,
         phoneNumber: user.phoneNumber,
         department: user.department,
         designation: user.designation,
-        role: user.role.name,
+        role: user.role, // Keep the full role object with _id and name
         isDeptHead: user.isDeptHead,
         isVerified: user.isVerified,
         isFreeFood: user.isFreeFood,

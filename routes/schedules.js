@@ -87,14 +87,6 @@ function generateRecurringSchedules(mainSchedule, recurrencePattern) {
   return schedules;
 }
 
-// 🧪 TEST ROUTE - Remove this after testing
-router.get('/test', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Schedules API is working!',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // 🎯 CREATE: Add new schedule entries
 router.post('/', leaderOrSuperLeaderAuth, async (req, res) => {
@@ -803,7 +795,7 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
         }
       }
 
-      const message = `🔔 Reschedule Request\n\n${req.user.name} has requested to reschedule your meeting ${meeting.title} from ${meeting.startDatetime.toLocaleString()} to ${new Date(suggestedTime).toLocaleString()}.\n\nReason: ${reason}\n\nPlease review and respond to this request.`;
+      const message = `**🔔 RESCHEDULE REQUEST**\n\n**Meeting:** ${meeting.title}\n**Requested by:** ${req.user.name}\n**Current Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Current Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Suggested Date:** ${new Date(suggestedTime).toISOString().split('T')[0]}\n**Suggested Time:** ${new Date(suggestedTime).toISOString().split('T')[1].split('.')[0]}\n**Reason:** ${reason}\n\nPlease review and respond to this request in your Hira+ app.\n\nThank you!`;
       
       await sendDXingMessage(meeting.createdBy.phoneNumber, message);
     } catch (notificationError) {
@@ -977,13 +969,7 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
             }
           }
 
-          const message = `🔄 Meeting Rescheduled: ${populatedMeeting.title}\n\n` +
-                         `📅 New Date: ${newStartTime.toLocaleString()}\n` +
-                         `⏰ New Time: ${newStartTime.toLocaleTimeString()} - ${newEndTime.toLocaleTimeString()}\n` +
-                         `📍 Location: ${populatedMeeting.locationLink || 'TBD'}\n` +
-                         `📝 Description: ${populatedMeeting.description}\n\n` +
-                         `The meeting time has been changed. Please update your calendar.\n` +
-                         `Thank you!`;
+          const message = `**🔄 MEETING RESCHEDULED**\n\n**Meeting:** ${populatedMeeting.title}\n**New Date:** ${newStartTime.toISOString().split('T')[0]}\n**New Time:** ${newStartTime.toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${newStartTime.toISOString().split('T')[1].split('.')[0]} - ${newEndTime.toISOString().split('T')[1].split('.')[0]}\n**Location:** ${populatedMeeting.locationLink || 'TBD'}\n**Description:** ${populatedMeeting.description}\n\n**Action Required:** Please update your calendar with the new meeting time.\n\nThank you for your understanding!`;
 
           await sendDXingMessage(participantData.participant.phoneNumber, message);
         } catch (error) {
@@ -1025,11 +1011,7 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
           }
         }
 
-        const message = `✅ Reschedule Request Approved\n\n` +
-                       `Meeting: ${populatedMeeting.title}\n` +
-                       `New time: ${newStartTime.toLocaleString()}\n` +
-                       `Response: ${responseMessage || 'Approved'}\n\n` +
-                       `All participants have been notified.`;
+        const message = `**✅ RESCHEDULE REQUEST APPROVED**\n\n**Meeting:** ${populatedMeeting.title}\n**New Date:** ${newStartTime.toISOString().split('T')[0]}\n**New Time:** ${newStartTime.toISOString().split('T')[1].split('.')[0]}\n**Response:** ${responseMessage || 'Approved'}\n\n**Status:** All participants have been notified of the time change.\n\nThank you for your request!`;
 
         await sendDXingMessage(rescheduleRequest.requestedBy.phoneNumber, message);
       } catch (error) {
@@ -1071,10 +1053,7 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
           }
         }
 
-        const message = `❌ Reschedule Request Rejected\n\n` +
-                       `Meeting: ${meeting.title}\n` +
-                       `Response: ${responseMessage || 'Request rejected'}\n\n` +
-                       `The meeting will remain at its original time.`;
+        const message = `**❌ RESCHEDULE REQUEST REJECTED**\n\n**Meeting:** ${meeting.title}\n**Response:** ${responseMessage || 'Request rejected'}\n\n**Status:** The meeting will remain at its original time.\n\nPlease contact the meeting organizer if you have any concerns.`;
 
         await sendDXingMessage(rescheduleRequest.requestedBy.phoneNumber, message);
       } catch (error) {
@@ -1112,12 +1091,6 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
     });
   }
 });
-
-
-
-
-
-
 
 
 // Helper function to send DXing message (same as in leadersMeetings.js)
