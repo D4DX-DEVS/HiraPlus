@@ -16,9 +16,35 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
         let message;
         
         if (isCreator) {
-            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
+            const date = new Date(meeting.startDatetime);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Asia/Kolkata'
+            });
+            const formattedTime = date.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            });
+            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
         } else {
-            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
+            const date = new Date(meeting.startDatetime);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Asia/Kolkata'
+            });
+            const formattedTime = date.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            });
+            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
@@ -40,7 +66,20 @@ async function sendMeetingConfirmationToParticipant(meeting, participant) {
             return;
         }
         
-        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
+        const date = new Date(meeting.startDatetime);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'Asia/Kolkata'
+        });
+        const formattedTime = date.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata'
+        });
+        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
         
         console.log('Sending confirmation message to:', participant.phoneNumber);
         await sendDXingMessage(participant.phoneNumber, message);
@@ -61,7 +100,20 @@ async function sendMeetingCancellationToParticipant(meeting, participant) {
             return;
         }
         
-        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
+        const date = new Date(meeting.startDatetime);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'Asia/Kolkata'
+        });
+        const formattedTime = date.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata'
+        });
+        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
         
         console.log('Sending cancellation message to:', participant.phoneNumber);
         await sendDXingMessage(participant.phoneNumber, message);
@@ -77,7 +129,20 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
         let message;
         
         if (isCreator) {
-            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
+            const date = new Date(meeting.startDatetime);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Asia/Kolkata'
+            });
+            const formattedTime = date.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            });
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
         } else {
             // Debug: Log the actual meeting data
             console.log('🔍 DEBUG - Meeting data for notification:');
@@ -88,7 +153,20 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
             console.log('startDatetime UTC:', new Date(meeting.startDatetime).toISOString());
             console.log('startDatetime Asia/Kolkata:', new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
             
-            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
+            const date = new Date(meeting.startDatetime);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Asia/Kolkata'
+            });
+            const formattedTime = date.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            });
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
@@ -295,7 +373,8 @@ router.post('/create', leaderAuth, async (req, res) => {
             description,
             agenda,
             reccurence,
-            participants
+            participants,
+            sendNotifications
         } = req.body;
 
         // Validate required fields
@@ -360,6 +439,7 @@ router.post('/create', leaderAuth, async (req, res) => {
             description,
             agenda,
             reccurence: reccurence || false,
+            sendNotifications: sendNotifications !== undefined ? sendNotifications : true,
             createdBy: req.user.id,
             status: 'pending'
         });
@@ -405,7 +485,8 @@ router.post('/create', leaderAuth, async (req, res) => {
             'leader'
         );
 
-        // Send DXing notifications to all participants including the creator
+        // Send DXing notifications to all participants including the creator (only if notifications are enabled)
+        if (populatedMeeting.sendNotifications) {
         for (const participantData of populatedMeeting.participants) {
             try {
                 const isCreator = participantData.participant._id.toString() === req.user.id;
@@ -413,11 +494,16 @@ router.post('/create', leaderAuth, async (req, res) => {
             } catch (error) {
                 console.error(`Failed to send notification to ${participantData.participant.phoneNumber}:`, error);
             }
+            }
+        } else {
+            console.log('📵 WhatsApp notifications disabled for this meeting');
         }
 
         res.status(201).json({
             success: true,
-            message: 'Meeting request sent successfully',
+            message: populatedMeeting.sendNotifications 
+                ? 'Meeting request sent successfully' 
+                : 'Meeting created successfully (notifications disabled)',
             data: {
                 ...populatedMeeting.toObject(),
                 pendingResponses: populatedMeeting.participants.filter(p => p.status === 'pending').length
@@ -447,7 +533,8 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             description,
             agenda,
             reccurence,
-            participants
+            participants,
+            sendNotifications
         } = req.body;
 
         // Debug: Log the incoming datetime data
@@ -526,6 +613,7 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             description,
             agenda,
             reccurence: reccurence || false,
+            sendNotifications: sendNotifications !== undefined ? sendNotifications : true,
             createdBy: req.user.id,
             status: 'confirmed' // Super leader meetings are automatically confirmed
         });
@@ -573,7 +661,8 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             'super leader'
         );
 
-        // Send meeting acknowledgment notifications to all participants
+        // Send meeting acknowledgment notifications to all participants (only if notifications are enabled)
+        if (populatedMeeting.sendNotifications) {
         for (const participantData of populatedMeeting.participants) {
             try {
                 const isCreator = participantData.participant._id.toString() === req.user.id;
@@ -581,11 +670,16 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             } catch (error) {
                 console.error(`Failed to send notification to ${participantData.participant.phoneNumber}:`, error);
             }
+            }
+        } else {
+            console.log('📵 WhatsApp notifications disabled for this super leader meeting');
         }
 
         res.status(201).json({
             success: true,
-            message: 'Meeting created and participants notified successfully',
+            message: populatedMeeting.sendNotifications 
+                ? 'Meeting created and participants notified successfully' 
+                : 'Meeting created successfully (notifications disabled)',
             data: {
                 ...populatedMeeting.toObject(),
                 note: 'All participants automatically accepted'

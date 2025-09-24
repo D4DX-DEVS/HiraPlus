@@ -109,7 +109,12 @@ const leadersMeetingSchema = new mongoose.Schema({
         responseMessage: {
             type: String
         }
-    }]
+    }],
+    // Notification preference for WhatsApp messages
+    sendNotifications: {
+        type: Boolean,
+        default: true
+    }
 }, {
     timestamps: true
 });
