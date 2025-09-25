@@ -27,6 +27,7 @@ const leadersMeetingsRoutes = require('./routes/leadersMeetings');
 const scheduleRoutes = require('./routes/schedules');
 const generalSecretaryRoutes = require('./routes/generalSecretary');
 const roleRoutes = require('./routes/roles');
+const customTagsRoutes = require('./routes/customTags');
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/testing/leaders-meetings', leadersMeetingsRoutes);
 app.use('/api/testing/schedules', scheduleRoutes);
 app.use('/api/testing/general-secretary', generalSecretaryRoutes);
 app.use('/api/roles', roleRoutes);
+app.use('/api/testing/custom-tags', customTagsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
