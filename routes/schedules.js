@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Schedule = require('../models/schedule');
+const LeadersMeeting = require('../models/leadersMeetng');
 const { leaderOrSuperLeaderAuth } = require('../middleware/leaderAuth');
 
 // Helper function to generate recurring schedules
@@ -182,7 +183,6 @@ router.post('/', leaderOrSuperLeaderAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Create schedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -258,7 +258,6 @@ router.put('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update schedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -297,7 +296,6 @@ router.delete('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete schedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -308,44 +306,47 @@ router.delete('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
 // 📊 GET: Get all schedules for the authenticated user
 router.get('/', leaderOrSuperLeaderAuth, async (req, res) => {
   try {
-    const { page = 1, limit = 20, scheduleType, startDate, endDate } = req.query;
+    const { scheduleType, startDate, endDate } = req.query;
     
-    const query = { createdBy: req.user._id };
-    
+    // Get all schedules created by the user (both regular and meeting schedules)
+    const userSchedules = await Schedule.find({ createdBy: req.user._id })
+      .populate('createdBy', 'name phoneNumber role department')
+      .populate({
+        path: 'meetingReference',
+        select: 'title startDatetime endDatetime createdBy participants',
+        model: 'LeadersMeeting',
+        populate: {
+          path: 'participants.participant',
+          select: 'name phoneNumber role department'
+        }
+      })
+      .sort({ startDateTime: 1 });
+
     // Apply filters
+    let filteredSchedules = userSchedules;
+    
     if (scheduleType) {
-      query.scheduleType = scheduleType;
+      filteredSchedules = filteredSchedules.filter(schedule => schedule.scheduleType === scheduleType);
     }
     
     if (startDate && endDate) {
-      query.startDateTime = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      filteredSchedules = filteredSchedules.filter(schedule => 
+        schedule.startDateTime >= start && schedule.startDateTime <= end
+      );
     }
 
-    const schedules = await Schedule.find(query)
-      .populate('overriddenBy.meetingId', 'title startDatetime endDatetime')
-      .populate('meetingReference', 'title startDatetime endDatetime createdBy')
-      .sort({ startDateTime: 1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const total = await Schedule.countDocuments(query);
+    // Return all filtered schedules (no pagination)
+    const total = filteredSchedules.length;
 
     res.json({
       success: true,
-      data: schedules,
-      total: total, // Total number of schedules for the user
-      pagination: {
-        current: parseInt(page),
-        pages: Math.ceil(total / limit),
-        total
-      }
+      data: filteredSchedules,
+      total: total
     });
 
   } catch (error) {
-    console.error('Get schedules error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -458,7 +459,6 @@ router.get('/reschedule-requests', leaderOrSuperLeaderAuth, async (req, res) => 
     });
 
   } catch (error) {
-    console.error('Get reschedule requests error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -635,13 +635,13 @@ router.get('/user-conflicts/:userId?', leaderOrSuperLeaderAuth, async (req, res)
     });
 
   } catch (error) {
-    console.error('Get user conflicts error:', error);
     res.status(500).json({
       success: false,
       message: error.message
     });
   }
 });
+
 
 
 // 📋 GET: Get specific schedule by ID
@@ -672,7 +672,6 @@ router.get('/:id', leaderOrSuperLeaderAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get schedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -790,7 +789,6 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
 
           return response.data;
         } catch (error) {
-          console.error('DXing notification error:', error);
           throw error;
         }
       }
@@ -799,7 +797,6 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
       
       await sendDXingMessage(meeting.createdBy.phoneNumber, message);
     } catch (notificationError) {
-      console.error('Failed to send WhatsApp notification:', notificationError);
     }
 
     res.json({
@@ -827,7 +824,6 @@ router.post('/request-meeting-reschedule/:meetingId', leaderOrSuperLeaderAuth, a
     });
 
   } catch (error) {
-    console.error('Request meeting reschedule error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -961,10 +957,8 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
                 headers: { 'Content-Type': 'application/json' }
               });
 
-              console.log('WhatsApp notification sent successfully to:', phoneNumber);
               return response.data;
             } catch (error) {
-              console.error('DXing notification error:', error);
               throw error;
             }
           }
@@ -973,7 +967,6 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
 
           await sendDXingMessage(participantData.participant.phoneNumber, message);
         } catch (error) {
-          console.error(`Failed to send reschedule notification to ${participantData.participant.phoneNumber}:`, error);
         }
       }
 
@@ -1003,10 +996,8 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
               headers: { 'Content-Type': 'application/json' }
             });
 
-            console.log('WhatsApp notification sent successfully to:', phoneNumber);
             return response.data;
           } catch (error) {
-            console.error('DXing notification error:', error);
             throw error;
           }
         }
@@ -1015,7 +1006,6 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
 
         await sendDXingMessage(rescheduleRequest.requestedBy.phoneNumber, message);
       } catch (error) {
-        console.error(`Failed to send approval notification to requester:`, error);
       }
 
     } else if (status === 'rejected') {
@@ -1045,10 +1035,8 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
               headers: { 'Content-Type': 'application/json' }
             });
 
-            console.log('WhatsApp notification sent successfully to:', phoneNumber);
             return response.data;
           } catch (error) {
-            console.error('DXing notification error:', error);
             throw error;
           }
         }
@@ -1057,7 +1045,6 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
 
         await sendDXingMessage(rescheduleRequest.requestedBy.phoneNumber, message);
       } catch (error) {
-        console.error(`Failed to send rejection notification to requester:`, error);
       }
     }
 
@@ -1084,7 +1071,6 @@ router.put('/meeting-reschedule-approval/:requestId', leaderOrSuperLeaderAuth, a
     });
 
   } catch (error) {
-    console.error('Meeting reschedule approval error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -1121,7 +1107,6 @@ async function sendDXingMessage(phoneNumber, message) {
 
     return response.data;
   } catch (error) {
-    console.error('DXing notification error:', error);
     throw error;
   }
 }
