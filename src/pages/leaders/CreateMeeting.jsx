@@ -40,7 +40,8 @@ const CreateMeeting = () => {
         locationLink: '',
         description: '',
         agenda: '',
-        participants: []
+        participants: [],
+        sendNotifications: true
     });
 
     useEffect(() => {
@@ -140,7 +141,8 @@ const CreateMeeting = () => {
             locationLink: meeting.locationLink || '',
             description: meeting.description || '',
             agenda: meeting.agenda || '',
-            participants: participantIds
+            participants: participantIds,
+            sendNotifications: meeting.sendNotifications !== undefined ? meeting.sendNotifications : true
         });
     };
 
@@ -218,6 +220,7 @@ const CreateMeeting = () => {
                 locationLink: formData.locationLink,
                 description: formData.description,
                 agenda: formData.agenda,
+                sendNotifications: formData.sendNotifications,
                 // Filter out any null/undefined values from participants
                 participants: formData.participants.filter(participantId => participantId != null)
             };
@@ -562,6 +565,37 @@ const CreateMeeting = () => {
                                         placeholder="Enter meeting agenda"
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 hover:border-gray-400"
                                     />
+                                </div>
+                            </div>
+
+                            {/* Notification Settings */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold text-gray-900">Notification Settings</h3>
+                                
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id="sendNotifications"
+                                                    checked={formData.sendNotifications}
+                                                    onChange={(e) => setFormData({ ...formData, sendNotifications: e.target.checked })}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                                <label htmlFor="sendNotifications" className="ml-2 text-sm font-medium text-gray-900">
+                                                    Send WhatsApp notifications to participants
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="text-sm text-blue-600">
+                                            {formData.sendNotifications ? 'Enabled' : 'Disabled'}
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-blue-600 mt-2">
+                                        When enabled, participants will receive WhatsApp messages about this meeting. 
+                                        You can disable this if you prefer to notify participants through other means.
+                                    </p>
                                 </div>
                             </div>
 
