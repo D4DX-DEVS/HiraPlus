@@ -21,35 +21,35 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
             const formattedTime = date.toLocaleString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
-            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
+            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
         } else {
             const date = new Date(meeting.startDatetime);
             const formattedDate = date.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
             const formattedTime = date.toLocaleString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
-            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
+            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
     } catch (error) {
-        console.error('Error sending meeting request notification:', error);
+        // Error sending meeting request notification
     }
 }
 
@@ -58,11 +58,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
 // Send meeting confirmation to participant
 async function sendMeetingConfirmationToParticipant(meeting, participant) {
     try {
-        console.log('Confirmation function - participant:', participant);
-        console.log('Confirmation function - participant phoneNumber:', participant.phoneNumber);
-        
         if (!participant.phoneNumber) {
-            console.error('No phone number found for participant:', participant);
             return;
         }
         
@@ -71,32 +67,26 @@ async function sendMeetingConfirmationToParticipant(meeting, participant) {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-            timeZone: 'Asia/Kolkata'
+            timeZone: 'UTC'
         });
         const formattedTime = date.toLocaleString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true,
-            timeZone: 'Asia/Kolkata'
+            timeZone: 'UTC'
         });
-        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
+        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
         
-        console.log('Sending confirmation message to:', participant.phoneNumber);
         await sendDXingMessage(participant.phoneNumber, message);
-        console.log('Confirmation message sent successfully');
     } catch (error) {
-        console.error('Error sending meeting confirmation to participant:', error);
+        // Error sending meeting confirmation to participant
     }
 }
 
 // Send meeting cancellation to participant
 async function sendMeetingCancellationToParticipant(meeting, participant) {
     try {
-        console.log('Cancellation function - participant:', participant);
-        console.log('Cancellation function - participant phoneNumber:', participant.phoneNumber);
-        
         if (!participant.phoneNumber) {
-            console.error('No phone number found for participant:', participant);
             return;
         }
         
@@ -105,21 +95,19 @@ async function sendMeetingCancellationToParticipant(meeting, participant) {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-            timeZone: 'Asia/Kolkata'
+            timeZone: 'UTC'
         });
         const formattedTime = date.toLocaleString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true,
-            timeZone: 'Asia/Kolkata'
+            timeZone: 'UTC'
         });
-        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
+        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
         
-        console.log('Sending cancellation message to:', participant.phoneNumber);
         await sendDXingMessage(participant.phoneNumber, message);
-        console.log('Cancellation message sent successfully');
     } catch (error) {
-        console.error('Error sending meeting cancellation to participant:', error);
+        // Error sending meeting cancellation to participant
     }
 }
 
@@ -134,44 +122,35 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
             const formattedTime = date.toLocaleString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
-            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
         } else {
-            // Debug: Log the actual meeting data
-            console.log('🔍 DEBUG - Meeting data for notification:');
-            console.log('Meeting title:', meeting.title);
-            console.log('Raw startDatetime:', meeting.startDatetime);
-            console.log('startDatetime type:', typeof meeting.startDatetime);
-            console.log('startDatetime as Date:', new Date(meeting.startDatetime));
-            console.log('startDatetime UTC:', new Date(meeting.startDatetime).toISOString());
-            console.log('startDatetime Asia/Kolkata:', new Date(meeting.startDatetime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
             
             const date = new Date(meeting.startDatetime);
             const formattedDate = date.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
             const formattedTime = date.toLocaleString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'UTC'
             });
-            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
     } catch (error) {
-        console.error('Error sending super leader meeting notification:', error);
     }
 }
 
@@ -191,39 +170,29 @@ async function sendMeetingCancelledNotification(meeting) {
                 try {
                     await sendDXingMessage(phoneNumber, message);
                 } catch (error) {
-                    console.error(`Failed to send cancellation to ${phoneNumber}:`, error);
                 }
             } else {
-                console.warn(`No phone number found for participant: ${participant.participant}`);
             }
         }
     } catch (error) {
-        console.error('Error sending meeting cancelled notification:', error);
     }
 }
 
 // Send meeting decline notification to meeting creator
 async function sendMeetingDeclineNotificationToCreator(meeting, participant, declineReason) {
     try {
-        console.log('Decline notification function - meeting:', meeting.title);
-        console.log('Decline notification function - participant:', participant.name);
-        console.log('Decline notification function - decline reason:', declineReason);
         
         // Get meeting creator details
         const creator = await User.findById(meeting.createdBy);
         
         if (!creator || !creator.phoneNumber) {
-            console.error('No phone number found for meeting creator:', creator);
             return;
         }
         
         const message = `**📝 MEETING RESPONSE UPDATE**\n\n**Meeting:** ${meeting.title}\n**Participant:** ${participant.name} has declined the meeting request.\n**Reason:** ${declineReason || 'No reason provided'}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]} - ${new Date(meeting.endDatetime).toISOString().split('T')[1].split('.')[0]}\n\n**Status:** The meeting will still proceed as scheduled.\n\nPlease check your Hira+ app for more details.`;
         
-        console.log('Sending decline notification to creator:', creator.phoneNumber);
         await sendDXingMessage(creator.phoneNumber, message);
-        console.log('Decline notification sent to creator successfully');
     } catch (error) {
-        console.error('Error sending meeting decline notification to creator:', error);
     }
 }
 
@@ -253,7 +222,6 @@ async function sendDXingMessage(phoneNumber, message) {
 
         return response.data;
     } catch (error) {
-        console.error('DXing notification error:', error);
         throw error;
     }
 }
@@ -272,15 +240,15 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
     const createdSchedules = [];
     const overriddenSchedules = [];
 
+
     for (const participantData of participants) {
         const participantId = typeof participantData.participant === 'object' 
             ? participantData.participant._id 
             : participantData.participant;
 
+
         try {
             // Check for existing conflicting schedules (for notification purposes only)
-            console.log(`🔍 Checking for conflicts for participant ${participantId}:`);
-            console.log(`   - New Meeting Time: ${meeting.startDatetime} - ${meeting.endDatetime}`);
             
             const conflictingSchedules = await Schedule.find({
                 createdBy: participantId,
@@ -293,15 +261,11 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                 ]
             });
             
-            console.log(`🔍 Found ${conflictingSchedules.length} conflicting schedules:`);
             conflictingSchedules.forEach((schedule, index) => {
-                console.log(`   ${index + 1}. "${schedule.title}" | Priority: ${schedule.priority} | Time: ${schedule.startDateTime} - ${schedule.endDateTime} | Meeting Ref: ${schedule.meetingReference || 'N/A'}`);
             });
 
             // Send conflict notification if conflicts are found (but don't override - let the main conflict detection system handle it)
             if (conflictingSchedules.length > 0) {
-                console.log(`⚠️ CONFLICTS DETECTED: ${conflictingSchedules.length} conflicting schedules found`);
-                console.log(`📋 All schedules will remain active - conflicts will be shown in the conflicts section`);
                 
                 // Send conflict notification to the user
                 try {
@@ -314,23 +278,14 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                         const message = `**⚠️ SCHEDULE CONFLICT DETECTED**\n\n**New Meeting:**\n**Title:** ${meeting.title}\n**Date:** ${new Date(meeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(meeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Created by:** ${creatorRole === 'super leader' ? 'Super Leader' : 'Leader'}\n\n**Conflicting Schedules:**\n${conflictList}\n\n**Status:** All schedules remain active.\n**Action Required:** Please check the Conflicts section in your Hira+ app to resolve these conflicts.\n\nThank you for your attention!`;
 
                         await sendDXingMessage(user.phoneNumber, message);
-                        console.log(`✅ Conflict notification sent to user ${user.name} (${user.phoneNumber})`);
-                        console.log(`📱 Message: ${message}`);
                     } else {
-                        console.log(`❌ User not found or no phone number for participant: ${participantId}`);
                     }
                 } catch (notificationError) {
-                    console.error('❌ Error sending conflict notification:', notificationError);
                 }
             }
 
             // Create new schedule for the meeting
             const schedulePriority = creatorRole === 'super leader' ? 'high' : 'medium';
-            console.log(`📅 Creating new schedule for participant ${participantId}:`);
-            console.log(`   - Meeting: "${meeting.title}"`);
-            console.log(`   - Creator Role: ${creatorRole}`);
-            console.log(`   - Schedule Priority: ${schedulePriority}`);
-            console.log(`   - Time: ${meeting.startDatetime} - ${meeting.endDatetime}`);
             
             const newSchedule = new Schedule({
                 title: meeting.title,
@@ -347,16 +302,14 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                 meetingCreatorRole: creatorRole,
                 status: 'active'
             });
-
-            await newSchedule.save();
-            createdSchedules.push(newSchedule);
+            
+            const savedSchedule = await newSchedule.save();
+            createdSchedules.push(savedSchedule);
 
         } catch (error) {
-            console.error(`Error creating schedule for participant ${participantId}:`, error);
         }
     }
 
-    console.log(`📊 Schedule Creation Summary: ${createdSchedules.length} schedules created for meeting: ${meeting.title}`);
     return { createdSchedules, overriddenSchedules: [] }; // No overrides - conflicts are handled by the main conflict detection system
 }
 
@@ -479,11 +432,30 @@ router.post('/create', leaderAuth, async (req, res) => {
             });
 
         // Create schedules for all participants (leader meetings are confirmed at creation)
-        const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
-            populatedMeeting, 
-            populatedMeeting.participants, 
-            'leader'
-        );
+        try {
+            const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
+                populatedMeeting, 
+                populatedMeeting.participants, 
+                'leader'
+            );
+            
+            // Log detailed information about created schedules
+            if (createdSchedules.length > 0) {
+                createdSchedules.forEach((schedule, index) => {
+                });
+            } else {
+            }
+            
+            // Verify schedules were actually saved to database
+            const Schedule = require('../models/schedule');
+            const savedSchedules = await Schedule.find({ meetingReference: populatedMeeting._id });
+            if (savedSchedules.length > 0) {
+                savedSchedules.forEach((schedule, index) => {
+                });
+            }
+        } catch (scheduleError) {
+            // Don't fail the meeting creation if schedule creation fails
+        }
 
         // Send DXing notifications to all participants including the creator (only if notifications are enabled)
         if (populatedMeeting.sendNotifications) {
@@ -492,11 +464,9 @@ router.post('/create', leaderAuth, async (req, res) => {
                 const isCreator = participantData.participant._id.toString() === req.user.id;
                 await sendMeetingRequestNotification(populatedMeeting, participantData.participant, isCreator);
             } catch (error) {
-                console.error(`Failed to send notification to ${participantData.participant.phoneNumber}:`, error);
             }
             }
         } else {
-            console.log('📵 WhatsApp notifications disabled for this meeting');
         }
 
         res.status(201).json({
@@ -511,7 +481,6 @@ router.post('/create', leaderAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error creating meeting:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -538,11 +507,6 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
         } = req.body;
 
         // Debug: Log the incoming datetime data
-        console.log('🔍 DEBUG - Super Leader meeting creation:');
-        console.log('Raw startDatetime from request:', startDatetime);
-        console.log('Raw endDatetime from request:', endDatetime);
-        console.log('startDatetime type:', typeof startDatetime);
-        console.log('endDatetime type:', typeof endDatetime);
 
         // Validate required fields
         if (!title || !type || !startDatetime || !endDatetime || !mode || !description) {
@@ -556,12 +520,6 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
         const startDate = new Date(startDatetime);
         const endDate = new Date(endDatetime);
         
-        console.log('Parsed startDate:', startDate);
-        console.log('Parsed endDate:', endDate);
-        console.log('startDate UTC:', startDate.toISOString());
-        console.log('endDate UTC:', endDate.toISOString());
-        console.log('startDate Asia/Kolkata:', startDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-        console.log('endDate Asia/Kolkata:', endDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
         
         if (startDate >= endDate) {
             return res.status(400).json({
@@ -655,11 +613,33 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             });
 
         // Create schedules for all participants (super leader meetings are auto-confirmed)
-        const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
-            populatedMeeting, 
-            populatedMeeting.participants, 
-            'super leader'
-        );
+        populatedMeeting.participants.forEach((p, index) => {
+        });
+        
+        try {
+            const { createdSchedules, overriddenSchedules } = await createSchedulesForParticipants(
+                populatedMeeting, 
+                populatedMeeting.participants, 
+                'super leader'
+            );
+            
+            // Log detailed information about created schedules
+            if (createdSchedules.length > 0) {
+                createdSchedules.forEach((schedule, index) => {
+                });
+            } else {
+            }
+            
+            // Verify schedules were actually saved to database
+            const Schedule = require('../models/schedule');
+            const savedSchedules = await Schedule.find({ meetingReference: populatedMeeting._id });
+            if (savedSchedules.length > 0) {
+                savedSchedules.forEach((schedule, index) => {
+                });
+            }
+        } catch (scheduleError) {
+            // Don't fail the meeting creation if schedule creation fails
+        }
 
         // Send meeting acknowledgment notifications to all participants (only if notifications are enabled)
         if (populatedMeeting.sendNotifications) {
@@ -668,11 +648,9 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
                 const isCreator = participantData.participant._id.toString() === req.user.id;
                 await sendSuperLeaderMeetingNotification(populatedMeeting, participantData.participant, isCreator);
             } catch (error) {
-                console.error(`Failed to send notification to ${participantData.participant.phoneNumber}:`, error);
             }
             }
         } else {
-            console.log('📵 WhatsApp notifications disabled for this super leader meeting');
         }
 
         res.status(201).json({
@@ -687,7 +665,6 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error creating super leader meeting:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -805,25 +782,16 @@ router.post('/:meetingId/respond', async (req, res) => {
 
         // Send confirmation or cancellation message to the participant
         try {
-            console.log('Sending notification for status:', status);
-            console.log('Participant user:', req.user);
             
             if (status === 'accepted') {
-                console.log('Sending confirmation to participant...');
                 await sendMeetingConfirmationToParticipant(meeting, req.user);
-                console.log('Confirmation sent successfully');
             } else if (status === 'declined') {
-                console.log('Sending cancellation to participant...');
                 await sendMeetingCancellationToParticipant(meeting, req.user);
-                console.log('Cancellation sent successfully');
                 
                 // Send decline notification to meeting creator
-                console.log('Sending decline notification to meeting creator...');
                 await sendMeetingDeclineNotificationToCreator(meeting, req.user, message);
-                console.log('Decline notification sent to creator successfully');
             }
         } catch (error) {
-            console.error('Error sending response notification:', error);
         }
 
         // Meeting status remains pending regardless of participant responses
@@ -844,7 +812,6 @@ router.post('/:meetingId/respond', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error responding to meeting:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -937,7 +904,6 @@ router.get('/requests', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching meeting requests:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -999,7 +965,6 @@ router.get('/my-meetings', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching my meetings:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -1148,7 +1113,6 @@ router.get('/all-meetings', superLeaderAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get all meetings error:', error);
         res.status(500).json({
             success: false,
             message: error.message
@@ -1197,7 +1161,6 @@ router.get('/:meetingId', async (req, res) => {
 
 		return res.status(200).json({ success: true, data: responseData });
 	} catch (error) {
-		console.error('Error fetching meeting details:', error);
 		return res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
 	}
 });
@@ -1242,7 +1205,6 @@ router.put('/:meetingId', async (req, res) => {
 			});
 		}
 
-		console.log(`✅ Meeting update authorized for creator: ${user.name} (${user.role.name})`);
 
 		// Collect updatable fields
 		const {
@@ -1281,8 +1243,21 @@ router.put('/:meetingId', async (req, res) => {
 		// Optionally update participants list
 		if (Array.isArray(participants)) {
 			// Validate all participants exist and are leaders/super leaders
-			// Note: This will need to be updated after migration to use ObjectId references
-			const participantUsers = await User.find({ _id: { $in: participants }, role: { $in: ['leader', 'super leader'] } });
+			// Find the role ObjectIds for leader and super leader
+			const leaderRole = await Role.findOne({ name: 'leader' });
+			const superLeaderRole = await Role.findOne({ name: 'super leader' });
+			
+			if (!leaderRole || !superLeaderRole) {
+				return res.status(500).json({
+					success: false,
+					message: 'Role configuration error: leader or super leader roles not found'
+				});
+			}
+			
+			const participantUsers = await User.find({ 
+				_id: { $in: participants }, 
+				role: { $in: [leaderRole._id, superLeaderRole._id] } 
+			});
 			if (participantUsers.length !== participants.length) {
 				return res.status(400).json({ success: false, message: 'Some participants are not valid leaders or super leaders' });
 			}
@@ -1330,7 +1305,6 @@ router.put('/:meetingId', async (req, res) => {
 					endDateTime: saved.endDatetime
 				}
 			);
-			console.log(`📅 Updated schedules for meeting: ${saved.title}`);
 		}
 
 		// 🔔 SEND NOTIFICATION TO ALL PARTICIPANTS ABOUT MEETING UPDATE
@@ -1354,14 +1328,11 @@ router.put('/:meetingId', async (req, res) => {
 						                        const message = `**📝 MEETING UPDATED**\n\n**Meeting:** ${populatedMeeting.title}\n**Updated by:** ${user.name}\n\n**Updated Details:**\n**Date:** ${new Date(populatedMeeting.startDatetime).toISOString().split('T')[0]}\n**Time:** ${new Date(populatedMeeting.startDatetime).toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${new Date(populatedMeeting.startDatetime).toISOString().split('T')[1].split('.')[0]} - ${new Date(populatedMeeting.endDatetime).toISOString().split('T')[1].split('.')[0]}\n**Mode:** ${populatedMeeting.mode}\n**Description:** ${populatedMeeting.description}\n\n**Action Required:** Please check your Hira+ app for the latest details.\n\nThank you for your attention!`;
 
 						await sendDXingMessage(participantData.participant.phoneNumber, message);
-						console.log(`📱 Update notification sent to: ${participantData.participant.name}`);
 					}
 				} catch (error) {
-					console.error(`Failed to send update notification to ${participantData.participant.phoneNumber}:`, error);
 				}
 			}
 		} catch (notificationError) {
-			console.error('Error sending meeting update notifications:', notificationError);
 		}
 
 		return res.status(200).json({ 
@@ -1370,7 +1341,6 @@ router.put('/:meetingId', async (req, res) => {
 			data: populated 
 		});
 	} catch (error) {
-		console.error('Error updating meeting:', error);
 		return res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
 	}
 });
@@ -1496,10 +1466,8 @@ router.delete('/:meetingId', async (req, res) => {
                         const message = `**🔄 SCHEDULE RESTORED**\n\n**Schedule:** "${schedule.title}" has been restored.\n\n**Restored Schedule Details:**\n**Date:** ${new Date(schedule.startDateTime).toISOString().split('T')[0]}\n**Time:** ${new Date(schedule.startDateTime).toISOString().split('T')[1].split('.')[0]}\n**Duration:** ${new Date(schedule.startDateTime).toISOString().split('T')[1].split('.')[0]} - ${new Date(schedule.endDateTime).toISOString().split('T')[1].split('.')[0]}\n**Type:** ${schedule.scheduleType}\n\n**Reason:** The meeting that overrode this schedule has been cancelled.\n**Action Required:** Please check your Hira+ app for details.\n\nThank you for your understanding!`;
 
                         await sendDXingMessage(user.phoneNumber, message);
-                        console.log(`Restoration notification sent to user ${user.name} (${user.phoneNumber})`);
                     }
                 } catch (notificationError) {
-                    console.error('Error sending restoration notification:', notificationError);
                 }
             }
         }
@@ -1514,7 +1482,6 @@ router.delete('/:meetingId', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error deleting meeting:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -1582,7 +1549,6 @@ router.get('/reschedule-requests', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching reschedule requests:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
