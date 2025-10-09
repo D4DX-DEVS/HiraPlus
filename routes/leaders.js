@@ -313,4 +313,39 @@ router.get('/all', leaderOrSuperLeaderAuth, async (req, res) => {
   }
 });
 
+// Get all users (for meeting participants)
+router.get('/all-users', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    const users = await User.find({
+      status: 'active'
+    })
+    .populate('department', 'title')
+    .populate('tags', 'tagName')
+    .populate('role', 'name')
+    .select('name phoneNumber role department designation isDeptHead isVerified status createdAt tags')
+    .sort({ role: 1, name: 1 });
+
+    // Group by role for easier frontend handling
+    const groupedUsers = {
+      superLeaders: users.filter(user => user.role && user.role.name === 'super leader'),
+      leaders: users.filter(user => user.role && user.role.name === 'leader'),
+      members: users.filter(user => user.role && user.role.name === 'member'),
+      drivers: users.filter(user => user.role && user.role.name === 'driver'),
+      accountants: users.filter(user => user.role && user.role.name === 'accountant')
+    };
+
+    res.json({
+      success: true,
+      data: groupedUsers,
+      total: users.length
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;
