@@ -34,15 +34,26 @@ const LandingPage = () => {
               <p className="text-xl md:text-2xl text-emerald-100 max-w-4xl mx-auto mb-8 drop-shadow">
               Hira Plus Management System is a powerful and intuitive digital platform designed to streamline and optimize your operations, offering a comprehensive suite of tools to enhance efficiency and productivity.
               </p>
-              <Link
-                to="/admin/login"
-                className="inline-flex items-center px-8 py-4 bg-white text-emerald-800 font-semibold rounded-xl hover:bg-emerald-50 transition-all duration-200 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 text-lg"
-              >
-                Get Started
-                <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                <Link
+                  to="/admin/login"
+                  className="inline-flex items-center px-8 py-4 bg-white text-emerald-800 font-semibold rounded-xl hover:bg-emerald-50 transition-all duration-200 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 text-lg"
+                >
+                  Admin Portal
+                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+                <Link
+                  to="/leaders/login"
+                  className="inline-flex items-center px-8 py-4 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-all duration-200 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 text-lg"
+                >
+                  Leaders Portal
+                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </div>
             </div>
 
             {/* Features Grid */}

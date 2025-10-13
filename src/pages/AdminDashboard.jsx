@@ -105,7 +105,12 @@ const AdminDashboard = () => {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUsers(response.data);
+      // Ensure role data is populated
+      const usersWithRoles = response.data.map(user => ({
+        ...user,
+        role: user.role || { name: 'member' } // Fallback for users without role
+      }));
+      setUsers(usersWithRoles);
     } catch (err) {
       console.error('Fetch error:', err.response?.data);
       setError('Failed to fetch users');
@@ -406,17 +411,17 @@ const AdminDashboard = () => {
                               <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
                                 user.isDeptHead
                                   ? 'bg-purple-100 text-purple-800'
-                                  : (user.role === 'driver'
+                                  : (user.role?.name === 'driver'
                                       ? 'bg-blue-100 text-blue-800'
-                                      : user.role === 'accountant'
+                                      : user.role?.name === 'accountant'
                                       ? 'bg-green-100 text-green-800'
-                                      : user.role === 'leader'
+                                      : user.role?.name === 'leader'
                                       ? 'bg-indigo-100 text-indigo-800'
-                                      : user.role === 'super leader'
+                                      : user.role?.name === 'super leader'
                                       ? 'bg-red-100 text-red-800'
                                       : 'bg-gray-100 text-gray-800')
                               }`}>
-                                {user.isDeptHead ? 'Head' : (user.role === 'driver' ? 'Driver 🚗' : (user.role === 'accountant' ? 'Accountant 💰' : (user.role === 'leader' ? 'Leader 👑' : (user.role === 'super leader' ? 'Super Leader 🌟' : 'Member'))))}
+                                {user.isDeptHead ? 'Head' : (user.role?.name === 'driver' ? 'Driver 🚗' : (user.role?.name === 'accountant' ? 'Accountant 💰' : (user.role?.name === 'leader' ? 'Leader 👑' : (user.role?.name === 'super leader' ? 'Super Leader 🌟' : 'Member'))))}
                               </span>
                             </td>
                             <td className="px-1 py-1.5 whitespace-nowrap">
