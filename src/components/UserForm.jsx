@@ -5,7 +5,9 @@ import {
   UserIcon, 
   BriefcaseIcon, 
   AcademicCapIcon,
-  UserGroupIcon 
+  UserGroupIcon,
+  TagIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -20,13 +22,16 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     isFreeFood: initialData?.isFreeFood || false,
     isIntern: initialData?.isIntern || false,
     role: initialData?.role || '',
-    status: initialData?.status || 'active'
+    status: initialData?.status || 'active',
+    tags: initialData?.tags || []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState([]);
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
 
   // Check if the selected department should show isIntern field
   const shouldShowInternField = formData.department === 'D4DX Innovations LLP';
@@ -83,10 +88,34 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     fetchRoles();
   }, []);
 
+  // Fetch tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        setTagsLoading(true);
+        const token = getAuthToken();
+        const response = await axios.get(`${API_URL}/tags`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        setAvailableTags(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      } finally {
+        setTagsLoading(false);
+      }
+    };
+    fetchTags();
+  }, []);
+
 
   useEffect(() => {
     if (initialData) {
       const departmentValue = typeof initialData.department === 'string' ? initialData.department : initialData.department?.title || '';
+      const userTags = initialData.tags ? initialData.tags.map(tag => 
+        typeof tag === 'object' ? tag._id : tag
+      ) : [];
+      
       setFormData({
         name: initialData.name || '',
         phoneNumber: initialData.phoneNumber || '',
@@ -96,7 +125,8 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
         isFreeFood: initialData.isFreeFood || false,
         isIntern: initialData.isIntern || false,
         role: typeof initialData.role === 'object' ? initialData.role?._id || '' : initialData.role || '',
-        status: initialData.status || 'active'
+        status: initialData.status || 'active',
+        tags: userTags
       });
     }
   }, [initialData]);
@@ -106,6 +136,15 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleTagToggle = (tagId, isSelected) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: isSelected 
+        ? [...prev.tags, tagId]
+        : prev.tags.filter(id => id !== tagId)
     }));
   };
 
@@ -349,6 +388,70 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
           </div>
 
           <div></div>
+        </div>
+
+        {/* Tags Selection */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Tags
+          </label>
+          
+          {tagsLoading ? (
+            <div className="text-sm text-gray-500">Loading tags...</div>
+          ) : (
+            <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-gray-50">
+              {availableTags.length === 0 ? (
+                <div className="text-sm text-gray-500 text-center py-2">
+                  No tags available. Create tags in the Tag Management section.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {availableTags.map(tag => (
+                    <label key={tag._id} className="flex items-center space-x-2 py-2 px-2 hover:bg-gray-100 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.tags.includes(tag._id)}
+                        onChange={(e) => handleTagToggle(tag._id, e.target.checked)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700 flex items-center truncate">
+                        <TagIcon className="h-4 w-4 text-gray-400 mr-1 flex-shrink-0" />
+                        <span className="truncate">{tag.tagName}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Selected Tags Display */}
+          {formData.tags.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-700">Selected Tags:</div>
+              <div className="flex flex-wrap gap-2">
+                {formData.tags.map(tagId => {
+                  const tag = availableTags.find(t => t._id === tagId);
+                  return (
+                    <span 
+                      key={tagId} 
+                      className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 border border-green-200"
+                    >
+                      <TagIcon className="h-3 w-3 mr-1" />
+                      {tag?.tagName || 'Unknown Tag'}
+                      <button
+                        type="button"
+                        onClick={() => handleTagToggle(tagId, false)}
+                        className="ml-2 text-green-600 hover:text-green-800 focus:outline-none"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end space-x-3 pt-4">

@@ -18,6 +18,7 @@ const CreateMeeting = () => {
     const location = useLocation();
     const [participants, setParticipants] = useState([]);
     const [tags, setTags] = useState([]);
+    const [customTags, setCustomTags] = useState([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -28,6 +29,7 @@ const CreateMeeting = () => {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showAlertModal, setShowAlertModal] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
+    const [participantSearchTerm, setParticipantSearchTerm] = useState('');
     
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
     const [formData, setFormData] = useState({
@@ -48,6 +50,7 @@ const CreateMeeting = () => {
         fetchUserData();
         fetchParticipants();
         fetchTags();
+        fetchCustomTags();
         
         // Check if we're in editing mode
         if (id) {
@@ -149,16 +152,19 @@ const CreateMeeting = () => {
     const fetchParticipants = async () => {
         try {
             const token = localStorage.getItem('leaderToken');
-            const response = await axios.get(`${API_BASE_URL}/leaders/all`, {
+            const response = await axios.get(`${API_BASE_URL}/leaders/all-users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const allLeaders = [
+            const allUsers = [
                 ...(response.data.data.superLeaders || []),
-                ...(response.data.data.regularLeaders || [])
+                ...(response.data.data.leaders || []),
+                ...(response.data.data.members || []),
+                ...(response.data.data.drivers || []),
+                ...(response.data.data.accountants || [])
             ];
             
             // Include the creator in the participants list
-            const participantsWithCreator = user ? [user, ...allLeaders] : allLeaders;
+            const participantsWithCreator = user ? [user, ...allUsers] : allUsers;
             
             setParticipants(participantsWithCreator);
             console.log('Participants fetched successfully (including creator):', participantsWithCreator);
@@ -196,6 +202,20 @@ const CreateMeeting = () => {
             
             // Set empty tags array to prevent further errors
             setTags([]);
+        }
+    };
+
+    const fetchCustomTags = async () => {
+        try {
+            const token = localStorage.getItem('leaderToken');
+            const response = await axios.get(`${API_BASE_URL}/custom-tags`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCustomTags(response.data.data || []);
+            console.log('Custom tags fetched successfully:', response.data.data);
+        } catch (error) {
+            console.error('Error fetching custom tags:', error);
+            setCustomTags([]);
         }
     };
 
@@ -341,6 +361,67 @@ const CreateMeeting = () => {
         }
         return false;
     };
+
+    // Custom Tag Selection Handlers
+    const handleCustomTagSelection = (customTagId) => {
+        const customTag = customTags.find(ct => ct._id === customTagId);
+        if (customTag) {
+            console.log('Custom tag selected:', customTag);
+            
+            // Get participant IDs from the custom tag
+            const participantIds = customTag.participants.map(p => p._id);
+            
+            // Add them to selected participants (avoiding duplicates) and ensure creator is always included
+            const creatorId = user?._id;
+            const allParticipantIds = creatorId ? [creatorId, ...participantIds] : participantIds;
+            const newParticipants = [...new Set([...formData.participants, ...allParticipantIds])];
+            setFormData({ ...formData, participants: newParticipants });
+            
+            console.log(`Selected custom tag "${customTag.name}": ${participantIds.length} participants added`);
+            console.log('New participants list:', newParticipants);
+        }
+    };
+
+    const handleRemoveCustomTagSelection = (customTagId) => {
+        const customTag = customTags.find(ct => ct._id === customTagId);
+        if (customTag) {
+            // Get participant IDs from the custom tag
+            const participantIds = customTag.participants.map(p => p._id);
+            
+            // Remove them from selected participants, but always keep the creator
+            const creatorId = user?._id;
+            const newParticipants = formData.participants.filter(id => 
+                !participantIds.includes(id) || (creatorId && id === creatorId)
+            );
+            setFormData({ ...formData, participants: newParticipants });
+            
+            console.log(`Deselected custom tag "${customTag.name}": ${participantIds.length} participants removed`);
+        }
+    };
+
+    const isCustomTagSelected = (customTagId) => {
+        const customTag = customTags.find(ct => ct._id === customTagId);
+        if (customTag) {
+            // Get participant IDs from the custom tag
+            const participantIds = customTag.participants.map(p => p._id);
+            const creatorId = user?._id;
+            const nonCreatorParticipants = participantIds.filter(id => id !== creatorId);
+            
+            // Check if ALL participants in this custom tag are selected (excluding creator as they're always selected)
+            return nonCreatorParticipants.length > 0 && nonCreatorParticipants.every(id => formData.participants.includes(id));
+        }
+        return false;
+    };
+
+    // Filter participants based on search term
+    const filteredParticipants = participants.filter(participant => {
+        const searchLower = participantSearchTerm.toLowerCase();
+        return (
+            participant.name.toLowerCase().includes(searchLower) ||
+            participant.role?.name?.toLowerCase().includes(searchLower) ||
+            participant.department?.title?.toLowerCase().includes(searchLower)
+        );
+    });
 
     const handleToggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
@@ -631,54 +712,109 @@ const CreateMeeting = () => {
 
                 {/* Tag-based Selection */}
                 {showTagSelection && (
-                    <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                            Available Tags
-                        </h4>
-                        
-                        {tags.length === 0 ? (
-                            <div className="text-center py-4">
-                                <p className="text-sm text-gray-500">No tags available</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {tags.map((tag) => {
-                                    const isSelected = isTagSelected(tag._id);
-                                    
-                                    return (
-                                        <label 
-                                            key={tag._id} 
-                                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                                                isSelected 
-                                                    ? 'bg-[#080325] text-white border-[#080325] hover:bg-[#0a0a2a]' 
-                                                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        handleTagSelection(tag._id);
-                                                    } else {
-                                                        handleRemoveTagSelection(tag._id);
-                                                    }
-                                                }}
-                                                className="rounded border-gray-300 text-[#080325] focus:ring-[#080325] w-4 h-4"
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <span className="text-sm font-medium block truncate">
-                                                    {tag.tagName || tag.name || 'Unknown Tag'}
-                                                </span>
-                                            </div>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        )}
+                    <div className="space-y-4">
+                        {/* Regular Tags Section */}
+                        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                Available Tags
+                            </h4>
+                            
+                            {tags.length === 0 ? (
+                                <div className="text-center py-4">
+                                    <p className="text-sm text-gray-500">No tags available</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {tags.map((tag) => {
+                                        const isSelected = isTagSelected(tag._id);
+                                        
+                                        return (
+                                            <label 
+                                                key={tag._id} 
+                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                                    isSelected 
+                                                        ? 'bg-[#080325] text-white border-[#080325] hover:bg-[#0a0a2a]' 
+                                                        : 'bg-white border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            handleTagSelection(tag._id);
+                                                        } else {
+                                                            handleRemoveTagSelection(tag._id);
+                                                        }
+                                                    }}
+                                                    className="rounded border-gray-300 text-[#080325] focus:ring-[#080325] w-4 h-4"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="text-sm font-medium block truncate">
+                                                        {tag.tagName || tag.name || 'Unknown Tag'}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Custom Tags Section */}
+                        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                My Custom Tags
+                            </h4>
+                            
+                            {customTags.length === 0 ? (
+                                <div className="text-center py-4">
+                                    <p className="text-sm text-gray-500">No custom tags created</p>
+                                    <p className="text-xs text-gray-400 mt-1">Create custom tags in your profile to group participants</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {customTags.map((customTag) => {
+                                        const isSelected = isCustomTagSelected(customTag._id);
+                                        
+                                        return (
+                                            <label 
+                                                key={customTag._id} 
+                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                                    isSelected 
+                                                        ? 'bg-[#080325] text-white border-[#080325] hover:bg-[#0a0a2a]' 
+                                                        : 'bg-white border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            handleCustomTagSelection(customTag._id);
+                                                        } else {
+                                                            handleRemoveCustomTagSelection(customTag._id);
+                                                        }
+                                                    }}
+                                                    className="rounded border-gray-300 text-[#080325] focus:ring-[#080325] w-4 h-4"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="text-sm font-medium block truncate">
+                                                        {customTag.name}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -690,9 +826,52 @@ const CreateMeeting = () => {
                         </svg>
                         Individual Selection
                     </h4>
-                    <div className="max-h-48 overflow-y-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {participants.map((participant) => {
+                    
+                    {/* Search Bar */}
+                    <div className="mb-4">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Search by name, role, or department..."
+                                value={participantSearchTerm}
+                                onChange={(e) => setParticipantSearchTerm(e.target.value)}
+                                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#080325] focus:border-transparent transition-all duration-200 text-sm"
+                            />
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            {participantSearchTerm && (
+                                <button
+                                    onClick={() => setParticipantSearchTerm('')}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                >
+                                    <svg className="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+                        {participantSearchTerm && (
+                            <p className="text-xs text-gray-500 mt-2">
+                                Showing {filteredParticipants.length} of {participants.length} participants
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto">
+                        {filteredParticipants.length === 0 ? (
+                            <div className="text-center py-8">
+                                <svg className="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <p className="text-sm text-gray-500 mb-1">No participants found</p>
+                                <p className="text-xs text-gray-400">Try adjusting your search terms</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {filteredParticipants.map((participant) => {
                                 const isCreator = user && participant._id === user._id;
                                 const isSelected = formData.participants.includes(participant._id);
                                 
@@ -751,7 +930,8 @@ const CreateMeeting = () => {
                                     </label>
                                 );
                             })}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
                             </div>

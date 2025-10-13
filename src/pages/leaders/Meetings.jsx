@@ -411,120 +411,147 @@ const Meetings = () => {
               </div>
             ) : (
               <>
-                <div className="grid gap-4">
-                  {currentMeetings.map((meeting) => (
-                  <div key={meeting._id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden">
-                    <div className="p-4">
-                      <div className="flex items-center gap-6">
-                        {/* Left Section: Title and Tags */}
-                        <div className="w-1/4 min-w-0">
-                          <h3 className="text-lg font-semibold text-gray-900 truncate mb-2">{meeting.title}</h3>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              meeting.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                              meeting.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                              meeting.status === 'declined' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {meeting.status || 'confirmed'}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                              meeting.mode === 'online' ? 'bg-blue-100 text-blue-700' :
-                              meeting.mode === 'offline' ? 'bg-purple-100 text-purple-700' :
-                              'bg-orange-100 text-orange-700'
-                            }`}>
-                              {meeting.mode}
-                            </span>
-                          </div>
-                        </div>
+                {/* Professional Table */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Meeting Details
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Date & Time
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Type & Mode
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Location
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {currentMeetings.map((meeting) => (
+                          <tr key={meeting._id} className="hover:bg-gray-50 transition-colors">
+                            {/* Meeting Details */}
+                            <td className="px-6 py-4">
+                              <div className="min-w-0">
+                                <h3 className="text-sm font-semibold text-gray-900 truncate">
+                                  {meeting.title}
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Created by {meeting.createdBy.name}
+                                </p>
+                              </div>
+                            </td>
 
-                        {/* Center Section: Date & Time with Separate Icons - Takes up more space */}
-                        <div className="flex-1 flex items-center justify-center gap-12">
-                          {/* Date */}
-                          <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-2">
-                              <CalendarDaysIcon className="w-5 h-5" />
-                              <span>Date</span>
-                            </div>
-                            <div className="text-lg font-semibold text-[#080325]">
-                              {formatDate(meeting.startDatetime)}
-                            </div>
-                          </div>
+                            {/* Date & Time */}
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900">
+                                <div className="font-medium">{formatDate(meeting.startDatetime)}</div>
+                                <div className="text-gray-500">
+                                  {formatTime(meeting.startDatetime)} - {formatTime(meeting.endDatetime)}
+                                </div>
+                              </div>
+                            </td>
 
-                          {/* Time */}
-                          <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-2">
-                              <ClockIcon className="w-5 h-5" />
-                              <span>Time</span>
-                            </div>
-                            <div className="text-lg font-semibold text-[#080325]">
-                              {formatTime(meeting.startDatetime)}
-                            </div>
-                          </div>
+                            {/* Type & Mode */}
+                            <td className="px-6 py-4">
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium text-gray-900">{meeting.type}</div>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                                  meeting.mode === 'online' ? 'bg-blue-100 text-blue-700' :
+                                  meeting.mode === 'offline' ? 'bg-purple-100 text-purple-700' :
+                                  'bg-orange-100 text-orange-700'
+                                }`}>
+                                  {meeting.mode}
+                                </span>
+                              </div>
+                            </td>
 
-                          {/* Meeting Type and Location Section */}
-                          <div className="flex flex-col items-center text-center">
-                            <div className="text-sm font-medium text-gray-800">
-                              {meeting.type}
-                            </div>
-                            {meeting.locationLink && (
-                              <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
-                                {meeting.mode === 'online' ? (
-                                  <a
-                                    href={meeting.locationLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                                    title="Join meeting link"
+                            {/* Location */}
+                            <td className="px-6 py-4">
+                              {meeting.locationLink ? (
+                                <div className="text-sm">
+                                  {meeting.mode === 'online' ? (
+                                    <a
+                                      href={meeting.locationLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800 hover:underline transition-colors flex items-center gap-1"
+                                      title="Join meeting link"
+                                    >
+                                      <LinkIcon className="w-3 h-3" />
+                                      <span className="truncate max-w-32">Join Meeting</span>
+                                    </a>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-gray-600">
+                                      <MapPinIcon className="w-3 h-3" />
+                                      <span className="truncate max-w-32" title={meeting.locationLink}>
+                                        {meeting.locationLink}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">No location</span>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                meeting.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                                meeting.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                meeting.status === 'declined' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {meeting.status || 'confirmed'}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleViewMeeting(meeting)}
+                                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                                  title="View Details"
+                                >
+                                  <EyeIcon className="w-4 h-4" />
+                                </button>
+                                {canEditMeeting(meeting) && (
+                                  <button
+                                    onClick={() => handleEditMeeting(meeting)}
+                                    className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                    title="Edit Meeting"
                                   >
-                                    <LinkIcon className="w-4 h-4" />
-                                    <span>Join Meeting</span>
-                                  </a>
-                                ) : (
-                                  <>
-                                    <MapPinIcon className="w-4 h-4" />
-                                    <span>{meeting.locationLink}</span>
-                                  </>
+                                    <PencilIcon className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {canDeleteMeeting(meeting) && (
+                                  <button
+                                    onClick={() => handleDeleteMeeting(meeting)}
+                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                    title="Delete Meeting"
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                  </button>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Right Section: Action Buttons */}
-                        <div className="w-1/4 flex flex-col items-end">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleViewMeeting(meeting)}
-                              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                              title="View Details"
-                            >
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
-                            {canEditMeeting(meeting) && (
-                              <button
-                                onClick={() => handleEditMeeting(meeting)}
-                                className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                                title="Edit Meeting"
-                              >
-                                <PencilIcon className="w-4 h-4" />
-                              </button>
-                            )}
-                            {canDeleteMeeting(meeting) && (
-                              <button
-                                onClick={() => handleDeleteMeeting(meeting)}
-                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                                title="Delete Meeting"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  ))}
                 </div>
 
                 {/* Pagination */}
