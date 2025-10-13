@@ -246,10 +246,18 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
             ? participantData.participant._id 
             : participantData.participant;
 
-
         try {
-            // Check for existing conflicting schedules (for notification purposes only)
+            // Get user role - only create schedules for leaders/super leaders
+            const user = await User.findById(participantId).populate('role', 'name');
+            const isLeader = user && user.role && (user.role.name === 'leader' || user.role.name === 'super leader');
             
+            // Skip schedule creation for common users
+            if (!isLeader) {
+                console.log(`Skipping schedule creation for non-leader user: ${user?.name}`);
+                continue;
+            }
+
+            // Check for existing conflicting schedules (for notification purposes only)
             const conflictingSchedules = await Schedule.find({
                 createdBy: participantId,
                 status: 'active',
@@ -269,7 +277,6 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
                 
                 // Send conflict notification to the user
                 try {
-                    const user = await User.findById(participantId);
                     if (user && user.phoneNumber) {
                         const conflictList = conflictingSchedules.map(schedule => 
                             `📅 ${schedule.title} (${new Date(schedule.startDateTime).toISOString().split('T')[0]} ${new Date(schedule.startDateTime).toISOString().split('T')[1].split('.')[0]})`
@@ -307,6 +314,7 @@ async function createSchedulesForParticipants(meeting, participants, creatorRole
             createdSchedules.push(savedSchedule);
 
         } catch (error) {
+            console.error(`Error creating schedule for participant ${participantId}:`, error);
         }
     }
 
@@ -357,27 +365,16 @@ router.post('/create', leaderAuth, async (req, res) => {
             });
         }
 
-        // Find the role ObjectIds for leader and super leader
-        const leaderRole = await Role.findOne({ name: 'leader' });
-        const superLeaderRole = await Role.findOne({ name: 'super leader' });
-        
-        if (!leaderRole || !superLeaderRole) {
-            return res.status(500).json({
-                success: false,
-                message: 'Role configuration error: leader or super leader roles not found'
-            });
-        }
-
-        // Validate that all participants exist and are leaders or super leaders
+        // Validate that all participants exist (any role)
         const participantUsers = await User.find({
             _id: { $in: participants },
-            role: { $in: [leaderRole._id, superLeaderRole._id] }
+            status: 'active'
         }).populate('role', 'name');
 
         if (participantUsers.length !== participants.length) {
             return res.status(400).json({
                 success: false,
-                message: 'Some participants are not valid leaders or super leaders'
+                message: 'Some participants are not valid users'
             });
         }
 
@@ -402,11 +399,27 @@ router.post('/create', leaderAuth, async (req, res) => {
             participantId.toString() !== req.user.id.toString()
         );
 
-        // Initialize other participants with pending status
-        newMeeting.participants = otherParticipants.map(participantId => ({
-            participant: participantId,
-            status: 'pending'
-        }));
+        // Initialize participants with different statuses based on their role
+        const participantPromises = otherParticipants.map(async (participantId) => {
+            const user = await User.findById(participantId).populate('role', 'name');
+            
+            // Auto-accept non-leaders, keep leaders/super leaders as pending
+            if (user && user.role && (user.role.name === 'leader' || user.role.name === 'super leader')) {
+                return {
+                    participant: participantId,
+                    status: 'pending'
+                };
+            } else {
+                return {
+                    participant: participantId,
+                    status: 'accepted',
+                    responseDate: new Date(),
+                    responseMessage: 'Auto-accepted (non-leader user)'
+                };
+            }
+        });
+
+        newMeeting.participants = await Promise.all(participantPromises);
 
         // Add the creator as a participant with accepted status
         newMeeting.participants.push({
@@ -536,27 +549,16 @@ router.post('/super-leader/create', superLeaderAuth, async (req, res) => {
             });
         }
 
-        // Find the role ObjectIds for leader and super leader
-        const leaderRole = await Role.findOne({ name: 'leader' });
-        const superLeaderRole = await Role.findOne({ name: 'super leader' });
-        
-        if (!leaderRole || !superLeaderRole) {
-            return res.status(500).json({
-                success: false,
-                message: 'Role configuration error: leader or super leader roles not found'
-            });
-        }
-
-        // Validate that all participants exist and are leaders or super leaders
+        // Validate that all participants exist (any role)
         const participantUsers = await User.find({
             _id: { $in: participants },
-            role: { $in: [leaderRole._id, superLeaderRole._id] }
+            status: 'active'
         }).populate('role', 'name');
 
         if (participantUsers.length !== participants.length) {
             return res.status(400).json({
                 success: false,
-                message: 'Some participants are not valid leaders or super leaders'
+                message: 'Some participants are not valid users'
             });
         }
 
@@ -706,7 +708,7 @@ router.post('/:meetingId/respond', async (req, res) => {
         if (!user.role || (user.role.name !== 'leader' && user.role.name !== 'super leader')) {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied. Only leaders and super leaders can perform this action.'
+                message: 'Access denied. Only leaders and super leaders can respond to meeting requests. Common users are automatically accepted.'
             });
         }
 
@@ -1243,23 +1245,13 @@ router.put('/:meetingId', async (req, res) => {
 		// Optionally update participants list
 		if (Array.isArray(participants)) {
 			// Validate all participants exist and are leaders/super leaders
-			// Find the role ObjectIds for leader and super leader
-			const leaderRole = await Role.findOne({ name: 'leader' });
-			const superLeaderRole = await Role.findOne({ name: 'super leader' });
-			
-			if (!leaderRole || !superLeaderRole) {
-				return res.status(500).json({
-					success: false,
-					message: 'Role configuration error: leader or super leader roles not found'
-				});
-			}
-			
+			// Validate that all participants exist (any role)
 			const participantUsers = await User.find({ 
 				_id: { $in: participants }, 
-				role: { $in: [leaderRole._id, superLeaderRole._id] } 
+				status: 'active' 
 			});
 			if (participantUsers.length !== participants.length) {
-				return res.status(400).json({ success: false, message: 'Some participants are not valid leaders or super leaders' });
+				return res.status(400).json({ success: false, message: 'Some participants are not valid users' });
 			}
 
 			// Map existing statuses
@@ -1270,7 +1262,7 @@ router.put('/:meetingId', async (req, res) => {
 			const creatorId = meeting.createdBy._id.toString();
 			const meetingIsAutoConfirmed = meeting.status === 'confirmed' && meeting.createdBy.role && meeting.createdBy.role.name === 'super leader';
 
-			const rebuilt = participants.map(pid => {
+			const rebuilt = await Promise.all(participants.map(async (pid) => {
 				const pidStr = pid.toString();
 				if (pidStr === creatorId) {
 					return { participant: pid, status: 'accepted', responseDate: new Date(), responseMessage: 'Meeting creator - automatically accepted' };
@@ -1279,8 +1271,15 @@ router.put('/:meetingId', async (req, res) => {
 				if (existing) {
 					return { participant: pid, status: existing.status, responseDate: existing.responseDate, responseMessage: existing.responseMessage };
 				}
-				return { participant: pid, status: meetingIsAutoConfirmed ? 'accepted' : 'pending' };
-			});
+				
+				// Check user role for new participants
+				const user = await User.findById(pid).populate('role', 'name');
+				if (user && user.role && (user.role.name === 'leader' || user.role.name === 'super leader')) {
+					return { participant: pid, status: meetingIsAutoConfirmed ? 'accepted' : 'pending' };
+				} else {
+					return { participant: pid, status: 'accepted', responseDate: new Date(), responseMessage: 'Auto-accepted (non-leader user)' };
+				}
+			}));
 
 			// Ensure creator is present
 			if (!rebuilt.find(p => p.participant.toString() === creatorId)) {

@@ -162,14 +162,7 @@ router.post('/users', adminAuth, async (req, res) => {
     // Validate tags if provided
     let validatedTags = [];
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Only allow tags for leader and super leader roles
-      const roleDoc = await Role.findById(roleId);
-      if (!roleDoc || (roleDoc.name !== 'leader' && roleDoc.name !== 'super leader')) {
-        return res.status(400).json({ 
-          message: 'Tags can only be assigned to users with leader or super leader roles' 
-        });
-      }
-
+      // Allow tags for all roles
       // Validate that all tag IDs exist
       const existingTags = await Tag.find({ _id: { $in: tags } });
       if (existingTags.length !== tags.length) {
@@ -415,15 +408,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
     // Handle tags if provided
     if (tags !== undefined) {
       if (tags && Array.isArray(tags) && tags.length > 0) {
-        // Only allow tags for leader and super leader roles
-        const currentRoleId = (typeof role !== 'undefined' ? roleId : user.role);
-        const currentRoleDoc = await Role.findById(currentRoleId);
-        if (!currentRoleDoc || (currentRoleDoc.name !== 'leader' && currentRoleDoc.name !== 'super leader')) {
-          return res.status(400).json({ 
-            message: 'Tags can only be assigned to users with leader or super leader roles' 
-          });
-        }
-
+        // Allow tags for all roles
         // Validate that all tag IDs exist
         const existingTags = await Tag.find({ _id: { $in: tags } });
         if (existingTags.length !== tags.length) {
