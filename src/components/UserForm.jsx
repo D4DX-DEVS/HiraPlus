@@ -34,7 +34,9 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [tagsLoading, setTagsLoading] = useState(false);
 
   // Check if the selected department should show isIntern field
-  const shouldShowInternField = formData.department === 'D4DX Innovations LLP';
+  const shouldShowInternField = departments.find(dept => 
+    dept._id === formData.department || dept.title === formData.department
+  )?.allowInterns || false;
 
   // Get authentication token
   const getAuthToken = () => {

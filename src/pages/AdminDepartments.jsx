@@ -36,7 +36,9 @@ const AdminDepartments = () => {
   const [formData, setFormData] = useState({
     title: '',
     isHierarchical: false,
-    subDepartments: []
+    subDepartments: [],
+    allowInterns: false,
+    internDepartmentShare: 75
   });
   const [subDeptFormData, setSubDeptFormData] = useState({
     subDepartments: []
@@ -71,7 +73,9 @@ const AdminDepartments = () => {
       // Prepare department data (exclude sub-department fields)
       const departmentData = {
         title: formData.title,
-        isHierarchical: formData.isHierarchical
+        isHierarchical: formData.isHierarchical,
+        allowInterns: formData.allowInterns,
+        internDepartmentShare: formData.internDepartmentShare
       };
 
       const response = await axios({
@@ -113,7 +117,7 @@ const AdminDepartments = () => {
 
       setShowModal(false);
       setEditingDepartment(null);
-      setFormData({ title: '', isHierarchical: false, subDepartments: [] });
+      setFormData({ title: '', isHierarchical: false, subDepartments: [], allowInterns: false, internDepartmentShare: 75 });
       fetchDepartments();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save department');
@@ -184,7 +188,9 @@ const AdminDepartments = () => {
       subDepartments: department.subDepartments?.map(sub => ({
         title: sub.title || '',
         description: sub.description || ''
-      })) || []
+      })) || [],
+      allowInterns: department.allowInterns || false,
+      internDepartmentShare: department.internDepartmentShare || 75
     });
     setShowModal(true);
   };
@@ -381,7 +387,7 @@ const AdminDepartments = () => {
                     <button
                                               onClick={() => {
                           setEditingDepartment(null);
-                          setFormData({ title: '', isHierarchical: false, subDepartments: [] });
+                          setFormData({ title: '', isHierarchical: false, subDepartments: [], allowInterns: false, internDepartmentShare: 75 });
                           setShowModal(true);
                         }}
                       className="inline-flex items-center px-3 py-1.5 bg-green-950 text-white font-medium rounded-lg hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
@@ -529,6 +535,47 @@ const AdminDepartments = () => {
                       <label htmlFor="isHierarchical" className="ml-2 block text-sm text-gray-900">
                         Outside Department 
                       </label>
+                    </div>
+
+                    {/* Intern Policy Settings */}
+                    <div className="space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <h3 className="text-sm font-medium text-orange-800 flex items-center">
+                        📚 Intern Policy Settings
+                      </h3>
+                      
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="allowInterns"
+                          checked={formData.allowInterns}
+                          onChange={(e) => setFormData({ ...formData, allowInterns: e.target.checked })}
+                          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="allowInterns" className="ml-2 block text-sm text-gray-900">
+                          Allow Interns in this Department
+                        </label>
+                      </div>
+
+                      {formData.allowInterns && (
+                        <div>
+                          <label htmlFor="internDepartmentShare" className="block text-sm font-medium text-gray-700 mb-1">
+                            Department Share for Interns (%)
+                          </label>
+                          <input
+                            type="number"
+                            id="internDepartmentShare"
+                            min="0"
+                            max="100"
+                            value={formData.internDepartmentShare}
+                            onChange={(e) => setFormData({ ...formData, internDepartmentShare: parseInt(e.target.value) || 75 })}
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                            placeholder="Enter percentage (0-100)"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Percentage the department pays for intern meals (0% = intern pays all, 100% = department pays all)
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Sub-Department Fields - Only show when hierarchical is checked */}
@@ -835,6 +882,7 @@ const AdminDepartments = () => {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Intern Policy</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -892,6 +940,22 @@ const AdminDepartments = () => {
                                    {department.isHierarchical ? 'Outside Department' : 'Regular'}
                                  </span>
                                </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {department.allowInterns ? (
+                                  <div className="flex flex-col space-y-1">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                      📚 Interns Allowed
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {department.internDepartmentShare || 75}% dept share
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    No Interns
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {department.createdAt && !isNaN(new Date(department.createdAt)) 
                                   ? format(new Date(department.createdAt), 'MMM d, yyyy')
