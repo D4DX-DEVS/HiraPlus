@@ -2437,6 +2437,7 @@ router.delete('/meetings/:meetingId', adminAuth, async (req, res) => {
 router.get('/departments', async (req, res) => {
   try {
     const departments = await Department.find()
+      .select('title isHierarchical subDepartments allowInterns internDepartmentShare createdAt updatedAt')
       .sort({ title: 1 });
 
     // Add sub-department information for hierarchical departments

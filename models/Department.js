@@ -27,7 +27,18 @@ const departmentSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     }
-  }]
+  }],
+  // Intern policy settings
+  allowInterns: {
+    type: Boolean,
+    default: false
+  },
+  internDepartmentShare: {
+    type: Number,
+    default: 75,  // Percentage department pays for intern meals
+    min: 0,
+    max: 100
+  }
 }, {
   timestamps: true
 });
