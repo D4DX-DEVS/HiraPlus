@@ -7,7 +7,7 @@ const adminAuth = require('../middleware/adminAuth');
 router.get('/', async (req, res) => {
   try {
     const departments = await Department.find()
-      .select('_id title isHierarchical subDepartments createdAt updatedAt')
+      .select('_id title isHierarchical subDepartments allowInterns internDepartmentShare createdAt updatedAt')
       .sort({ title: 1 });
 
     res.json({
@@ -73,7 +73,7 @@ router.get('/:id', async (req, res) => {
 // CREATE new department (Admin only)
 router.post('/', adminAuth, async (req, res) => {
   try {
-    const { title, isHierarchical } = req.body;
+    const { title, isHierarchical, allowInterns, internDepartmentShare } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({
@@ -97,7 +97,9 @@ router.post('/', adminAuth, async (req, res) => {
     const department = new Department({
       title: title.trim(),
       isHierarchical: isHierarchical || false,
-      subDepartments: []
+      subDepartments: [],
+      allowInterns: allowInterns || false,
+      internDepartmentShare: internDepartmentShare || 75
     });
 
     await department.save();
@@ -303,7 +305,7 @@ router.delete('/:id/sub-departments/:subDeptId', adminAuth, async (req, res) => 
 // UPDATE department (Admin only)
 router.put('/:id', adminAuth, async (req, res) => {
   try {
-    const { title, isHierarchical } = req.body;
+    const { title, isHierarchical, allowInterns, internDepartmentShare } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({
@@ -336,6 +338,8 @@ router.put('/:id', adminAuth, async (req, res) => {
 
     department.title = title.trim();
     department.isHierarchical = isHierarchical !== undefined ? isHierarchical : department.isHierarchical;
+    department.allowInterns = allowInterns !== undefined ? allowInterns : department.allowInterns;
+    department.internDepartmentShare = internDepartmentShare !== undefined ? internDepartmentShare : department.internDepartmentShare;
 
     await department.save();
 

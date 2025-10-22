@@ -83,11 +83,33 @@ const authenticateDummyUser = async (phoneNumber, otp) => {
         await testDepartment.save();
       }
 
+      // Find the test role from environment variable
+      const Role = require('../models/Roles');
+      let testRole = null;
+      if (process.env.TEST_ROLE_ID) {
+        testRole = await Role.findById(process.env.TEST_ROLE_ID);
+      }
+      
+      // If no test role found by ID, try to find by name
+      if (!testRole && process.env.TEST_ROLE_NAME) {
+        testRole = await Role.findOne({ name: process.env.TEST_ROLE_NAME });
+      }
+      
+      // If still no role found, create a default test role
+      if (!testRole) {
+        testRole = new Role({ 
+          name: 'Test Role',
+          permissions: ['read', 'write']
+        });
+        await testRole.save();
+      }
+
       user = new User({ 
         phoneNumber,
         name: "Test User",
         department: testDepartment._id,  // Use ObjectId instead of string
         designation: "Tester",
+        role: testRole._id,  // Add the required role field
         isVerified: true
       });
       await user.save();
@@ -859,7 +881,7 @@ router.get('/departments', async (req, res) => {
     const Department = require('../models/Department');
     
     const departments = await Department.find()
-      .select('title')
+      .select('title allowInterns internDepartmentShare')
       .sort({ title: 1 });
 
     res.json({
