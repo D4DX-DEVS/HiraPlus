@@ -39,7 +39,7 @@ const LeadersSidebar = ({ isOpen, onToggle, activePage, onPageChange, onLogout }
       {/* Overlay for mobile */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={onToggle}
         />
       )}
@@ -48,7 +48,7 @@ const LeadersSidebar = ({ isOpen, onToggle, activePage, onPageChange, onLogout }
               <div className={`
                 fixed top-0 left-0 h-screen shadow-lg z-50 transition-all duration-300 ease-in-out
                 ${isOpen ? 'w-64' : 'w-16'} 
-                ${!isOpen && '-translate-x-full lg:translate-x-0'}
+                ${!isOpen ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}
               `} style={{ backgroundColor: '#080325' }}>
                  {/* Header */}
          <div className="flex items-center justify-between p-4 border-b border-gray-600">
