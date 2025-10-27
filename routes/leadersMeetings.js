@@ -29,7 +29,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
                 hour12: true,
                 timeZone: 'UTC'
             });
-            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
+            message = `**📅 MEETING CREATED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} \n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** You have been automatically accepted as a participant.\n**Action:** Meeting requests have been sent to all other participants.\n\nThank you for organizing this meeting!`;
         } else {
             const date = new Date(meeting.startDatetime);
             const formattedDate = date.toLocaleDateString('en-US', {
@@ -44,7 +44,7 @@ async function sendMeetingRequestNotification(meeting, participant, isCreator = 
                 hour12: true,
                 timeZone: 'UTC'
             });
-            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
+            message = `**📋 MEETING REQUEST**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} \n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Action Required:** Please respond to this meeting request in your Hira+ app.\n\nThank you for your prompt response!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
@@ -75,7 +75,7 @@ async function sendMeetingConfirmationToParticipant(meeting, participant) {
             hour12: true,
             timeZone: 'UTC'
         });
-        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
+        const message = `**✅ MEETING CONFIRMED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} \n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as ACCEPTED.\n\nThank you for confirming your attendance!`;
         
         await sendDXingMessage(participant.phoneNumber, message);
     } catch (error) {
@@ -103,7 +103,7 @@ async function sendMeetingCancellationToParticipant(meeting, participant) {
             hour12: true,
             timeZone: 'UTC'
         });
-        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
+        const message = `**📝 MEETING RESPONSE RECORDED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} \n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** Your response has been recorded as DECLINED.\n**Note:** The meeting will still proceed as scheduled.\n\nThank you for your response.`;
         
         await sendDXingMessage(participant.phoneNumber, message);
     } catch (error) {
@@ -130,7 +130,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
                 hour12: true,
                 timeZone: 'UTC'
             });
-            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Description:** ${meeting.description}\n\n**Status:** You have scheduled this meeting as a Super Leader.\n**Action:** All participants have been automatically accepted and notified.\n**Confirmation:** Meeting is confirmed and will proceed as scheduled.\n\nThank you for organizing this meeting!`;
         } else {
             
             const date = new Date(meeting.startDatetime);
@@ -146,7 +146,7 @@ async function sendSuperLeaderMeetingNotification(meeting, participant, isCreato
                 hour12: true,
                 timeZone: 'UTC'
             });
-            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime} UTC\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
+            message = `**📅 MEETING SCHEDULED**\n\n**Meeting:** ${meeting.title}\n**Date:** ${formattedDate}\n**Time:** ${formattedTime}\n**Mode:** ${meeting.mode}\n**Location:** ${meeting.locationLink || 'TBD'}\n**Description:** ${meeting.description}\n\n**Organizer:** A Super Leader has scheduled this meeting.\n**Status:** You have been automatically accepted as a participant.\n**Action Required:** Please ensure your attendance.\n\nThank you for your participation!`;
         }
         
         await sendDXingMessage(participant.phoneNumber, message);
