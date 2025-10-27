@@ -460,7 +460,7 @@ const CreateMeeting = () => {
                     onPageChange={handlePageChange}
                     onLogout={handleLogout}
                 />
-                <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-80' : 'lg:ml-24'}`}>
+                <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-16'}`}>
                     <div className="flex justify-center items-center py-16">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
                     </div>
@@ -478,7 +478,7 @@ const CreateMeeting = () => {
                 onPageChange={handlePageChange}
                 onLogout={handleLogout}
             />
-            <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-80' : 'lg:ml-24'}`}>
+            <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-16'}`}>
                 <div className="p-8">
                     {/* Header */}
                     <div className="mb-8 relative">

@@ -616,7 +616,7 @@ const Profile = () => {
         onPageChange={handlePageChange}
         onLogout={handleLogout}
       />
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-48' : 'lg:ml-12'}`}>
+      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-16'}`}>
         {renderProfileContent()}
       </main>
 

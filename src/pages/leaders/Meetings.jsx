@@ -350,7 +350,7 @@ const Meetings = () => {
         onPageChange={handlePageChange}
         onLogout={handleLogout}
       />
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-80' : 'lg:ml-24'}`}>
+      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-16'}`}>
         <div className="p-2 pr-6 pt-6">
           {/* Header */}
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-4">
