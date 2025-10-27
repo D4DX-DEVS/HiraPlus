@@ -36,8 +36,8 @@ const Schedules = () => {
   // Pagination state for list view
   const [currentPage, setCurrentPage] = useState(1);
   const [daysPerPage] = useState(7);
-  
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
+    
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
