@@ -31,7 +31,7 @@ const CreateMeeting = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [participantSearchTerm, setParticipantSearchTerm] = useState('');
     
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING
     const [formData, setFormData] = useState({
         title: '',
         type: '',

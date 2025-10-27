@@ -36,30 +36,6 @@ const getDepartmentShareForDept = (departmentName, defaultShare) => {
   return defaultShare;
 };
 
-// Helper function to get department's intern policy
-const getDepartmentInternPolicy = (departmentName, departmentData) => {
-  if (!departmentName || !departmentData?.departments) {
-    console.log('getDepartmentInternPolicy: Missing data', { departmentName, departmentData });
-    return null;
-  }
-  
-  const department = departmentData.departments.find(dept => 
-    dept.title === departmentName || dept.department === departmentName
-  );
-  
-  console.log('getDepartmentInternPolicy: Found department', { 
-    departmentName, 
-    department, 
-    allowInterns: department?.allowInterns,
-    internDepartmentShare: department?.internDepartmentShare 
-  });
-  
-  return department ? {
-    allowInterns: department.allowInterns,
-    internDepartmentShare: department.internDepartmentShare
-  } : null;
-};
-
 // Helper function to expand hierarchical departments into individual sub-department entries
 const expandHierarchicalDepartments = (departments, fullDepartments) => {
   const expandedData = [];
@@ -405,8 +381,6 @@ const BillPDF = ({
                   console.log('PDF - Regular employees found:', regularEmployees.length);
 
                   const renderUser = (user, index, isIntern = false) => {
-                    console.log('renderUser called with:', { user: user.name, isIntern });
-                    
                     const breakfastAmount = (user.breakfastCount || 0) * mealRates.breakfast;
                     const lunchAmount = (user.lunchCount || 0) * mealRates.lunch;
                     const dinnerAmount = (user.dinnerCount || 0) * mealRates.dinner;
@@ -414,32 +388,12 @@ const BillPDF = ({
                     const totalMeals =
                       (user.breakfastCount || 0) + (user.lunchCount || 0) + (user.dinnerCount || 0);
                     
-                    // For PDF generation, use simplified logic
-                    let userDeptShare;
-                    if (isIntern) {
-                      // For interns in PDF, use 100% department share (maintain backward compatibility)
-                      userDeptShare = 100;
-                      console.log('PDF Intern billing calculation:', { 
-                        user: user.name, 
-                        userDeptShare,
-                        totalMealAmount
-                      });
-                    } else {
-                      const userDeptName = user.department || user.parentDepartment || '';
-                      userDeptShare = getDepartmentShareForDept(userDeptName, departmentShare);
-                    }
-                    
+                    // For interns: 100% department share, 0% employee share
+                    // For regular employees: use department-specific share percentage
+                    const userDeptName = user.department || user.parentDepartment || '';
+                    const userDeptShare = isIntern ? 100 : getDepartmentShareForDept(userDeptName, departmentShare);
                     const deptShareCalc = (totalMealAmount * userDeptShare) / 100;
                     const empPayableCalc = totalMealAmount - deptShareCalc;
-                    
-                    console.log('Final calculation (PDF):', {
-                      user: user.name,
-                      totalMealAmount,
-                      userDeptShare,
-                      deptShareCalc,
-                      empPayableCalc,
-                      isIntern
-                    });
 
                     return (
                       <View key={`${user.userId}-${index}-${isIntern ? 'intern' : 'regular'}`} style={[styles.tableRow, isIntern && { backgroundColor: '#FEF3C7' }]}>
@@ -2612,12 +2566,6 @@ const BillGenerator = () => {
           // Expand hierarchical departments for display
           const expandedDepartments = expandHierarchicalDepartments(deptResponse.data.departments, fullDepartments);
           setDepartmentData({ ...deptResponse.data, departments: expandedDepartments });
-          
-          console.log('Department data set:', { 
-            departments: expandedDepartments.length,
-            sampleDept: expandedDepartments[0],
-            hasInternFields: expandedDepartments[0]?.allowInterns !== undefined
-          });
 
           // Calculate total amount with separate handling for interns and regular employees
           let internTotal = 0;
@@ -2835,7 +2783,7 @@ const BillGenerator = () => {
                 
                 console.log(`Department ${dept.department} - Interns: ${interns.length}, Regular: ${regularEmployees.length}`);
                 
-                // Calculate totals for interns using department's intern policy
+                // Calculate totals for interns (100% department share)
                 const internTotal = interns.reduce((acc, user) => {
                   return acc + (
                     (user.breakfastCount || 0) * mealRates.breakfast +
@@ -2843,18 +2791,7 @@ const BillGenerator = () => {
                     (user.dinnerCount || 0) * mealRates.dinner
                   );
                 }, 0);
-                
-                // Calculate department share based on department's intern policy
-                let internDeptShare = 0;
-                interns.forEach(user => {
-                  const userTotal = (user.breakfastCount || 0) * mealRates.breakfast +
-                                  (user.lunchCount || 0) * mealRates.lunch +
-                                  (user.dinnerCount || 0) * mealRates.dinner;
-                  const userDeptName = user.department || dept.department || '';
-                  const internPolicy = getDepartmentInternPolicy(userDeptName, departmentData);
-                  const userDeptShare = internPolicy ? internPolicy.internDepartmentShare : 100;
-                  internDeptShare += (userTotal * userDeptShare) / 100;
-                });
+                const internDeptShare = internTotal; // 100% for interns
                 
                 // Calculate totals for regular employees with department-specific shares
                 let regularDeptShare = 0;
@@ -3059,24 +2996,13 @@ const BillGenerator = () => {
             
             console.log(`Invoice - ${selectedDepartment} - Interns: ${interns.length}, Regular: ${regularEmployees.length}`);
             
-            // Calculate totals for interns using department's intern policy
+            // Calculate totals for interns (100% department share)
             const internTotal = interns.reduce((acc, u) => acc + (
               (u.breakfastCount || 0) * mealRates.breakfast +
               (u.lunchCount || 0) * mealRates.lunch +
               (u.dinnerCount || 0) * mealRates.dinner
             ), 0);
-            
-            // Calculate department share based on department's intern policy
-            let internDeptShare = 0;
-            interns.forEach(u => {
-              const userTotal = (u.breakfastCount || 0) * mealRates.breakfast +
-                              (u.lunchCount || 0) * mealRates.lunch +
-                              (u.dinnerCount || 0) * mealRates.dinner;
-              const userDeptName = u.department || selectedDepartment || '';
-              const internPolicy = getDepartmentInternPolicy(userDeptName, departmentData);
-              const userDeptShare = internPolicy ? internPolicy.internDepartmentShare : 100;
-              internDeptShare += (userTotal * userDeptShare) / 100;
-            });
+            const internDeptShare = internTotal; // 100% for interns
             
             // Calculate totals for regular employees with department-specific shares
             let regularDeptShare = 0;
@@ -3523,11 +3449,8 @@ const BillGenerator = () => {
                         
                         // Calculate department and employee shares based on user type
                         if (user.isIntern === true) {
-                          // Interns: use department's intern policy
-                          const userDeptName = user.department || departmentName || '';
-                          const internPolicy = getDepartmentInternPolicy(userDeptName, departmentData);
-                          const userDeptShare = internPolicy ? internPolicy.internDepartmentShare : 100;
-                          departmentShare += (userTotal * userDeptShare) / 100;
+                          // Interns: 100% department share
+                          departmentShare += userTotal;
                         } else {
                           // Regular employees: department-specific share
                           const userDeptShare = getDepartmentShareForDept(departmentName, 75); // Default 75%
@@ -5247,41 +5170,18 @@ const BillGenerator = () => {
                             console.log('Filtered Regular Employees:', regularEmployees);
 
                             const renderUser = (user, index, isIntern = false) => {
-                              console.log('renderUser (HTML) called with:', { user: user.name, isIntern, departmentData: departmentData ? 'available' : 'null' });
-                              
                               const breakfastAmount = (user.breakfastCount || 0) * mealRates.breakfast;
                               const lunchAmount = (user.lunchCount || 0) * mealRates.lunch;
                               const dinnerAmount = (user.dinnerCount || 0) * mealRates.dinner;
                               const totalMealAmount = breakfastAmount + lunchAmount + dinnerAmount;
                               const totalMeals = (user.breakfastCount || 0) + (user.lunchCount || 0) + (user.dinnerCount || 0);
                               
-                              // For interns: use department's intern policy, 0% employee share
+                              // For interns: 100% department share, 0% employee share
                               // For regular employees: use department-specific share percentage
                               const userDeptName = user.department || user.parentDepartment || '';
-                              let userDeptShare;
-                              if (isIntern) {
-                                const internPolicy = getDepartmentInternPolicy(userDeptName, departmentData);
-                                userDeptShare = internPolicy ? internPolicy.internDepartmentShare : 100; // Default to 100% if no policy found
-                              } else {
-                                userDeptShare = getDepartmentShareForDept(userDeptName, departmentShare);
-                              }
-                              // Ensure userDeptShare is a valid number
-                              const validUserDeptShare = isNaN(userDeptShare) || userDeptShare === null || userDeptShare === undefined ? 100 : userDeptShare;
-                              
-                              const deptShare = (totalMealAmount * validUserDeptShare) / 100;
+                              const userDeptShare = isIntern ? 100 : getDepartmentShareForDept(userDeptName, departmentShare);
+                              const deptShare = (totalMealAmount * userDeptShare) / 100;
                               const empPayable = totalMealAmount - deptShare;
-                              
-                              console.log('Final calculation (HTML):', {
-                                user: user.name,
-                                totalMealAmount,
-                                userDeptShare,
-                                validUserDeptShare,
-                                deptShare,
-                                empPayable,
-                                isIntern,
-                                deptShareFixed: deptShare.toFixed(2),
-                                empPayableFixed: empPayable.toFixed(2)
-                              });
 
                               return (
                                 <tr key={`${user.userId}-${index}-${isIntern ? 'intern' : 'regular'}`} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${isIntern ? 'bg-yellow-50 border-l-4 border-orange-400' : ''}`}>

@@ -42,7 +42,7 @@ const Meetings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING
 
 
   useEffect(() => {

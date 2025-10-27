@@ -42,7 +42,7 @@ const Conflicts = () => {
   const [currentRequestId, setCurrentRequestId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING || 'http://localhost:5000/api/testing';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_STAGING
 
   useEffect(() => {
     fetchConflicts();
