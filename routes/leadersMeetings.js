@@ -1429,14 +1429,10 @@ router.delete('/:meetingId', async (req, res) => {
             });
         }
 
-        // Delete the meeting
-        await LeadersMeeting.findByIdAndDelete(meetingId);
-
-        // Delete corresponding schedules
+        // Get the Schedule model
         const Schedule = require('../models/schedule');
-        await Schedule.deleteMany({ meetingReference: meetingId });
-
-        // 🔄 RESTORE OVERRIDDEN SCHEDULES
+        
+        // First, find and restore any overridden schedules BEFORE deleting the meeting
         const restoredSchedules = await Schedule.find({
             'overriddenBy.meetingId': meetingId,
             status: 'cancelled'
@@ -1456,8 +1452,44 @@ router.delete('/:meetingId', async (req, res) => {
                     $unset: { overriddenBy: 1 } // Remove the overriddenBy field
                 }
             );
+        }
 
-            // 🔔 SEND NOTIFICATIONS TO USERS WHOSE SCHEDULES WERE RESTORED
+        // Delete corresponding schedules FIRST (before deleting the meeting)
+        let deletedSchedulesResult = { deletedCount: 0 };
+        try {
+            deletedSchedulesResult = await Schedule.deleteMany({ meetingReference: meetingId });
+            console.log(`✅ Deleted ${deletedSchedulesResult.deletedCount} schedules for meeting ${meetingId}`);
+        } catch (scheduleDeleteError) {
+            console.error(`❌ Error deleting schedules for meeting ${meetingId}:`, scheduleDeleteError);
+            // Continue with meeting deletion even if schedule deletion fails
+        }
+
+        // Now delete the meeting
+        try {
+            await LeadersMeeting.findByIdAndDelete(meetingId);
+            console.log(`✅ Deleted meeting ${meetingId}`);
+        } catch (meetingDeleteError) {
+            console.error(`❌ Error deleting meeting ${meetingId}:`, meetingDeleteError);
+            throw meetingDeleteError; // Re-throw meeting deletion errors as they're critical
+        }
+
+        // Verify that schedules were actually deleted
+        try {
+            const remainingSchedules = await Schedule.find({ meetingReference: meetingId });
+            if (remainingSchedules.length > 0) {
+                console.warn(`⚠️ Warning: ${remainingSchedules.length} schedules still exist for deleted meeting ${meetingId}`);
+                // Force delete any remaining schedules
+                await Schedule.deleteMany({ meetingReference: meetingId });
+                console.log(`✅ Force deleted remaining ${remainingSchedules.length} schedules for meeting ${meetingId}`);
+            } else {
+                console.log(`✅ Verification passed: No schedules remain for meeting ${meetingId}`);
+            }
+        } catch (verificationError) {
+            console.error(`❌ Error verifying schedule deletion for meeting ${meetingId}:`, verificationError);
+        }
+
+        // 🔔 SEND NOTIFICATIONS TO USERS WHOSE SCHEDULES WERE RESTORED
+        if (restoredCount > 0) {
             for (const schedule of restoredSchedules) {
                 try {
                     const user = await User.findById(schedule.createdBy);
@@ -1467,15 +1499,17 @@ router.delete('/:meetingId', async (req, res) => {
                         await sendDXingMessage(user.phoneNumber, message);
                     }
                 } catch (notificationError) {
+                    console.error('Error sending schedule restoration notification:', notificationError);
                 }
             }
         }
 
         res.status(200).json({
             success: true,
-            message: `Meeting deleted successfully${restoredCount > 0 ? `. ${restoredCount} overridden schedule(s) restored.` : ''}`,
+            message: `Meeting deleted successfully. ${deletedSchedulesResult.deletedCount} schedule(s) removed${restoredCount > 0 ? `, ${restoredCount} overridden schedule(s) restored.` : '.'}`,
             data: {
                 deletedMeeting: meetingId,
+                deletedSchedulesCount: deletedSchedulesResult.deletedCount,
                 restoredSchedulesCount: restoredCount
             }
         });

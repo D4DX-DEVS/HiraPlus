@@ -348,4 +348,140 @@ router.get('/all-users', leaderOrSuperLeaderAuth, async (req, res) => {
   }
 });
 
+// Create user (leaders: isStaff=false; super leaders: isStaff from body)
+router.post('/users', leaderOrSuperLeaderAuth, async (req, res) => {
+  try {
+    let { phoneNumber, name, department, designation, role, tags, isDeptHead, isFreeFood, isIntern, isStaff } = req.body;
+
+    // Basic validation
+    if (!phoneNumber || !name || !department || !designation) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'name, phoneNumber, department, and designation are required' 
+      });
+    }
+
+    // Clean and validate phone number
+    phoneNumber = String(phoneNumber).trim().replace('+91', '').replace(/\D/g, '');
+    if (phoneNumber.length !== 10) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please provide a valid 10-digit phone number' 
+      });
+    }
+
+    // Validate department by ID or title
+    const mongoose = require('mongoose');
+    const Department = require('../models/Department');
+    let departmentDoc;
+    if (mongoose.Types.ObjectId.isValid(department)) {
+      departmentDoc = await Department.findById(department);
+    } else {
+      departmentDoc = await Department.findOne({ title: department.trim() });
+    }
+    if (!departmentDoc) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid department. Please select a valid department.' 
+      });
+    }
+
+    // Role mapping (optional; default to member if not provided)
+    let roleId = role;
+    if (!roleId) {
+      const memberRole = await Role.findOne({ name: 'member' });
+      roleId = memberRole?._id;
+    } else if (typeof roleId === 'string' && !mongoose.Types.ObjectId.isValid(roleId)) {
+      const roleDoc = await Role.findOne({ name: roleId.trim() });
+      if (!roleDoc) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid role: ${role}` 
+        });
+      }
+      roleId = roleDoc._id;
+    }
+
+    // Check phone uniqueness
+    const existing = await User.findOne({ phoneNumber });
+    if (existing) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User with this phone number already exists' 
+      });
+    }
+
+    // Validate tags if provided
+    let validatedTags = [];
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      const Tag = require('../models/Tags');
+      const existingTags = await Tag.find({ _id: { $in: tags } });
+      if (existingTags.length !== tags.length) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'One or more tag IDs are invalid' 
+        });
+      }
+      validatedTags = tags;
+    }
+
+    // isStaff logic by requester role
+    const requesterRole = req.user.role?.name; // populated in middleware
+    let computedIsStaff = false;
+    if (requesterRole === 'leader') {
+      // Leaders: always force isStaff = false
+      computedIsStaff = false;
+    } else if (requesterRole === 'super leader') {
+      // Super leaders: can set isStaff from body (default false if not provided)
+      computedIsStaff = typeof isStaff === 'boolean' ? isStaff : false;
+    }
+
+    const user = new User({
+      phoneNumber,
+      name: name.trim(),
+      department: departmentDoc._id,
+      designation: designation.trim(),
+      isDeptHead: isDeptHead || false,
+      status: 'active',
+      isFreeFood: isFreeFood || false,
+      isIntern: isIntern || false,
+      isStaff: computedIsStaff,
+      role: roleId,
+      tags: validatedTags
+    });
+
+    await user.save();
+
+    // Populate for response
+    await user.populate('department', 'title');
+    await user.populate('tags', 'tagName');
+    await user.populate('role', 'name');
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        department: user.department,
+        designation: user.designation,
+        isDeptHead: user.isDeptHead,
+        status: user.status,
+        isFreeFood: user.isFreeFood,
+        isIntern: user.isIntern,
+        isStaff: user.isStaff,
+        role: user.role,
+        tags: user.tags
+      }
+    });
+  } catch (error) {
+    console.error('Leader create user error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
 module.exports = router;

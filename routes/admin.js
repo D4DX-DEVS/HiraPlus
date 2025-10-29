@@ -182,6 +182,7 @@ router.post('/users', adminAuth, async (req, res) => {
       status: status || 'active',
       isFreeFood: isFreeFood || false,
       isIntern: isIntern || false,
+      isStaff: true,
       role: roleId,
       tags: validatedTags
     });
@@ -204,6 +205,7 @@ router.post('/users', adminAuth, async (req, res) => {
         status: user.status,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
+        isStaff: user.isStaff,
         role: user.role,
         tags: user.tags
       }
@@ -221,7 +223,7 @@ router.get('/users', adminAuth, async (req, res) => {
       .populate('department', 'title')
       .populate('tags', 'tagName')
       .populate('role', 'name')
-      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern role tags')
+      .select('name phoneNumber department designation isVerified isDeptHead status createdAt isFreeFood isIntern isStaff role tags')
       .sort({ createdAt: -1 });
 
     // Map the users to ensure all fields are present
@@ -237,6 +239,7 @@ router.get('/users', adminAuth, async (req, res) => {
       createdAt: user.createdAt,
       isFreeFood: user.isFreeFood,
       isIntern: user.isIntern,
+      isStaff: user.isStaff,
       role: user.role,
       tags: user.tags || []
     }));
@@ -289,7 +292,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
       .populate('department', 'title')
       .populate('tags', 'tagName')
       .populate('role', 'name')
-      .select('name phoneNumber department designation isIntern role tags')
+      .select('name phoneNumber department designation isIntern isStaff role tags')
       .sort({ name: 1 });
 
     const usersList = users.map(user => ({
@@ -299,6 +302,7 @@ router.get('/users/list', adminAuth, async (req, res) => {
       department: user.department ? user.department.title : '',
       designation: user.designation || '',
       isIntern: user.isIntern,
+      isStaff: user.isStaff,
       role: user.role,
       tags: user.tags || [],
       displayName: `${user.name || 'Unknown'} (${user.phoneNumber}) - ${user.department ? user.department.title : 'N/A'}`
@@ -450,6 +454,7 @@ router.put('/users/:userId', adminAuth, async (req, res) => {
         status: user.status,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
+        isStaff: user.isStaff,
         role: user.role,
         tags: user.tags
       }
@@ -999,6 +1004,7 @@ router.get('/users/:userId', adminAuth, async (req, res) => {
       updatedAt: user.updatedAt,
       isFreeFood: user.isFreeFood,
       isIntern: user.isIntern,
+      isStaff: user.isStaff,
       role: user.role,
       tags: user.tags || []
     });

@@ -4,7 +4,7 @@ const Role = require('../models/Roles');
 const adminOrGeneralSecretaryAuth = require('../middleware/adminOrGeneralSecretaryAuth');
 
 // Get all roles
-router.get('/', adminOrGeneralSecretaryAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const roles = await Role.find().sort({ name: 1 });
     

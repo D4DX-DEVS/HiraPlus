@@ -119,6 +119,7 @@ router.post('/users', generalSecretaryAuth, async (req, res) => {
       isDeptHead: isDeptHead || false,
       isFreeFood: isFreeFood || false,
       isIntern: isIntern || false,
+      isStaff: typeof req.body.isStaff === 'boolean' ? req.body.isStaff : false,
       status: 'active',
       isVerified: false,
       tags: processedTags
