@@ -12,6 +12,8 @@ const Meeting = require('../models/Meeting');
 const Menu = require('../models/Menu');
 const Travel = require('../models/Travel');
 const Vehicle = require('../models/Vehicle');
+const Role = require('../models/Roles');
+const auth = require('../middleware/auth');
 
 // Helper function to check for meeting conflicts
 const checkMeetingConflict = async (startDatetime, endDatetime, hall, excludeMeetingId = null) => {
@@ -436,14 +438,57 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
-// Get all users (public endpoint)
+// Get users with role-based access control
 router.get('/users', async (req, res) => {
   try {
-    // Get all users, excluding sensitive information
-    const users = await User.find()
+    // Authenticate: accept either normal user token (with id) or GS token (with role)
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authentication token provided'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    let requesterRoleName = null;
+    if (decoded && decoded.role === 'general secretary') {
+      requesterRoleName = 'general secretary';
+    } else if (decoded && decoded.id) {
+      const requester = await User.findById(decoded.id).populate('role', 'name');
+      if (!requester || !requester.isVerified) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+      requesterRoleName = requester?.role?.name?.toLowerCase?.();
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication token'
+      });
+    }
+
+    let query = {};
+    if (requesterRoleName === 'leader' || requesterRoleName === 'super leader') {
+      // Leaders and Super Leaders: view all users
+      query = {};
+    } else if (requesterRoleName === 'general secretary') {
+      // General Secretary: view only Leader and Super Leader users
+      const roles = await Role.find({ name: { $in: ['leader', 'super leader'] } }).select('_id');
+      const roleIds = roles.map(r => r._id);
+      query = { role: { $in: roleIds } };
+    } else {
+      // Other roles: view only staff users
+      query = { isStaff: true };
+    }
+
+    const users = await User.find(query)
       .populate('department', 'title')
       .populate('role', 'name')
-      .select('name phoneNumber department designation isIntern role')
+      .select('name phoneNumber department designation isIntern isStaff role')
       .sort({ name: 1 });
 
     res.json({

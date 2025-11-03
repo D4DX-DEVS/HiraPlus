@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema({
     default: false,
     required: false
   },
+  isStaff: {
+    type: Boolean,
+    default: true
+  },
   role: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
