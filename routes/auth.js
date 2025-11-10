@@ -340,7 +340,8 @@ router.post('/verify-otp', async (req, res) => {
         isDeptHead: user.isDeptHead,
         isFreeFood: user.isFreeFood,
         isIntern: user.isIntern,
-        role: user.role
+        role: user.role,
+        isStaff: user.isStaff
       }
     });
   } catch (error) {
