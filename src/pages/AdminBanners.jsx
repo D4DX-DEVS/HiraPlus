@@ -19,15 +19,34 @@ const AdminBanners = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, bannerId: null });
-  const [newBanner, setNewBanner] = useState({ title: '', bannerImage: null });
-  const [editBanner, setEditBanner] = useState({ title: '', bannerImage: null });
+  const [newBanner, setNewBanner] = useState({ title: '', bannerImage: null, fromDate: '', toDate: '' });
+  const [editBanner, setEditBanner] = useState({ title: '', bannerImage: null, fromDate: '', toDate: '' });
   const [previewImage, setPreviewImage] = useState(null);
   const [editPreviewImage, setEditPreviewImage] = useState(null);
+
+  const toLocalDatetimeString = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const getBannerStatus = (banner) => {
+    const now = new Date();
+    const from = new Date(banner.fromDate);
+    const to = new Date(banner.toDate);
+    if (now < from) return { label: 'Upcoming', color: 'blue' };
+    if (now > to) return { label: 'Expired', color: 'red' };
+    return { label: 'Active', color: 'green' };
+  };
 
   const fetchBanners = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/banner`);
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/banner/all`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setBanners(response.data);
     } catch (err) {
       setError('Failed to fetch banners');
@@ -76,7 +95,12 @@ const AdminBanners = () => {
 
   const handleEdit = (banner) => {
     setEditingBanner(banner);
-    setEditBanner({ title: banner.title, bannerImage: null });
+    setEditBanner({
+      title: banner.title,
+      bannerImage: null,
+      fromDate: toLocalDatetimeString(banner.fromDate),
+      toDate: toLocalDatetimeString(banner.toDate),
+    });
     setEditPreviewImage(null);
     setShowEditForm(true);
     setShowAddForm(false);
@@ -89,6 +113,8 @@ const AdminBanners = () => {
       const formData = new FormData();
       formData.append('title', newBanner.title);
       formData.append('bannerImage', newBanner.bannerImage);
+      formData.append('fromDate', newBanner.fromDate);
+      formData.append('toDate', newBanner.toDate);
 
       await axios.post(`${import.meta.env.VITE_API_URL}/banner`, formData, {
         headers: { 
@@ -97,7 +123,7 @@ const AdminBanners = () => {
         }
       });
 
-      setNewBanner({ title: '', bannerImage: null });
+      setNewBanner({ title: '', bannerImage: null, fromDate: '', toDate: '' });
       setPreviewImage(null);
       setShowAddForm(false);
       fetchBanners();
@@ -112,6 +138,8 @@ const AdminBanners = () => {
       const token = localStorage.getItem('adminToken');
       const formData = new FormData();
       formData.append('title', editBanner.title);
+      formData.append('fromDate', editBanner.fromDate);
+      formData.append('toDate', editBanner.toDate);
       if (editBanner.bannerImage) {
         formData.append('bannerImage', editBanner.bannerImage);
       }
@@ -123,7 +151,7 @@ const AdminBanners = () => {
         }
       });
 
-      setEditBanner({ title: '', bannerImage: null });
+      setEditBanner({ title: '', bannerImage: null, fromDate: '', toDate: '' });
       setEditPreviewImage(null);
       setShowEditForm(false);
       setEditingBanner(null);
@@ -207,6 +235,35 @@ const AdminBanners = () => {
                           required
                         />
                       </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="fromDate" className="block text-sm font-medium text-gray-700 mb-2">
+                            From Date &amp; Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            id="fromDate"
+                            value={newBanner.fromDate}
+                            onChange={(e) => setNewBanner({ ...newBanner, fromDate: e.target.value })}
+                            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="toDate" className="block text-sm font-medium text-gray-700 mb-2">
+                            To Date &amp; Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            id="toDate"
+                            value={newBanner.toDate}
+                            min={newBanner.fromDate}
+                            onChange={(e) => setNewBanner({ ...newBanner, toDate: e.target.value })}
+                            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                            required
+                          />
+                        </div>
+                      </div>
                       <div>
                         <label htmlFor="bannerImage" className="block text-sm font-medium text-gray-700 mb-2">
                           Banner Image
@@ -240,7 +297,7 @@ const AdminBanners = () => {
                           type="button"
                           onClick={() => {
                             setShowAddForm(false);
-                            setNewBanner({ title: '', bannerImage: null });
+                            setNewBanner({ title: '', bannerImage: null, fromDate: '', toDate: '' });
                             setPreviewImage(null);
                           }}
                           className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200"
@@ -280,6 +337,35 @@ const AdminBanners = () => {
                           placeholder="Enter banner title"
                           required
                         />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="editFromDate" className="block text-sm font-medium text-gray-700 mb-2">
+                            From Date &amp; Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            id="editFromDate"
+                            value={editBanner.fromDate}
+                            onChange={(e) => setEditBanner({ ...editBanner, fromDate: e.target.value })}
+                            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="editToDate" className="block text-sm font-medium text-gray-700 mb-2">
+                            To Date &amp; Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            id="editToDate"
+                            value={editBanner.toDate}
+                            min={editBanner.fromDate}
+                            onChange={(e) => setEditBanner({ ...editBanner, toDate: e.target.value })}
+                            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                            required
+                          />
+                        </div>
                       </div>
                       <div>
                         <label htmlFor="editBannerImage" className="block text-sm font-medium text-gray-700 mb-2">
@@ -323,7 +409,7 @@ const AdminBanners = () => {
                           type="button"
                           onClick={() => {
                             setShowEditForm(false);
-                            setEditBanner({ title: '', bannerImage: null });
+                            setEditBanner({ title: '', bannerImage: null, fromDate: '', toDate: '' });
                             setEditPreviewImage(null);
                             setEditingBanner(null);
                           }}
@@ -378,10 +464,30 @@ const AdminBanners = () => {
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-semibold text-gray-900 truncate" title={banner.title}>
-                                  {banner.title}
-                                </h3>
-                                <p className="mt-1.5 text-xs text-gray-400">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="text-sm font-semibold text-gray-900 truncate" title={banner.title}>
+                                    {banner.title}
+                                  </h3>
+                                  {(() => {
+                                    const status = getBannerStatus(banner);
+                                    const colorMap = {
+                                      green: 'bg-green-100 text-green-700',
+                                      blue: 'bg-blue-100 text-blue-700',
+                                      red: 'bg-red-100 text-red-700',
+                                    };
+                                    return (
+                                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${colorMap[status.color]}`}>
+                                        {status.label}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  {banner.fromDate ? format(new Date(banner.fromDate), 'MMM d, yyyy h:mm a') : '—'}
+                                  {' → '}
+                                  {banner.toDate ? format(new Date(banner.toDate), 'MMM d, yyyy h:mm a') : '—'}
+                                </p>
+                                <p className="mt-0.5 text-xs text-gray-400">
                                   Created on {format(new Date(banner.createdAt), 'MMM d, yyyy h:mm a')}
                                 </p>
                               </div>
