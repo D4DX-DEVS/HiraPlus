@@ -837,7 +837,7 @@ router.get('/meals/today', messStaffAuth, async (req, res) => {
           phoneNumber: mealObj.userId.phoneNumber,
           department: mealObj.userId.department ? {
             _id: mealObj.userId.department._id,
-            title: mealObj.userId.department.title
+            title: mealObj.userId.department.title || 'Unknown'
           } : null,
           designation: mealObj.userId.designation,
           isVerified: mealObj.userId.isVerified
@@ -926,7 +926,7 @@ router.get('/meals', messStaffAuth, async (req, res) => {
           phoneNumber: mealObj.userId.phoneNumber,
           department: mealObj.userId.department ? {
             _id: mealObj.userId.department._id,
-            title: mealObj.userId.department.title
+            title: mealObj.userId.department.title || 'Unknown'
           } : null,
           designation: mealObj.userId.designation,
           isVerified: mealObj.userId.isVerified
@@ -1166,8 +1166,9 @@ router.get('/guest-meals', messStaffAuth, async (req, res) => {
       }
 
       // Add department counts
-      if (!acc[dateStr].departments[meal.department.title]) {
-        acc[dateStr].departments[meal.department.title] = {
+      const departmentTitle = (meal.department && meal.department.title) || 'Unknown';
+      if (!acc[dateStr].departments[departmentTitle]) {
+        acc[dateStr].departments[departmentTitle] = {
           breakfast: meal.breakfastCount || 0,
           lunch: meal.lunchCount || 0,
           dinner: meal.dinnerCount || 0,
@@ -1304,6 +1305,86 @@ router.get('/departments', async (req, res) => {
   }
 });
 
+// Get today's total meal counts - public endpoint (no auth required)
+router.get('/meals/today/summary', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 1. Staff meals (user self-marked + mess-staff marked)
+    const staffMeals = await Meal.find({
+      date: { $gte: today, $lt: tomorrow }
+    });
+
+    const staffCounts = {
+      breakfast: staffMeals.filter(m => m.breakfast).length,
+      lunch: staffMeals.filter(m => m.lunch).length,
+      dinner: staffMeals.filter(m => m.dinner).length
+    };
+    staffCounts.total = staffCounts.breakfast + staffCounts.lunch + staffCounts.dinner;
+
+    // 2. Guest meals
+    const guestMeals = await GuestMeal.find({
+      date: { $gte: today, $lt: tomorrow }
+    });
+
+    const guestCounts = {
+      breakfast: guestMeals.reduce((sum, m) => sum + (m.breakfastCount || 0), 0),
+      lunch: guestMeals.reduce((sum, m) => sum + (m.lunchCount || 0), 0),
+      dinner: guestMeals.reduce((sum, m) => sum + (m.dinnerCount || 0), 0)
+    };
+    guestCounts.total = guestCounts.breakfast + guestCounts.lunch + guestCounts.dinner;
+
+    // 3. Meeting/bulk meals (approved meetings with food requirements)
+    const meetingMeals = await Meeting.find({
+      startDatetime: { $gte: today, $lt: tomorrow },
+      foodRequired: true,
+      status: 'approved'
+    });
+
+    const meetingCounts = {
+      breakfast: meetingMeals.reduce((sum, m) => sum + (m.breakfast || 0), 0),
+      morningSnacks: meetingMeals.reduce((sum, m) => sum + (m.morningSnacksCount || 0), 0),
+      morningTea: meetingMeals.reduce((sum, m) => sum + (m.morningTeaCount || 0), 0),
+      lunch: meetingMeals.reduce((sum, m) => sum + (m.lunch || 0), 0),
+      eveningSnacks: meetingMeals.reduce((sum, m) => sum + (m.eveningSnacksCount || 0), 0),
+      eveningTea: meetingMeals.reduce((sum, m) => sum + (m.eveningTeaCount || 0), 0),
+      dinner: meetingMeals.reduce((sum, m) => sum + (m.dinner || 0), 0)
+    };
+    meetingCounts.total =
+      meetingCounts.breakfast +
+      meetingCounts.morningSnacks +
+      meetingCounts.morningTea +
+      meetingCounts.lunch +
+      meetingCounts.eveningSnacks +
+      meetingCounts.eveningTea +
+      meetingCounts.dinner;
+
+    // 4. Grand totals (breakfast/lunch/dinner combined across all sources)
+    const grandTotal = {
+      breakfast: staffCounts.breakfast + guestCounts.breakfast + meetingCounts.breakfast,
+      lunch: staffCounts.lunch + guestCounts.lunch + meetingCounts.lunch,
+      dinner: staffCounts.dinner + guestCounts.dinner + meetingCounts.dinner
+    };
+    grandTotal.total = grandTotal.breakfast + grandTotal.lunch + grandTotal.dinner;
+
+    res.json({
+      success: true,
+      date: today,
+      counts: {
+        staff: staffCounts,
+        guest: guestCounts,
+        meeting: meetingCounts,
+        grandTotal
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get meeting food requirements for a date range
 router.get('/meeting-food-requirements', messStaffAuth, async (req, res) => {
   try {
@@ -1352,7 +1433,7 @@ router.get('/meeting-food-requirements', messStaffAuth, async (req, res) => {
       acc[dateStr].meetings.push({
         id: meeting._id,
         title: meeting.title,
-        department: meeting.department.title,
+        department: (meeting.department && meeting.department.title) || 'Unknown',
         startTime: meeting.startDatetime,
         endTime: meeting.endDatetime,
         hall: meeting.hall,

@@ -8,6 +8,14 @@ const bannerSchema = new mongoose.Schema({
     bannerImage: {
         type: String,
         required: true,
+    },
+    fromDate: {
+        type: Date,
+        required: true,
+    },
+    toDate: {
+        type: Date,
+        required: true,
     }
 }, {
     timestamps: true
