@@ -88,18 +88,22 @@ const AdminMeals = () => {
     }
   };
 
-  const fetchFilteredMeals = async () => {
+  const fetchFilteredMeals = async (overrideStart, overrideEnd) => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('adminToken');
+      const s = overrideStart !== undefined ? overrideStart : startDate;
+      const e = overrideEnd !== undefined ? overrideEnd : endDate;
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/users/meals?startDate=${startDate}&endDate=${endDate}`,
+        `${import.meta.env.VITE_API_URL}/admin/users/meals?startDate=${s}&endDate=${e}`,
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setFilteredMeals(response.data);
-      // Still calculate today's totals from the original meals data
-      calculateTodayTotals(meals);
+      calculateTodayTotals(response.data);
     } catch (err) {
       setError('Failed to fetch filtered meals');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,7 +120,7 @@ const AdminMeals = () => {
   };
 
   useEffect(() => {
-    fetchAllMeals();
+    fetchFilteredMeals();
     fetchUsersList();
   }, []);
 
@@ -146,7 +150,7 @@ const AdminMeals = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteConfirm({ show: false, userId: null, mealId: null });
-      fetchAllMeals();
+      fetchFilteredMeals();
     } catch (err) {
       setError('Failed to delete meal');
     }
@@ -171,7 +175,7 @@ const AdminMeals = () => {
         }
       );
       setEditingMeal(null);
-      fetchAllMeals();
+      fetchFilteredMeals();
     } catch (err) {
       setError('Failed to update meal');
     }
@@ -182,9 +186,11 @@ const AdminMeals = () => {
   };
 
   const clearFilters = () => {
-    setFilteredMeals(null);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    setStartDate(today);
+    setEndDate(today);
     setShowFilters(false);
-    calculateTodayTotals(meals);
+    fetchFilteredMeals(today, today);
   };
 
   const handleAddMeal = async (e) => {
@@ -213,7 +219,7 @@ const AdminMeals = () => {
       });
       setSelectedUser(null);
       setUserSearch('');
-      fetchAllMeals();
+      fetchFilteredMeals();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to add meal');
     }

@@ -85,6 +85,8 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [departments, setDepartments] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const USERS_PER_PAGE = 20;
 
   // Check if the selected department should show isIntern column
   const shouldShowInternColumn = selectedDepartment === 'D4DX Innovations LLP';
@@ -153,6 +155,9 @@ const AdminDashboard = () => {
     // If same department, sort by name
     return (a.name || '').localeCompare(b.name || '');
   });
+
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE);
 
   const handleDelete = async () => {
     try {
@@ -231,7 +236,7 @@ const AdminDashboard = () => {
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                     placeholder="Search by name, phone, department, or designation..."
                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all duration-200"
                   />
@@ -241,7 +246,7 @@ const AdminDashboard = () => {
                 <div>
                   <select
                     value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    onChange={(e) => { setSelectedDepartment(e.target.value); setCurrentPage(1); }}
                     className="block w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 rounded-lg bg-white transition-all duration-200"
                   >
                     <option value="">All Departments</option>
@@ -374,7 +379,7 @@ const AdminDashboard = () => {
                           </td>
                         </tr>
                       ) : (
-                        filteredUsers.map((user) => (
+                        paginatedUsers.map((user) => (
                         <React.Fragment key={user._id}>
                           <tr className="hover:bg-gray-200 transition-colors duration-150">
                             <td className="px-2 py-1.5 whitespace-nowrap">
@@ -481,6 +486,31 @@ const AdminDashboard = () => {
                     </tbody>
                   </table>
                 </div>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                    <span className="text-xs text-gray-500">
+                      Showing {(currentPage - 1) * USERS_PER_PAGE + 1}–{Math.min(currentPage * USERS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-xs text-gray-600">Page {currentPage} of {totalPages}</span>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
