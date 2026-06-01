@@ -374,8 +374,8 @@ const BillPDF = ({
                   // Using real database values for isIntern field
                   console.log('PDF Generation - Using real isIntern values from database');
 
-                  const interns = allUsers.filter(user => user.isIntern === true);
-                  const regularEmployees = allUsers.filter(user => user.isIntern !== true);
+                  const interns = allUsers.filter(user => user.isIntern === true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                  const regularEmployees = allUsers.filter(user => user.isIntern !== true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                   
                   console.log('PDF - Interns found:', interns.length);
                   console.log('PDF - Regular employees found:', regularEmployees.length);
@@ -456,8 +456,8 @@ const BillPDF = ({
                   console.log('Total Calculation - Using real isIntern values from database');
 
                   // Separate interns from regular employees
-                  const interns = allUsers.filter(user => user.isIntern === true);
-                  const regularEmployees = allUsers.filter(user => user.isIntern !== true);
+                  const interns = allUsers.filter(user => user.isIntern === true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                  const regularEmployees = allUsers.filter(user => user.isIntern !== true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
                   console.log('Total Calculation - Interns:', interns.length, 'Regular:', regularEmployees.length);
                   
@@ -2778,8 +2778,8 @@ const BillGenerator = () => {
                 const billableUsers = dept.users.filter(user => !user.isFreeFood);
                 
                 // Separate interns from regular employees
-                const interns = billableUsers.filter(user => user.isIntern === true);
-                const regularEmployees = billableUsers.filter(user => user.isIntern !== true);
+                const interns = billableUsers.filter(user => user.isIntern === true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                const regularEmployees = billableUsers.filter(user => user.isIntern !== true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                 
                 console.log(`Department ${dept.department} - Interns: ${interns.length}, Regular: ${regularEmployees.length}`);
                 
@@ -2991,8 +2991,8 @@ const BillGenerator = () => {
             const billableUsers = dept.users.filter(u => !u.isFreeFood);
             
             // Separate interns from regular employees
-            const interns = billableUsers.filter(u => u.isIntern === true);
-            const regularEmployees = billableUsers.filter(u => u.isIntern !== true);
+            const interns = billableUsers.filter(u => u.isIntern === true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            const regularEmployees = billableUsers.filter(u => u.isIntern !== true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             
             console.log(`Invoice - ${selectedDepartment} - Interns: ${interns.length}, Regular: ${regularEmployees.length}`);
             
@@ -5163,8 +5163,8 @@ const BillGenerator = () => {
                               console.log('⚠️ NO REAL INTERNS FOUND - Make sure isIntern=true is set in database for actual interns');
                             }
 
-                            const interns = allUsers.filter(user => user.isIntern === true);
-                            const regularEmployees = allUsers.filter(user => user.isIntern !== true);
+                            const interns = allUsers.filter(user => user.isIntern === true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                            const regularEmployees = allUsers.filter(user => user.isIntern !== true).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                             
                             console.log('Filtered Interns:', interns);
                             console.log('Filtered Regular Employees:', regularEmployees);
