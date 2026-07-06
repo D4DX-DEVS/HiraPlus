@@ -33,8 +33,8 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
   const [availableTags, setAvailableTags] = useState([]);
   const [tagsLoading, setTagsLoading] = useState(false);
 
-  // Check if the selected department should show isIntern field
-  const shouldShowInternField = departments.find(dept => 
+  // Check if the selected department allows interns
+  const shouldShowInternField = departments.find(dept =>
     dept._id === formData.department || dept.title === formData.department
   )?.allowInterns || false;
 
@@ -132,6 +132,13 @@ const UserForm = ({ initialData, onSuccess, onCancel }) => {
       });
     }
   }, [initialData]);
+
+  // Clear isIntern once departments are loaded if the selected department doesn't allow interns
+  useEffect(() => {
+    if (departments.length > 0 && !shouldShowInternField && formData.isIntern) {
+      setFormData(prev => ({ ...prev, isIntern: false }));
+    }
+  }, [shouldShowInternField, departments.length]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
