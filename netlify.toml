@@ -1,0 +1,39 @@
+# Netlify deploys only the frontend (front/). The backend (back/) is hosted
+# separately on DigitalOcean. Netlify skips the build when a commit doesn't
+# touch the base directory, so backend-only pushes won't redeploy the site.
+#
+# The backend URL is baked into the bundle at build time (Vite VITE_* vars).
+# Set these in Netlify UI -> Site configuration -> Environment variables
+# (the backend must be served over HTTPS, or browsers will block the calls):
+#   VITE_API_URL              = https://<backend-domain>/api
+#   VITE_API_BASE_URL_STAGING = https://<backend-domain>/api/testing
+#   VITE_API_BASE_URL         = https://<backend-domain>/api
+
+[build]
+  base = "front"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA fallback so BrowserRouter routes work on refresh / direct links
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Opt out of Google's FLoC tracking
+    Permissions-Policy = "interest-cohort=()"
+
+# Vite emits content-hashed filenames into /assets, so they can be cached forever
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
