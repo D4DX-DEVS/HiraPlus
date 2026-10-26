@@ -33,13 +33,15 @@ const customTagsRoutes = require('./routes/customTags');
 const app = express();
 
 // Middleware
-// app.use(cors({
-//   origin: ['http://localhost:5174'],
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization'],
-//   credentials: true
-// }));
-app.use(cors());
+// Allowed browser origins come only from CORS_ORIGINS (comma-separated) in .env
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+if (allowedOrigins.length === 0) {
+  console.warn('CORS_ORIGINS is not set: all browser origins will be blocked');
+}
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
