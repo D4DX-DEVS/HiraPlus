@@ -1,7 +1,7 @@
 const axios = require('axios');
 
-const ONESIGNAL_APP_ID = '***REMOVED***';
-const ONESIGNAL_REST_API_KEY = '***REMOVED***';
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
+const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
 
 /**
  * Send push notification to all users
